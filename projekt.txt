@@ -1,3 +1,7 @@
 
+ HEAD
 Igor Kuźnicki2
 Szymon Jesionek
+
+Igor Kuźnicki
+ 62546a7e085d8ba47534f3776d243e0fe4e1a010
