@@ -1,0 +1,56 @@
+services:
+  
+  mysql_db:
+    image: mysql:8.0
+    container_name: mysql_db_container
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # - ./mysql:/docker-entrypoint-initdb.d
+    networks:
+      - network 
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    
+  flask_api:
+    build:
+      context: ./flask
+      dockerfile: Dockerfile
+    container_name: flask_api_container
+    restart: always
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - DATABASE_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:3306/${DB_DATABASE}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./flask:/app
+    depends_on:
+          mysql_db:
+            condition: service_healthy
+    command: sh -c "sleep 10 && flask run --host=0.0.0.0"
+    
+    networks:
+      - network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  network:
+    driver: bridge

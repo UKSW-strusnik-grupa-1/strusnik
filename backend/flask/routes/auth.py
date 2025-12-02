@@ -1,0 +1,99 @@
+from flask import Blueprint, current_app, request, Response, jsonify, make_response
+from models import db, User
+from werkzeug.security import generate_password_hash, check_password_hash
+from utils import create_jwt_token, parse_jwt_token, is_token_valid
+
+authentication = Blueprint("authentication", __name__)
+
+@authentication.route("/register", methods=["POST"])
+def register():
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
+    
+    if not username or not password:
+        return jsonify({"error": "Username and password required."}), 400
+    
+    try:
+        if User.query.filter_by(username=username).first():
+            return jsonify({"error": "User already exists."}), 400
+        
+        hashed = generate_password_hash(password)
+        user = User(username=username, password=hashed)
+        db.session.add(user)
+        db.session.commit()
+        
+        token = create_jwt_token(user.id)
+        return jsonify({"token": token, "user": user.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+    
+@authentication.route("/login", methods=["POST"])
+def login():
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
+    
+    if not username or not password:
+        return jsonify({"error": "Username and password required."}), 400
+        
+    try:
+        user = User.query.filter_by(username=username).first()
+        
+        if not user:
+            return jsonify({"error": "User does not exists."}), 401
+        
+        if not check_password_hash(user.password, password):
+            return jsonify({"error": "Invalid credentials."}), 401
+        
+        token = create_jwt_token(user.id)
+        
+        response = make_response(
+            jsonify({
+                "message": "Login successful."
+            }), 200
+        )
+        
+        response.set_cookie(
+            "jwtToken",
+            value=token,
+            max_age=current_app.config["TOKEN_MAX_AGE"],
+            httponly=True,
+            secure=False, # True dla HTTPS
+            samesite="Lax"
+        )
+        
+        return response
+        
+    except Exception as e:
+        pass
+    
+@authentication.route("/token", methods=["POST"])
+def parse_token_claims():
+    data = request.json
+    token = data.get("token")
+    
+    if not token:
+        return jsonify({"error": "Token required."}), 400
+    
+    try:
+        parsed_token = parse_jwt_token(token)
+        return parsed_token, 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    
+@authentication.route("/validate", methods=["POST"])
+def validate_token():
+    data = request.json
+    token = data.get("token")
+    
+    if not token:
+        return jsonify({"error": "Token required", "valid": False}), 400
+    
+    try:
+        valid = is_token_valid(token)
+        return jsonify({"valid": valid}), valid and 200 or 400
+    except Exception as e:
+        return jsonify({"error": str(e), "valid": False}), 400
+        
