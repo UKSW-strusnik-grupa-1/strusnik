@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 
 type GameStatus = "NOT-STARTED" | "STARTED" | "FINISHED"
+type Winner = "PLAYER" | "DEALER" | "DRAW" | null
 
 export const useBlackjack = () => {
     const [gameUUID, setGameUUID] = useState<string>("")
@@ -14,6 +15,9 @@ export const useBlackjack = () => {
     const [balance, setBalance] = useState<number>(1000)
     const [bet, setBet] = useState<number>(0)
     const [gameStatus, setGameStatus] = useState<GameStatus>("NOT-STARTED")
+
+    const [winner, setWinner] = useState<Winner>(null)
+    const [cashout, setCashout] = useState<number>(0)
 
     const [tokens, setTokens] = useState<number[]>([])
     
@@ -50,12 +54,14 @@ export const useBlackjack = () => {
     const removeToken = (index: number) => {
         setBalance(prevBalance => prevBalance + tokens[index])
         setTokens(prevTokens => changeTokenValues(prevTokens.filter((_, i) => i !== index)))
+        setBet(prevBet => prevBet - tokens[index])
     }
 
     const addToken = (amount: number) => {
         if (balance >= amount) {
             setBalance(prevBalance => prevBalance - amount)
             setTokens(prevTokens => changeTokenValues([...prevTokens, amount]))
+            setBet(prevBet => prevBet + amount)
         }
     }
 
@@ -91,6 +97,30 @@ export const useBlackjack = () => {
         }
 
         return parseInt(cardValue, 10);
+    }
+
+    const checkWinner = (data: any) => {
+        setDealerDeck(prevDealerDeck => { 
+            const newDeck = [...prevDealerDeck]
+            newDeck[1] = data.dealerDeck[1]
+            return newDeck;
+        });
+        
+        setDealerDeckValue(getDeckValue(data.dealerDeck.slice(0, 2)));
+
+        for (let i = 2; i < data.dealerDeck.length; i++) {
+            setTimeout(() => {
+                setDealerDeck(prevDealerDeck => [...prevDealerDeck, data.dealerDeck[i]]);
+                setDealerDeckValue(getDeckValue(data.dealerDeck.slice(0, i + 1)));
+            }, (i - 1) * 1000);
+        }
+
+        setTimeout(() => {
+            setWinner(data.winner)
+            setCashout(data.cashout)
+            setGameStatus(data.gameStatus)
+            setBalance(balance + data.cashout)
+        }, data.dealerDeck.length * 1000)
     }
 
     useEffect(() => {
@@ -131,6 +161,10 @@ export const useBlackjack = () => {
 
         setPlayerDeck(data.playerDeck)
         setPlayerDeckValue(data.playerDeckValue)
+
+        if (data.playerDeckValue > 21) {
+            checkWinner(data)
+        }
     }
 
     const stand = async () => {
@@ -144,20 +178,20 @@ export const useBlackjack = () => {
         if (!response.ok) return;
         const data = await response.json()
 
-        setDealerDeck(prevDealerDeck => { 
-            const newDeck = [...prevDealerDeck]
-            newDeck[1] = data.dealerDeck[1]
-            return newDeck;
-        });
-        
-        setDealerDeckValue(getDeckValue(data.dealerDeck.slice(0, 2)));
+        checkWinner(data)
+    }
 
-        for (let i = 2; i < data.dealerDeck.length; i++) {
-            setTimeout(() => {
-                setDealerDeck(prevDealerDeck => [...prevDealerDeck, data.dealerDeck[i]]);
-                setDealerDeckValue(getDeckValue(data.dealerDeck.slice(0, i + 1)));
-            }, (i - 1) * 1000);
-        }
+    const playAgain = () => {
+        setGameUUID("")
+        setPlayerDeck([])
+        setPlayerDeckValue(0)
+        setDealerDeck([])
+        setDealerDeckValue(0)
+        setGameStatus("NOT-STARTED")
+        setWinner(null)
+        setCashout(0)
+        setBet(0)
+        setTokens([])
     }
 
     return {
@@ -173,7 +207,10 @@ export const useBlackjack = () => {
         hit,
         stand,
         playerDeckValue,
-        dealerDeckValue
+        dealerDeckValue,
+        winner,
+        cashout,
+        playAgain
     }
 
 }

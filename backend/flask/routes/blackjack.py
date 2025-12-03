@@ -42,26 +42,37 @@ def is_ace_in_deck(deck: list[str]):
     return False
 
 
-def create_deck():
+def create_deck(deck: set[str]):
     cards = []
     
     for i in range(2):
-        cards.append(random.choice(deck))
+        card = random.choice(tuple(deck))
+        deck.remove(card)
+        cards.append(card)
     
     return cards
 
 @blackjack.route("/start", methods=["POST"])
 def start_game():
     data = request.json
+    bet = 0
+    
+    if data.get("bet"):
+        bet = data.get("bet")
     
     game_uuid = str(uuid4())
-    player_deck = create_deck()
-    dealer_deck = create_deck()
+    game_deck = set(deck)
+    
+    player_deck = create_deck(game_deck)
+    dealer_deck = create_deck(game_deck)
     
     games.append({
         "uuid": game_uuid,
+        "deck": game_deck,
         "playerDeck": player_deck,
         "dealerDeck": dealer_deck,
+        "bet": bet,
+        "gameStatus": "STARTED",
     })
     
     return jsonify({
@@ -85,7 +96,26 @@ def hit():
     if not game:
         return jsonify({"error": "Game not found."}), 404
     
-    game["playerDeck"].append(random.choice(deck))
+    if game["gameStatus"] == "FINISHED":
+        return jsonify({"error": "Game already finished."}), 400
+    
+    card = random.choice(tuple(game["deck"]))
+    game["deck"].remove(card)
+    game["playerDeck"].append(card)
+    
+    player_score = get_deck_value(game["playerDeck"])
+    
+    if player_score > 21:
+        game["gameStatus"] = "FINISHED"
+        return jsonify({
+            "playerDeck": game["playerDeck"], 
+            "playerDeckValue": player_score,
+            "dealerDeck": game["dealerDeck"], 
+            "dealerDeckValue": get_deck_value(game["dealerDeck"]),
+            "winner": "DEALER",
+            "cashout": 0,
+            "gameStatus": "FINISHED"
+        }), 200
     
     return jsonify({
             "playerDeck": game["playerDeck"], 
@@ -105,11 +135,40 @@ def stand():
     if not game:
         return jsonify({"error": "Game not found."}), 404
     
-    while get_deck_value(game["dealerDeck"]) < 17 or (get_deck_value(game["dealerDeck"]) == 17 and is_ace_in_deck(game["dealerDeck"])):
-        game["dealerDeck"].append(random.choice(deck))
+    if game["gameStatus"] == "FINISHED":
+        return jsonify({"error": "Game already finished."}), 400
     
+    while get_deck_value(game["dealerDeck"]) < 17 or (get_deck_value(game["dealerDeck"]) == 17 and is_ace_in_deck(game["dealerDeck"])):
+        card = random.choice(tuple(game["deck"]))
+        game["deck"].remove(card)
+        game["dealerDeck"].append(card)
+        
+    game["gameStatus"] = "FINISHED"
+    player_score = get_deck_value(game["playerDeck"])
+    dealer_score = get_deck_value(game["dealerDeck"])
+    
+    result = ""
+    cashout = 0
+    bet = game["bet"] or 0
+    
+    if dealer_score > 21:
+        result = "PLAYER"
+        cashout = bet * 2
+    elif player_score > dealer_score:
+        result = "PLAYER"
+        cashout = bet * 2
+    elif player_score < dealer_score:
+        result = "DEALER"
+        cashout = 0
+    else:
+        result = "DRAW"
+        cashout = bet
+        
     return jsonify({
         "dealerDeck": game["dealerDeck"],
         "dealerDeckValue": get_deck_value(game["dealerDeck"]),
+        "winner": result,
+        "cashout": cashout,
+        "gameStatus": "FINISHED"
     }), 200
         
