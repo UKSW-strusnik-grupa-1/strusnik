@@ -2,11 +2,15 @@ import React from "react";
 import { Search } from "lucide-react";
 
 interface SearchInputProps {
+  text?: string;
+  setText?: React.Dispatch<React.SetStateAction<string>>;
   placeholder?: string;
   className?: string;
 }
 
 export default function SearchInput({ 
+  text, 
+  setText,
   placeholder = "Szukaj przeciwnika...", 
   className = "" 
 }: SearchInputProps) {
@@ -15,6 +19,8 @@ export default function SearchInput({
     <div className={`relative w-full max-w-md mx-auto mb-6 ${className}`}>
       <input
         type="text"
+        onChange={(e) => setText?.(e.target.value)}
+        value={text}
         placeholder={placeholder}
         className="
           w-full

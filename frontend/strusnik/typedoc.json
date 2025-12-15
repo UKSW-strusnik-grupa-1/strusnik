@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./src/app/hooks", "./src/proxy.ts"],
+  "out": "docs",
+  "name": "Dokumentacja Strusnik",
+  "plugin": [],
+  "entryPointStrategy": "expand",
+  "validation": {
+    "notExported": false,
+    "invalidLink": false,
+    "notDocumented": false
+  }
+}
