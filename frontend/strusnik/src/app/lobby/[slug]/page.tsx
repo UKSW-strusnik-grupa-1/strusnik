@@ -1,49 +1,46 @@
 import ListOfRooms from "@/app/components/lobby/listOfRooms";
+import RefreshButton from "@/app/components/lobby/refreshButton";
 import ReturnArrow from "@/app/components/lobby/returnArrow";
 import { Games } from "@/app/constants/games"
 import Link from "next/link";
 
 export async function generateStaticParams() {
-    const games = Games["multiplayer"].map(game => ({slug: game}));
+    const games = Games["multiplayer"].map(game => ({ slug: game }));
     return games;
 }
- 
-export default async function LobbyPage({params}: {params: Promise<{ slug: string }>}) {
-  const { slug } = await params
-  
-  return (
-    <div>
-      <ReturnArrow href="/multiplayer" />
 
-      <div className="relative w-full h-screen flex items-center justify-center flex-col">
-        <img
-          alt="Tło"
-          src="/main/background.png"
-          className="absolute w-full h-full object-cover -z-10"
-        />
+export default async function LobbyPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params
 
-        <div className="relative">
-          <div className="w-[650px] h-[430px] rounded-lg flex flex-col items-center justify-start overflow-hidden">
-            <ListOfRooms gameName={slug} />
-          </div>
+    return (
+        <div>
+              <ReturnArrow href="/multiplayer" />
+
+              <div className="relative w-full h-screen flex items-center justify-center flex-col">
+                <img alt="Tło" src="/main/background.png" className="absolute w-full h-full object-cover -z-10"/>
+
+                <div className="relative">
+                  <div className="w-[650px] h-[430px] rounded-lg flex flex-col items-center justify-start"> 
+                    <ListOfRooms gameName={slug} />
+                  </div>
+                </div>
+
+                <div className="relative mt-5 group">
+                    <Link href={`/lobby/${slug}/createRoom`}>
+                        <img
+                            alt="Tło"
+                            src="/main/button.png"
+                            className="object-cover -z-10 w-[175px] items-center transition-all group-hover:brightness-110"
+                        />
+
+                        <p className="absolute inset-0 flex items-center justify-center text-white font-bold cursor-pointer transition-all group-hover:scale-105 text-center">
+                            Stwórz pokój
+                        </p>
+                    </Link>
+                </div>
+            </div>
         </div>
-
-        <div className="relative mt-5 group">
-          <Link href={`/lobby/${slug}/createRoom`}>
-            <img
-              alt="Tło"
-              src="/main/button.png"
-              className="object-cover -z-10 w-[175px] items-center transition-all group-hover:brightness-110"
-            />
-
-            <p className="absolute inset-0 flex items-center justify-center text-white font-bold cursor-pointer transition-all group-hover:scale-105 text-center">
-              Stwórz pokój
-            </p>
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
 
 export const dynamicParams = false;

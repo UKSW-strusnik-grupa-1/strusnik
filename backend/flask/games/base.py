@@ -11,6 +11,10 @@ class MultiplayerGame(ABC):
         pass
 
     @abstractmethod
+    def sit_player(self, player_id: str, player_name: str, seat_index: int, user_token: str) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
     def handle_move(self, player_id: str, move_data: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
@@ -18,5 +22,5 @@ class MultiplayerGame(ABC):
     def get_state(self) -> Dict[str, Any]:
         pass
 
-    def sit_player(self, player_id: str, player_name: str, seat_index: int) -> Dict[str, Any]:
-        return {"success": False, "msg": "Ta gra nie obsługuje siadania przy stole."}
+    def start_game(self) -> Dict[str, Any]:
+        return {"success": False, "msg": "Not implemented"}

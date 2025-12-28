@@ -5,6 +5,7 @@ import ReturnArrow from "@/app/components/lobby/returnArrow";
 import SearchInput from "@/app/components/lobby/searchInput";
 import { useParams, useRouter } from "next/navigation";
 import { useSocket } from "@/app/hooks/useSocket";
+import { useUser } from "@/app/hooks/useUser";
 
 export default function CreateRoomPage() {
     const router = useRouter()
@@ -16,14 +17,15 @@ export default function CreateRoomPage() {
     const [isPasswordEnabled, setIsPasswordEnabled] = useState(false);
     const [password, setPassword] = useState<string>("")
 
-    const { socket, isConnected } = useSocket(); 
-
+    const { socket, isConnected } = useSocket();
+    const { userInfo } = useUser();
 
     useEffect(() => {
         if (!socket) return;
 
         const handleRoomCreated = (data: any) => {
-            router.push(`/games/${gameName}/${data.room_id}`); 
+            // ZMIANA: Dodano parametr ?autojoin=true
+            router.push(`/games/${gameName}/${data.room_id}?autojoin=true`); 
         };
 
         socket.on('room_created', handleRoomCreated);
@@ -47,10 +49,10 @@ export default function CreateRoomPage() {
             "game_name": gameName,
             "room_name": roomName || `Pokój gracza`,
             "max_players": maxPlayers,
-            "password": isPasswordEnabled ? password : null 
+            "password": isPasswordEnabled ? password : null,
+            "userToken": userInfo?.userId
         };
 
-        console.log("Wysyłanie danych:", roomData);
         socket.emit("create_room", roomData);
     }
     
@@ -137,7 +139,7 @@ export default function CreateRoomPage() {
                     />
 
                     <p className="z-10 text-amber-50 font-bold text-lg transition-all duration-300 group-hover:scale-105">
-                        {!socket ? "Łączenie..." : "Stwórz pokój"}
+                        {!socket ? "Laczenie..." : "Stwórz pokój"}
                     </p>
                 </button>
 

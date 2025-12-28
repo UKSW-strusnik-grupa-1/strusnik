@@ -1,7 +1,8 @@
 "use client"
 
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState, useContext } from "react";
 import { io, Socket } from "socket.io-client"
+import { UserContext } from "../context/UserContext";
 
 const SOCKET_URL = "http://localhost:5000"
 
@@ -15,9 +16,20 @@ export const SocketContext = createContext<SocketContextType | undefined>(undefi
 export const SocketProvider = ({children} : {children: React.ReactNode}) => {
     const [socket, setSocket] = useState<Socket | null>(null)
     const [isConnected, setIsConnected] = useState<boolean>(false)
+    
+    const userContext = useContext(UserContext);
 
     useEffect(() => {
-        const newSocket = io(SOCKET_URL, { transports: ["websocket"], autoConnect: true})
+        if (!userContext?.userInfo) return;
+
+        const newSocket = io(SOCKET_URL, { 
+            transports: ["websocket"], 
+            autoConnect: true,
+            auth: {
+                token: userContext.userInfo.userId,
+                username: userContext.userInfo.nickname
+            }
+        })
 
         newSocket.on("connect", () => {
             setIsConnected(true)
@@ -32,7 +44,7 @@ export const SocketProvider = ({children} : {children: React.ReactNode}) => {
         return () => {
             newSocket.disconnect()
         }
-    }, [])
+    }, [userContext?.userInfo])
 
     return (
         <SocketContext.Provider value={{socket, isConnected}}>

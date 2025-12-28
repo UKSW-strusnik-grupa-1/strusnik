@@ -3,17 +3,27 @@
 import { UserIcon } from 'lucide-react';
 import React from 'react';
 
+interface Player {
+    socketId: string;
+    userId: string;
+    name: string;
+    score?: number;
+}
+
 interface WaitingRoomProps {
     socket: any;
     roomId: string;
-    seats: any[];
+    seats: (Player | null)[];
     myId: string;
+    myName: string;
+    hostId: string | null;
 }
 
-export default function WaitingRoom({ socket, roomId, seats, myId }: WaitingRoomProps) {
+export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostId }: WaitingRoomProps) {
 
     const handleSit = (seatIndex: number) => {
-        if (socket) socket.emit('sit_down', { roomId, seatIndex });
+        // Wysyłamy playerName razem z żądaniem usadzenia
+        if (socket) socket.emit('sit_down', { roomId, seatIndex, playerName: myName });
     };
 
     const handleStartGame = () => {
@@ -21,7 +31,7 @@ export default function WaitingRoom({ socket, roomId, seats, myId }: WaitingRoom
     };
 
     const getMySeatIndex = () => {
-        const idx = seats.findIndex(s => s?.id === myId);
+        const idx = seats.findIndex(s => s && String(s.userId) === String(myId));
         return idx === -1 ? 0 : idx;
     };
 
@@ -34,7 +44,8 @@ export default function WaitingRoom({ socket, roomId, seats, myId }: WaitingRoom
     const PlayerSlot = ({ offset }: { offset: number }) => {
         const { data, seatIndex } = getPlayerAtScreenPos(offset);
         const isTaken = data !== null;
-        const isMe = data?.id === myId;
+        
+        const isMe = data && String(data.userId) === String(myId);
 
         if (isTaken) {
             return (
@@ -64,22 +75,38 @@ export default function WaitingRoom({ socket, roomId, seats, myId }: WaitingRoom
     };
 
     const readyPlayersCount = seats.filter(s => s !== null).length;
-    const canStart = readyPlayersCount >= 2;
+    const canStart = readyPlayersCount >= 3; 
+
+    const isHost = socket && hostId && socket.id === hostId;
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center w-full h-full relative">
             
             <div className="absolute inset-0 m-auto w-[40%] h-[30%] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 p-4 text-center z-0">
                 <h2 className="text-2xl font-bold text-amber-50 mb-2">Poczekalnia</h2>
-                <p className="text-gray-300 mb-4">Oczekiwanie na graczy... ({readyPlayersCount}/4)</p>
+                <p className="text-gray-300 mb-4">
+                    Oczekiwanie na graczy... ({readyPlayersCount}/4)
+                    <br/>
+                    <span className="text-xs text-gray-500">(Minimum 3 do startu)</span>
+                </p>
                 
-                {canStart && (
+                {isHost ? (
                     <button 
                         onClick={handleStartGame}
-                        className="bg-green-700 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition-all transform hover:scale-105"
+                        disabled={!canStart}
+                        className={`
+                            font-bold py-2 px-6 rounded-full shadow-lg transition-all transform 
+                            ${canStart 
+                                ? 'bg-green-700 hover:bg-green-600 text-white hover:scale-105 cursor-pointer' 
+                                : 'bg-gray-700 text-gray-400 cursor-not-allowed opacity-50'}
+                        `}
                     >
                         START GRY
                     </button>
+                ) : (
+                    <div className="text-green-500/80 text-sm font-mono animate-pulse">
+                        {canStart ? "Oczekiwanie na hosta..." : "Oczekiwnie na reszte graczy..."}
+                    </div>
                 )}
             </div>
 

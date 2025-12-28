@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from 'next/font/local'
 import "./globals.css";
 import { SocketProvider } from "./context/SocketContext";
+import { UserProvider } from "./context/UserContext";
 
 const Perciles = localFont({
   src: './fonts/Perciles.ttf',
@@ -25,9 +26,11 @@ export default function RootLayout({
       <body
         className={`${Perciles.className} antialiased`}
       >
-        <SocketProvider>
-          {children}
-        </SocketProvider>
+        <UserProvider>
+          <SocketProvider>
+            {children}
+          </SocketProvider>
+        </UserProvider>
       </body>
     </html>
   );

@@ -23,7 +23,7 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        token = create_jwt_token(user.id)
+        token = create_jwt_token(user.id, username)
         return jsonify({"token": token, "user": user.to_dict()}), 201
     except Exception as e:
         db.session.rollback()
@@ -47,7 +47,7 @@ def login():
         if not check_password_hash(user.password, password):
             return jsonify({"error": "Invalid credentials."}), 401
         
-        token = create_jwt_token(user.id)
+        token = create_jwt_token(user.id, username)
         
         response = make_response(
             jsonify({
@@ -68,32 +68,48 @@ def login():
         
     except Exception as e:
         pass
-    
-@authentication.route("/token", methods=["POST"])
+
+
+@authentication.route("/token", methods=["GET"])
 def parse_token_claims():
-    data = request.json
-    token = data.get("token")
-    
+    token = None
+
+    if request.is_json:
+        data = request.get_json(silent=True)
+        if data:
+            token = data.get("token")
+
     if not token:
-        return jsonify({"error": "Token required."}), 400
-    
+        token = request.cookies.get("jwtToken")
+
+    if not token:
+        return jsonify({"error": "Token required (not found in json or cookies)."}), 400
+
     try:
         parsed_token = parse_jwt_token(token)
-        return parsed_token, 200
+        return jsonify(parsed_token), 200
     except Exception as e:
+        print(f"DEBUG: Exception: {e}", flush=True)
         return jsonify({"error": str(e)}), 400
-    
+
 @authentication.route("/validate", methods=["POST"])
 def validate_token():
-    data = request.json
-    token = data.get("token")
-    
+    token = None
+
+    if request.is_json:
+        data = request.json
+        if data:
+            token = data.get("token")
+
+    if not token:
+        token = request.cookies.get("jwtToken")
+
     if not token:
         return jsonify({"error": "Token required", "valid": False}), 400
-    
+
     try:
         valid = is_token_valid(token)
-        return jsonify({"valid": valid}), valid and 200 or 400
+        return jsonify({"valid": valid}), 200 if valid else 400
     except Exception as e:
         return jsonify({"error": str(e), "valid": False}), 400
         

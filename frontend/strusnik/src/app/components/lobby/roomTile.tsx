@@ -22,6 +22,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
       />
 
       <div className="relative z-10 w-full h-full grid grid-cols-[1fr_auto_auto] items-center px-6 gap-4">
+        
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="shrink-0 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
           <p className="text-white font-bold text-lg truncate shadow-black drop-shadow-md">
@@ -29,23 +30,23 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
           </p>
         </div>
 
-        <div className="flex items-center justify-center min-w-20">
-          <p className="text-gray-200 font-bold text-base drop-shadow-md">
+        <div className="flex items-center justify-center min-w-20 gap-2">
+          {isPrivate && (
+            <div className="flex items-center justify-center">
+              <img
+                src="/lobby/lock.png"
+                alt="Prywatny"
+                className="w-10 mx-1 h-auto drop-shadow-sm opacity-90"
+              />
+            </div>
+          )}
+          
+          <p className="text-gray-200 font-bold text-base drop-shadow-md whitespace-nowrap">
             Gracze: <span className="text-white">{players + "/" + maxPlayers}</span>
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-3">
-          {isPrivate && (
-            <div className="flex items-center justify-center w-8">
-              <img
-                src="/lobby/lock.png"
-                alt="Prywatny"
-                className="w-6 h-auto drop-shadow-sm opacity-90"
-              />
-            </div>
-          )}
-
+        <div className="flex items-center justify-end">
           <Link href={`/games/${gameName}/${uuid}`}>
             <div className="relative group cursor-pointer w-[100px]">
               <img
@@ -62,6 +63,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
             </div>
           </Link>
         </div>
+        
       </div>
     </div>
   );
