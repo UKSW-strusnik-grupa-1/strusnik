@@ -14,6 +14,7 @@ export default function CreateRoomPage() {
 
     const [roomName, setRoomName] = useState<string>("")
     const [maxPlayers, setMaxPlayers] = useState(2);
+    const [playerOptions, setPlayerOptions] = useState<number[]>([]);
     const [isPasswordEnabled, setIsPasswordEnabled] = useState(false);
     const [password, setPassword] = useState<string>("")
 
@@ -23,24 +24,34 @@ export default function CreateRoomPage() {
     useEffect(() => {
         if (!socket) return;
 
+        socket.emit("get_game_info", { game_name: gameName });
+
+        const handleGameInfo = (data: any) => {
+            if (data.player_range && Array.isArray(data.player_range)) {
+                setPlayerOptions(data.player_range);
+                if (data.player_range.length > 0) {
+                    setMaxPlayers(data.player_range[0]);
+                }
+            }
+        };
+
         const handleRoomCreated = (data: any) => {
             router.push(`/games/${gameName}/${data.room_id}?autojoin=true`); 
         };
 
+        socket.on('game_info', handleGameInfo);
         socket.on('room_created', handleRoomCreated);
         socket.on('error', (err) => alert(err.msg)); 
 
         return () => {
+            socket.off('game_info', handleGameInfo);
             socket.off('room_created', handleRoomCreated);
             socket.off('error');
         };
     }, [socket, router, gameName]);
 
     const createRoom = () => {
-        console.log("Próba utworzenia pokoju...");
-
         if (!socket) {
-            console.error("Błąd: Brak połączenia z socketem!");
             return;
         }
 
@@ -54,8 +65,6 @@ export default function CreateRoomPage() {
 
         socket.emit("create_room", roomData);
     }
-    
-    const playerOptions = [2, 3, 4];
 
     return (
         <div className='relative w-full min-h-screen flex items-center justify-center p-4 overflow-y-auto'>

@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 
-
 class MultiplayerGame(ABC):
+    player_range: List[int] = [2, 3, 4]
+
     def __init__(self, players: List[str]) -> None:
         self.players = players
 

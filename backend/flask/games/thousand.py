@@ -3,11 +3,13 @@ import time
 from typing import List, Dict, Any, Optional
 from .base import MultiplayerGame
 
-WINNING_SCORE = 200
-BARREL_THRESHOLD = 100
+WINNING_SCORE = 1000
+BARREL_THRESHOLD = 800
 
 
 class Thousand(MultiplayerGame):
+    player_range = [3, 4]
+
     def __init__(self, players: List[str]) -> None:
         super().__init__(players)
         self.seats: List[Optional[Dict[str, Any]]] = [None] * 4

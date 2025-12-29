@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSocket } from "@/app/hooks/useSocket";
 import { useSearchParams, useRouter } from 'next/navigation';
-// Przywracamy Twój oryginalny komponent
 import ReturnArrow from '@/app/components/lobby/returnArrow';
 import WaitingRoom from './WaitingRoom';
 import ActiveGame from './ActiveGame';
@@ -27,26 +26,22 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     const [seats, setSeats] = useState<any[]>([null, null, null, null]);
     const [myHand, setMyHand] = useState<string[]>([]);
     const [hostId, setHostId] = useState<string | null>(null);
+    const [maxPlayers, setMaxPlayers] = useState<number>(4);
 
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [connectionError, setConnectionError] = useState<string | null>(null);
 
-    // Funkcja wysyłająca sygnał wyjścia
     const handleExitSignal = () => {
         if (socket) {
-            console.log("Wysyłanie sygnału leave_room...");
             socket.emit('leave_room', { roomId });
         }
-        // Nie robimy tutaj router.push, bo ReturnArrow ma swój href i sam przeniesie nas do lobby
     };
 
     const joinRoom = (pwd: string = "") => {
         if (!socket) return;
         if (!roomId) return;
 
-        console.log(`[ThousandBoard] Próba dołączenia do pokoju: ${roomId}, Hasło: ${pwd ? '***' : 'brak'}`);
-        
         socket.emit('join_room', { 
             game_name: gameName, 
             room_id: roomId, 
@@ -58,7 +53,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
         if (!socket) return;
         
         if (!roomId) {
-            setConnectionError("Błąd: Brak identyfikatora pokoju.");
+            setConnectionError("Blad: Brak identyfikatora pokoju.");
             return;
         }
 
@@ -66,6 +61,10 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
             if (response.success && response.room_data) {
                 setHostId(response.room_data.host_id);
+                if (response.room_data.max_players) {
+                    setMaxPlayers(response.room_data.max_players);
+                }
+                
                 setShowPasswordModal(false);
                 setConnectionError(null);
                 setErrorMessage("");
@@ -87,7 +86,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
                 if (response.error_code === 'PASSWORD_REQUIRED') {
                     setShowPasswordModal(true);
                     if (response.message === 'Błędne hasło') {
-                         setErrorMessage("Bledne haslo, sprobuj ponownie.");
+                        setErrorMessage("Bledne haslo, sprobuj ponownie.");
                     }
                 } else {
                     setConnectionError(response.message || "Nie udalo sie dolaczyc do pokoju.");
@@ -159,9 +158,6 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
                 className="fixed w-full h-full object-cover -z-10 top-0 left-0"
             />
             
-            {/* Używamy onClickCapture na kontenerze. Dzięki temu zdarzenie zostanie wyłapane
-               zanim ReturnArrow (Link) przeniesie użytkownika na inną stronę.
-            */}
             <div className="shrink-0 mb-1 pl-2" onClickCapture={handleExitSignal}>
                 <ReturnArrow href={`/lobby/${gameName}`} text="Wyjdz" />
             </div>
@@ -182,6 +178,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
                     myId={myId} 
                     myName={myName}
                     hostId={hostId}
+                    maxPlayers={maxPlayers}
                 />
             ) : (
                 <ActiveGame 

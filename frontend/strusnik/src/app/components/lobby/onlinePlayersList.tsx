@@ -6,7 +6,7 @@ import { useSocket } from "@/app/hooks/useSocket";
 import { useUser } from "@/app/hooks/useUser";
 
 interface OnlinePlayer {
-    userId: string;  // <--- ZMIANA: string zamiast number
+    userId: string;
     username: string;
     status: 'available' | 'in_lobby' | 'in_game';
 }
@@ -32,7 +32,6 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         socket.emit("get_online_players");
 
         socket.on("online_players_update", (data: OnlinePlayer[]) => {
-            console.log("Lista graczy zaktualizowana:", data);
             setPlayers(data);
         });
 
@@ -71,10 +70,10 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         return (
             <button 
                 onClick={() => setIsOpen(true)}
-                className="absolute top-4 right-4 z-50 w-12 h-12 rounded-full bg-amber-600/80 hover:bg-amber-500 border border-amber-400/50 backdrop-blur-md flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all hover:scale-110 group cursor-pointer"
+                className="absolute top-4 right-4 z-50 w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer"
                 title="Pokaż graczy online"
             >
-                <Users className="text-white group-hover:text-amber-100" size={24} />
+                <Users className="text-white" size={24} />
                 <span className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-black">
                     {players.length}
                 </span>

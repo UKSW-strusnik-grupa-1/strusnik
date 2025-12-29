@@ -15,10 +15,10 @@ interface WaitingRoomProps {
     myId: string;
     myName: string;
     hostId: string | null;
+    maxPlayers: number;
 }
 
-
-export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostId }: WaitingRoomProps) {
+export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostId, maxPlayers }: WaitingRoomProps) {
 
     const handleSit = (seatIndex: number) => {
         if (socket) socket.emit('sit_down', { roomId, seatIndex, playerName: myName });
@@ -35,19 +35,20 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
 
     const getPlayerAtScreenPos = (offset: number) => {
         const myIdx = getMySeatIndex();
-        const targetIdx = (myIdx + offset) % 4;
+        const targetIdx = (myIdx + offset) % maxPlayers;
         return { data: seats[targetIdx], seatIndex: targetIdx };
     };
 
-    const PlayerSlot = ({ offset }: { offset: number }) => {
+    const PlayerSlot = ({ offset, positionClass }: { offset: number, positionClass: string }) => {
         const { data, seatIndex } = getPlayerAtScreenPos(offset);
         const isTaken = data !== null;
         const isMe = data && String(data.userId) === String(myId);
 
+        if (seatIndex >= maxPlayers) return null;
+
         if (isTaken) {
             return (
-                <div className={`
-                    flex flex-col items-center justify-center
+                <div className={`absolute ${positionClass} flex flex-col items-center justify-center
                     w-[16vh] h-[16vh] rounded-full border-4 shadow-xl transition-all
                     ${isMe ? 'bg-amber-900/80 border-amber-500' : 'bg-black/60 border-[#353434]'}
                 `}>
@@ -63,7 +64,7 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
         return (
             <button 
                 onClick={() => handleSit(seatIndex)}
-                className="group flex flex-col items-center justify-center w-[14vh] h-[14vh] rounded-full border-4 border-dashed border-gray-600 bg-black/20 hover:bg-amber-900/30 hover:border-amber-500/50 transition-all cursor-pointer"
+                className={`absolute ${positionClass} group flex flex-col items-center justify-center w-[14vh] h-[14vh] rounded-full border-4 border-dashed border-gray-600 bg-black/20 hover:bg-amber-900/30 hover:border-amber-500/50 transition-all cursor-pointer`}
             >
                 <span className="text-2xl text-gray-500 group-hover:text-amber-200 transition-colors">+</span>
                 <span className="text-xs uppercase font-bold text-gray-500 group-hover:text-amber-200 mt-1">Dolacz</span>
@@ -71,8 +72,40 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
         );
     };
 
+    const getLayout = () => {
+        const bottom = "bottom-[10%] left-1/2 -translate-x-1/2";
+        const top = "top-[10%] left-1/2 -translate-x-1/2";
+        const left = "left-[5%] top-1/2 -translate-y-1/2";
+        const right = "right-[5%] top-1/2 -translate-y-1/2";
+        const topLeft = "left-[15%] top-[15%]";
+        const topRight = "right-[15%] top-[15%]";
+
+        switch (maxPlayers) {
+            case 2:
+                return [
+                    { offset: 0, pos: bottom },
+                    { offset: 1, pos: top }
+                ];
+            case 3:
+                return [
+                    { offset: 0, pos: bottom },
+                    { offset: 1, pos: topRight },
+                    { offset: 2, pos: topLeft }
+                ];
+            case 4:
+            default:
+                return [
+                    { offset: 0, pos: bottom },
+                    { offset: 1, pos: right },
+                    { offset: 2, pos: top },
+                    { offset: 3, pos: left }
+                ];
+        }
+    };
+
+    const layout = getLayout();
     const readyPlayersCount = seats.filter(s => s !== null).length;
-    const canStart = readyPlayersCount >= 3; 
+    const canStart = readyPlayersCount === maxPlayers || (maxPlayers === 4 && readyPlayersCount >= 3); 
     const isHost = socket && hostId && socket.id === hostId;
 
     return (
@@ -87,9 +120,11 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
             <div className="absolute inset-0 m-auto w-[40%] h-[30%] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 p-4 text-center z-0">
                 <h2 className="text-2xl font-bold text-amber-50 mb-2">Poczekalnia</h2>
                 <p className="text-gray-300 mb-4">
-                    Oczekiwanie na graczy... ({readyPlayersCount}/4)
+                    Oczekiwanie na graczy... ({readyPlayersCount}/{maxPlayers})
                     <br/>
-                    <span className="text-xs text-gray-500">(Minimum 3 do startu)</span>
+                    <span className="text-xs text-gray-500">
+                        {maxPlayers === readyPlayersCount ? "Pokój pełny" : `Wymagane min. ${maxPlayers === 4 ? 3 : maxPlayers}`}
+                    </span>
                 </p>
                 
                 {isHost ? (
@@ -112,21 +147,13 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
                 )}
             </div>
 
-            <div className="absolute top-[10%] left-1/2 -translate-x-1/2">
-                <PlayerSlot offset={2} />
-            </div>
-
-            <div className="absolute bottom-[10%] left-1/2 -translate-x-1/2">
-                <PlayerSlot offset={0} />
-            </div>
-
-            <div className="absolute left-[5%] top-1/2 -translate-y-1/2">
-                <PlayerSlot offset={3} />
-            </div>
-
-            <div className="absolute right-[5%] top-1/2 -translate-y-1/2">
-                <PlayerSlot offset={1} />
-            </div>
+            {layout.map((slot) => (
+                <PlayerSlot 
+                    key={slot.offset} 
+                    offset={slot.offset} 
+                    positionClass={slot.pos} 
+                />
+            ))}
 
         </div>
     );

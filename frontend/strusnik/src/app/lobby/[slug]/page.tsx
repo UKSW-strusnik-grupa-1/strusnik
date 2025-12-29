@@ -14,8 +14,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ slug: st
 
     return (
         <div>
-            {/* Lista graczy - dodana tutaj, dzięki absolute position ustawi się z boku */}
-            <OnlinePlayersList /> 
+            <OnlinePlayersList collapsible/> 
 
             <ReturnArrow href="/multiplayer" />
 

@@ -234,7 +234,6 @@ def handle_explicit_leave_room(data):
         remaining_players_count = len(found_room.player_tokens)
 
         if remaining_players_count == 0:
-            print(f"[LEAVE] Pokój {roomId} opuszczony przez ostatniego gracza. Usuwanie...")
             delete_room(roomId)
 
     if user_token and user_token in active_sessions:
@@ -577,3 +576,15 @@ def handle_send_invite(data):
                 'gameName': game_name,
                 'roomId': sender_room_id
             }, to=target_sid)
+
+
+@socket.on("get_game_info")
+def handle_get_game_info(data):
+    game_name = data.get('game_name')
+    lobby = get_lobby_case_insensitive(game_name)
+    if lobby:
+        player_range = getattr(lobby.game_class, 'player_range', [2, 3, 4])
+        emit('game_info', {
+            "game_name": game_name,
+            "player_range": player_range
+        })
