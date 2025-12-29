@@ -3,6 +3,7 @@ import localFont from 'next/font/local'
 import "./globals.css";
 import { SocketProvider } from "./context/SocketContext";
 import { UserProvider } from "./context/UserContext";
+import InvitationModal from "./components/lobby/invitationModal";
 
 const Perciles = localFont({
   src: './fonts/Perciles.ttf',
@@ -28,6 +29,7 @@ export default function RootLayout({
       >
         <UserProvider>
           <SocketProvider>
+            <InvitationModal/>
             {children}
           </SocketProvider>
         </UserProvider>

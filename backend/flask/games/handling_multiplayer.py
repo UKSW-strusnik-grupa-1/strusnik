@@ -74,6 +74,22 @@ class Lobby:
         room.players.append(player_id)
         return room
 
+    # --- NOWA METODA: Usuwanie gracza z danych pokoju ---
+    def remove_player(self, room_uuid: str, player_sid: str, user_token: str):
+        room = self.rooms.get(room_uuid)
+        if not room:
+            return False
+
+        # Usuń token gracza
+        if user_token in room.player_tokens:
+            room.player_tokens.remove(user_token)
+
+        # Usuń socket ID gracza
+        if player_sid in room.players:
+            room.players.remove(player_sid)
+
+        return True
+
 
 @dataclass
 class LobbyManager:

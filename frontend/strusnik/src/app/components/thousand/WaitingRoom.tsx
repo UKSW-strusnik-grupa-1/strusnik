@@ -1,7 +1,5 @@
-'use client';
-
-import { UserIcon } from 'lucide-react';
-import React from 'react';
+import { UserIcon } from "lucide-react";
+import OnlinePlayersList from "../lobby/onlinePlayersList";
 
 interface Player {
     socketId: string;
@@ -19,10 +17,10 @@ interface WaitingRoomProps {
     hostId: string | null;
 }
 
+
 export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostId }: WaitingRoomProps) {
 
     const handleSit = (seatIndex: number) => {
-        // Wysyłamy playerName razem z żądaniem usadzenia
         if (socket) socket.emit('sit_down', { roomId, seatIndex, playerName: myName });
     };
 
@@ -44,7 +42,6 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
     const PlayerSlot = ({ offset }: { offset: number }) => {
         const { data, seatIndex } = getPlayerAtScreenPos(offset);
         const isTaken = data !== null;
-        
         const isMe = data && String(data.userId) === String(myId);
 
         if (isTaken) {
@@ -76,12 +73,19 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
 
     const readyPlayersCount = seats.filter(s => s !== null).length;
     const canStart = readyPlayersCount >= 3; 
-
     const isHost = socket && hostId && socket.id === hostId;
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center w-full h-full relative">
             
+            {/* --- LISTA GRACZY (ZWIJALNA) --- */}
+            <OnlinePlayersList 
+                inviteMode={true} 
+                currentRoomId={roomId} 
+                collapsible={true}  // <-- To włącza tryb ikonki w rogu
+            />
+            {/* -------------------------------- */}
+
             <div className="absolute inset-0 m-auto w-[40%] h-[30%] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 p-4 text-center z-0">
                 <h2 className="text-2xl font-bold text-amber-50 mb-2">Poczekalnia</h2>
                 <p className="text-gray-300 mb-4">

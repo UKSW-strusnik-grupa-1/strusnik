@@ -1,5 +1,5 @@
 import ListOfRooms from "@/app/components/lobby/listOfRooms";
-import RefreshButton from "@/app/components/lobby/refreshButton";
+import OnlinePlayersList from "@/app/components/lobby/onlinePlayersList";
 import ReturnArrow from "@/app/components/lobby/returnArrow";
 import { Games } from "@/app/constants/games"
 import Link from "next/link";
@@ -14,15 +14,18 @@ export default async function LobbyPage({ params }: { params: Promise<{ slug: st
 
     return (
         <div>
-              <ReturnArrow href="/multiplayer" />
+            {/* Lista graczy - dodana tutaj, dzięki absolute position ustawi się z boku */}
+            <OnlinePlayersList /> 
 
-              <div className="relative w-full h-screen flex items-center justify-center flex-col">
+            <ReturnArrow href="/multiplayer" />
+
+            <div className="relative w-full h-screen flex items-center justify-center flex-col">
                 <img alt="Tło" src="/main/background.png" className="absolute w-full h-full object-cover -z-10"/>
 
                 <div className="relative">
-                  <div className="w-[650px] h-[430px] rounded-lg flex flex-col items-center justify-start"> 
-                    <ListOfRooms gameName={slug} />
-                  </div>
+                    <div className="w-[650px] h-[430px] rounded-lg flex flex-col items-center justify-start"> 
+                        <ListOfRooms gameName={slug} />
+                    </div>
                 </div>
 
                 <div className="relative mt-5 group">
