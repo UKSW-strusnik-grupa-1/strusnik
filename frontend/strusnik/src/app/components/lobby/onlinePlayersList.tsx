@@ -22,7 +22,6 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
     const { userInfo } = useUser();
 
     const [players, setPlayers] = useState<OnlinePlayer[]>([]);
-    // ZMIANA: Set przechowuje stringi (userId)
     const [invitedPlayers, setInvitedPlayers] = useState<Set<string>>(new Set());
     
     const [isOpen, setIsOpen] = useState(!collapsible);
@@ -33,7 +32,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         socket.emit("get_online_players");
 
         socket.on("online_players_update", (data: OnlinePlayer[]) => {
-            console.log("Lista graczy zaktualizowana:", data); // Debug
+            console.log("Lista graczy zaktualizowana:", data);
             setPlayers(data);
         });
 
@@ -44,7 +43,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
 
     const handleInvite = (targetUserId: string) => {
         if (!socket) return;
-        console.log("Wysyłam zaproszenie do:", targetUserId); // Debug
+        console.log("Wysyłam zaproszenie do:", targetUserId);
         socket.emit('send_invite', { targetUserId });
 
         setInvitedPlayers(prev => new Set(prev).add(targetUserId));
@@ -116,7 +115,6 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
                     <p className="text-gray-400 text-center text-sm italic mt-10">Brak graczy online</p>
                 ) : (
                     players.map((player) => {
-                        // Porównanie stringów
                         const isMe = String(player.userId) === String(userInfo.userId);
                         const canInvite = inviteMode && !isMe && player.status === 'available';
                         const wasInvited = invitedPlayers.has(player.userId);

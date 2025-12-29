@@ -78,13 +78,11 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
     return (
         <div className="flex-1 flex flex-col items-center justify-center w-full h-full relative">
             
-            {/* --- LISTA GRACZY (ZWIJALNA) --- */}
             <OnlinePlayersList 
                 inviteMode={true} 
                 currentRoomId={roomId} 
-                collapsible={true}  // <-- To włącza tryb ikonki w rogu
+                collapsible={true}
             />
-            {/* -------------------------------- */}
 
             <div className="absolute inset-0 m-auto w-[40%] h-[30%] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 p-4 text-center z-0">
                 <h2 className="text-2xl font-bold text-amber-50 mb-2">Poczekalnia</h2>

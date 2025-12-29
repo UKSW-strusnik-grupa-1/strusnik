@@ -5,19 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1023b583-6fe1-42ba-a4ef-9c72f2ddc121" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/games/handling_multiplayer.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/handling_multiplayer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sockets/socket_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/socket_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/public/gameTiles/tile_blackjack.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/public/gameTiles/tile_stratego.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/public/gameTiles/tile_tysiac.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/public/lobby/lobby_background.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/ThousandBoard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/ThousandBoard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/WaitingRoom.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/WaitingRoom.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/multiplayer/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/multiplayer/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/singleplayer/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/singleplayer/page.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,7 +45,7 @@
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "PlayersList",
+    "git-widget-placeholder": "main",
     "last_opened_file_path": "C:/Users/mrigo/Desktop/strusnik-repo/backend/flask",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
@@ -122,7 +110,7 @@
       <workItem from="1766084344830" duration="43872000" />
       <workItem from="1766836192478" duration="5365000" />
       <workItem from="1766923615772" duration="8816000" />
-      <workItem from="1767004472048" duration="5131000" />
+      <workItem from="1767004472048" duration="5565000" />
     </task>
     <servers />
   </component>

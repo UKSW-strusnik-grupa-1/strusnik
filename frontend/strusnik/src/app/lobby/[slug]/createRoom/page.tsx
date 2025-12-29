@@ -24,7 +24,6 @@ export default function CreateRoomPage() {
         if (!socket) return;
 
         const handleRoomCreated = (data: any) => {
-            // ZMIANA: Dodano parametr ?autojoin=true
             router.push(`/games/${gameName}/${data.room_id}?autojoin=true`); 
         };
 

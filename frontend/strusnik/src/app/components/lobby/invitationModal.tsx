@@ -21,7 +21,6 @@ export default function InvitationModal() {
         if (!socket) return;
 
         const handleIncoming = (data: InvitationData) => {
-            console.log("Otrzymano zaproszenie:", data);
             setInvitation(data);
         };
 
@@ -49,8 +48,7 @@ export default function InvitationModal() {
     if (!invitation) return null;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-            {/* Główny kontener w stylu SearchInput */}
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="
                 relative 
                 w-full max-w-sm 
@@ -62,14 +60,12 @@ export default function InvitationModal() {
                 text-center 
                 overflow-hidden
             ">
-                {/* Ozdobny pasek na górze */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
                 
                 <h3 className="text-xl font-bold text-[#eaddcf] mb-6 drop-shadow-md">
                     Zaproszenie do gry!
                 </h3>
                 
-                {/* Wewnętrzny kontener na tekst - stylizowany na "wgłębiony" (inset) jak input */}
                 <div className="
                     py-4 px-4 mb-6 
                     bg-[#231710] 
@@ -93,7 +89,6 @@ export default function InvitationModal() {
                 </div>
 
                 <div className="flex gap-3 justify-center">
-                    {/* Przycisk Odrzuć - Czerwony, ale pasujący stylem */}
                     <button 
                         onClick={handleDecline}
                         className="
@@ -117,7 +112,6 @@ export default function InvitationModal() {
                         Odrzuc
                     </button>
 
-                    {/* Przycisk Dołącz - Zielony, pasujący stylem */}
                     <button 
                         onClick={handleAccept}
                         className="

@@ -22,16 +22,12 @@ active_sessions = {}
 disconnect_timers = {}
 room_deletion_timers = {}
 
-
-# --- Funkcja pomocnicza do statusów ---
 def get_player_status(session_data):
-    """Określa status gracza: available (zielony), in_lobby (żółty), in_game (czerwony)"""
     room_id = session_data.get('room_id')
 
     if not room_id:
         return 'available'
 
-    # Szukamy pokoju, w którym jest gracz
     found_room = None
     for lobby in manager.lobbies.values():
         if room_id in lobby.rooms:
@@ -39,26 +35,21 @@ def get_player_status(session_data):
             break
 
     if found_room:
-        # Jeśli instancja gry istnieje, uznajemy, że gracz jest w trakcie rozgrywki
         if found_room.game_instance:
             return 'in_game'
-        # Jeśli jest w pokoju, ale gra nie wystartowała (brak instancji)
         return 'in_lobby'
 
     return 'available'
 
-
-# --- Lista graczy ze statusami ---
 def get_online_players_list():
     players = []
     seen_tokens = set()
 
     for token, data in active_sessions.items():
-        # Pobieramy graczy, którzy są connected i mają ustawiony username
         if data.get('connected', False) and data.get('username') and token not in seen_tokens:
             status = get_player_status(data)
             players.append({
-                'userId': token,  # Token służy jako ID dla frontendu
+                'userId': token,
                 'username': data.get('username'),
                 'status': status
             })
@@ -89,7 +80,6 @@ def get_lobby_case_insensitive(game_name):
 
 
 def delete_room(room_id):
-    """Usuwa pokój i aktualizuje statusy graczy na 'available'."""
     found_lobby = None
     found_room = None
 
@@ -100,11 +90,9 @@ def delete_room(room_id):
             break
 
     if found_room and found_lobby:
-        # Poinformuj graczy w pokoju (jeśli jacyś zostali, np. obserwatorzy)
         socket.emit('error', {'msg': 'Pokój został zamknięty.'}, to=room_id)
         socket.emit('game_ended_timeout', {'roomId': room_id}, to=room_id)
 
-        # Wyczyszczenie room_id w sesjach graczy, którzy byli w tym pokoju
         for token in list(found_room.player_tokens):
             if token in active_sessions and active_sessions[token].get('room_id') == room_id:
                 active_sessions[token]['room_id'] = None
@@ -118,9 +106,6 @@ def delete_room(room_id):
         if room_id in room_deletion_timers:
             room_deletion_timers.pop(room_id, None)
 
-        print(f"[ROOM] Usunięto pokój {room_id}")
-
-        # WAŻNE: Odświeżamy listę, aby wszyscy zobaczyli zmianę statusu na zielony
         broadcast_player_list()
 
 
@@ -133,7 +118,6 @@ def close_room_due_to_timeout(room_id, user_token):
 def process_player_loss(sid):
     user_token = next((token for token, d in active_sessions.items() if d['sid'] == sid), None)
 
-    # OZNACZ JAKO ROZŁĄCZONY
     if user_token and user_token in active_sessions:
         active_sessions[user_token]['connected'] = False
 
@@ -186,13 +170,11 @@ def process_player_loss(sid):
         if hasattr(game, 'seats'):
             connected_count = len([s for s in game.seats if s is not None and s.get('connected', True)])
 
-        # Jeśli nikogo nie ma w pokoju, usuń go
         if connected_count == 0:
             if room_id not in room_deletion_timers:
                 t = eventlet.spawn_after(10, delete_room, room_id)
                 room_deletion_timers[room_id] = t
     else:
-        # Jeśli to tylko lobby (waiting room) i gracz się rozłączył
         pass
 
 
@@ -205,16 +187,11 @@ def handle_disconnect():
 
 @socket.on("leave_room")
 def handle_explicit_leave_room(data):
-    """
-    Obsługuje jawne wyjście z pokoju przez przycisk 'Wyjdź'.
-    Czyści status, usuwa gracza z listy pokoju i usuwa pokój jeśli pusty.
-    """
     sender_sid = request.sid
     user_token = next((token for token, d in active_sessions.items() if d['sid'] == sender_sid), None)
 
     roomId = data.get('roomId')
 
-    # Znajdź pokój i lobby
     found_room = None
     found_lobby = None
 
@@ -225,7 +202,6 @@ def handle_explicit_leave_room(data):
                 found_lobby = lobby
                 break
 
-    # Fallback: szukaj po sesji
     if not found_room and user_token and active_sessions[user_token].get('room_id'):
         rid = active_sessions[user_token]['room_id']
         for lobby in manager.lobbies.values():
@@ -236,46 +212,35 @@ def handle_explicit_leave_room(data):
                 break
 
     if found_room and found_lobby:
-        # 1. Usuń gracza ze struktur pokoju (Lobby/Room) - to jest kluczowe dla "pustego pokoju"
         if user_token:
             found_lobby.remove_player(roomId, sender_sid, user_token)
 
-        # 2. Usuń gracza z miejsca przy stole (jeśli siedzi)
         if found_room.game_instance:
             game = found_room.game_instance
             if hasattr(game, 'seats'):
                 for i, seat in enumerate(game.seats):
                     if seat and (seat.get('socketId') == sender_sid or seat.get('userId') == user_token):
-                        # Jeśli waiting room -> zwalniamy miejsce całkowicie
                         if game.game_state.get('stage') == 'waiting_for_players':
                             game.seats[i] = None
                         else:
-                            # W trakcie gry - oznaczamy jako disconnected (walkower logic)
                             if hasattr(game, 'set_player_connection_status'):
                                 game.set_player_connection_status(user_token, False, sid=sender_sid)
                         break
 
-            # Wyślij update stanu gry do pozostałych
             emit('game_state_update', game.get_state(), to=roomId)
 
-        # 3. Wyjście z pokoju Socket.IO
         socketio_leave_room(roomId)
 
-        # 4. Sprawdź, czy pokój jest pusty
-        # Sprawdzamy liczbę tokenów w Room. Jeśli 0, usuwamy pokój.
         remaining_players_count = len(found_room.player_tokens)
 
         if remaining_players_count == 0:
             print(f"[LEAVE] Pokój {roomId} opuszczony przez ostatniego gracza. Usuwanie...")
             delete_room(roomId)
 
-    # 5. Aktualizacja sesji gracza (status Available)
     if user_token and user_token in active_sessions:
         active_sessions[user_token]['room_id'] = None
-        # Ustawiamy connected na True, bo gracz jest wciąż na stronie, tylko wyszedł z pokoju
         active_sessions[user_token]['connected'] = True
 
-        # 6. Odśwież listę graczy dla wszystkich (żeby zmienił się kolor na zielony)
     eventlet.sleep(0.1)
     broadcast_player_list()
 
@@ -305,7 +270,6 @@ def handle_connect(auth):
                 found_room = lobby.rooms[old_room_id]
                 break
 
-        # AKTUALIZACJA SESJI
         active_sessions[user_token]['sid'] = new_sid
         active_sessions[user_token]['username'] = username
         active_sessions[user_token]['connected'] = True
@@ -331,7 +295,6 @@ def handle_connect(auth):
                     if hand: emit('game_state_update', {'my_hand': hand})
             active_sessions[user_token]['sid'] = new_sid
         else:
-            # Jeśli pokój nie istnieje, resetujemy room_id w sesji
             active_sessions[user_token] = {'sid': new_sid, 'room_id': None, 'username': username, 'connected': True}
     else:
         if user_token:
@@ -373,7 +336,7 @@ def handle_create_room(data):
                                                'connected': True}
         join_room(room.uuid)
         emit('room_created', {'room_id': room.uuid, 'game': game_name}, to=host_id)
-        broadcast_player_list()  # Zmiana statusu hosta na 'in_lobby'
+        broadcast_player_list()
     except Exception:
         import traceback;
         traceback.print_exc()
@@ -454,7 +417,7 @@ def handle_join_game_room(data):
                 if hand: emit('game_state_update', {'my_hand': hand}, to=current_sid)
 
         emit('join_room_response', {'success': True, 'room_data': room.to_dict()})
-        broadcast_player_list()  # Zmiana statusu gracza
+        broadcast_player_list()
     else:
         emit('join_room_response', {'success': False, 'message': 'Nie udało się dołączyć'})
 
@@ -508,7 +471,7 @@ def handle_start_game(data):
     res = game.start_game()
 
     if res['success']:
-        broadcast_player_list()  # Gra się zaczęła, statusy na Red
+        broadcast_player_list()
         for seat in game.seats:
             if seat is not None:
                 player_state = get_game_state_safe(game, seat['socketId'])
@@ -556,7 +519,7 @@ def handle_player_move(data):
     if isinstance(game, Thousand):
         handle_thousand_move(game, found_room, player_id, move_data)
         if game.game_state.get('stage') == 'game_over':
-            broadcast_player_list()  # Koniec gry, zmiana statusu
+            broadcast_player_list()
             if room_id not in room_deletion_timers:
                 t = eventlet.spawn_after(30, delete_room, room_id)
                 room_deletion_timers[room_id] = t
@@ -576,8 +539,6 @@ def handle_get_online_players():
 
 @socket.on("send_invite")
 def handle_send_invite(data):
-    print(f"[INVITE DEBUG] Otrzymano dane: {data}")
-
     target_user_id = data.get('targetUserId')
     sender_sid = request.sid
 
@@ -590,44 +551,29 @@ def handle_send_invite(data):
     sender_name = sender_data.get('username', 'Nieznajomy')
     sender_room_id = sender_data.get('room_id')
 
-    # 3. POPRAWKA GŁÓWNA: Pobieranie nazwy gry
     game_name = "Nieznana gra"
     if sender_room_id:
-        # Iterujemy po (klucz, wartość), bo 'Lobby' nie ma atrybutu game_name
         for name, lobby in manager.lobbies.items():
             if sender_room_id in lobby.rooms:
-                game_name = name  # Nazwa gry to klucz w słowniku
+                game_name = name
                 break
-    else:
-        print("[INVITE WARNING] Nadawca nie jest w żadnym pokoju!")
 
-    # 4. Bezpieczne szukanie odbiorcy (fix na typy danych int/str)
     target_session = None
 
     if target_user_id in active_sessions:
         target_session = active_sessions[target_user_id]
     else:
-        # Jeśli klucz w słowniku to int, a target_user_id to str (lub odwrotnie)
-        print(f"[INVITE DEBUG] Szukam ID {target_user_id} po konwersji typów...")
         for token, session in active_sessions.items():
             if str(token) == str(target_user_id):
                 target_session = session
-                print(f"[INVITE SUCCESS] Znaleziono token: {token}")
                 break
 
-    # 5. Wysyłka
     if target_session:
         if target_session.get('connected'):
             target_sid = target_session['sid']
-            print(f"[INVITE SENDING] Wysyłanie do {target_sid} (Gracz: {target_session.get('username')})")
 
             socket.emit('incoming_invite', {
                 'hostName': sender_name,
                 'gameName': game_name,
                 'roomId': sender_room_id
             }, to=target_sid)
-        else:
-            print(f"[INVITE FAILED] Gracz {target_user_id} jest rozłączony.")
-    else:
-        print(
-            f"[INVITE CRITICAL] Nie znaleziono sesji dla ID: {target_user_id}. Dostępne klucze: {list(active_sessions.keys())}")
