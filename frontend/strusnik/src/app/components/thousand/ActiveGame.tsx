@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import GameCard from '../blackjack/gameCard';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // DODANO
 
 interface Player {
     socketId: string;

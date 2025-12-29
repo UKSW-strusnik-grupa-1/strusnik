@@ -22,6 +22,7 @@ active_sessions = {}
 disconnect_timers = {}
 room_deletion_timers = {}
 
+
 def get_player_status(session_data):
     room_id = session_data.get('room_id')
 
@@ -40,6 +41,7 @@ def get_player_status(session_data):
         return 'in_lobby'
 
     return 'available'
+
 
 def get_online_players_list():
     players = []
@@ -566,7 +568,7 @@ def handle_send_invite(data):
             if str(token) == str(target_user_id):
                 target_session = session
                 break
-
+                
     if target_session:
         if target_session.get('connected'):
             target_sid = target_session['sid']
@@ -588,3 +590,30 @@ def handle_get_game_info(data):
             "game_name": game_name,
             "player_range": player_range
         })
+
+
+@socket.on("send_chat_message")
+def handle_chat_message(data):
+    room_id = data.get('roomId')
+    message = data.get('message')
+    sender_sid = request.sid
+
+    if not room_id or not message:
+        return
+
+    sender_token = next((token for token, d in active_sessions.items() if d['sid'] == sender_sid), None)
+    sender_name = "Nieznajomy"
+
+    if sender_token and sender_token in active_sessions:
+        sender_name = active_sessions[sender_token].get('username', 'Gracz')
+
+    timestamp = time.time()
+    msg_payload = {
+        'sender': sender_name,
+        'text': message,
+        'timestamp': timestamp,
+        'isSystem': False,
+        'sid': sender_sid
+    }
+
+    emit('chat_message_update', msg_payload, to=room_id)

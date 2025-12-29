@@ -7,6 +7,7 @@ import ReturnArrow from '@/app/components/lobby/returnArrow';
 import WaitingRoom from './WaitingRoom';
 import ActiveGame from './ActiveGame';
 import PasswordModal from '../lobby/passwordModal';
+import { GameChat } from '@/app/components/chat/GameChat'; 
 
 interface ThousandBoardProps {
     gameName: string;
@@ -53,7 +54,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
         if (!socket) return;
         
         if (!roomId) {
-            setConnectionError("Blad: Brak identyfikatora pokoju.");
+            setConnectionError("Blad: Brak ID pokoju.");
             return;
         }
 
@@ -171,23 +172,51 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
             />
 
             {gameStage === "waiting_for_players" ? (
-                <WaitingRoom 
-                    socket={socket} 
-                    roomId={roomId} 
-                    seats={seats} 
-                    myId={myId} 
-                    myName={myName}
-                    hostId={hostId}
-                    maxPlayers={maxPlayers}
-                />
+                <>
+                    <WaitingRoom 
+                        socket={socket} 
+                        roomId={roomId} 
+                        seats={seats} 
+                        myId={myId} 
+                        myName={myName}
+                        hostId={hostId}
+                        maxPlayers={maxPlayers}
+                    />
+                    <GameChat 
+                        socket={socket}
+                        roomId={roomId}
+                        myId={myId}
+                        myName={myName}
+                        isBubble={true} 
+                        className="bottom-4 right-4 rounded-xl border border-amber-900/50 bg-[#1a120b]/95"
+                    />
+                </>
             ) : (
-                <ActiveGame 
-                    socket={socket}
-                    roomId={roomId}
-                    seats={seats}
-                    myId={myId}
-                    initialHand={myHand}
-                />
+                <>
+                    <ActiveGame 
+                        socket={socket}
+                        roomId={roomId}
+                        seats={seats}
+                        myId={myId}
+                        initialHand={myHand}
+                    />
+                    <GameChat 
+                        socket={socket}
+                        roomId={roomId}
+                        myId={myId}
+                        myName={myName}
+                        isBubble
+                        height="28%" 
+                        className="
+                            w-[140px] md:w-[220px] lg:w-[300px]
+                            mr-1 
+                            bg-[#000000]/30 
+                            backdrop-blur-md
+                            border-l border-r border-[#353434]
+                            bottom-0 right-0
+                        "
+                    />
+                </>
             )}
         </div>
     );
