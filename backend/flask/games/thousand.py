@@ -328,12 +328,14 @@ class Thousand(MultiplayerGame):
         card = move_data.get('card')
         target = move_data.get('target_idx')
         seat = self.seats[player_idx]
-        if card not in seat['hand']: return {"success": False}
-        if target is None or not (0 <= target < 4) or not self.seats[target]: return {"success": False}
-        if target == player_idx: return {"success": False}
+        if card not in seat['hand']: return {"success": False, "msg": "Brak karty"}
+        if target is None or not (0 <= target < 4) or not self.seats[target]: return {"success": False,
+                                                                                      "msg": "Błędny cel"}
+        if target == player_idx: return {"success": False, "msg": "Nie sobie"}
         if len([s for s in self.seats if s]) == 4 and target == self.dealer_idx: return {"success": False,
                                                                                          "msg": "Nie możesz dać karty pauzującemu."}
-        if target in self.game_state['stock_recipients']: return {"success": False}
+        if target in self.game_state['stock_recipients']: return {"success": False,
+                                                                  "msg": "Ten gracz juz dostal karte."}
 
         seat['hand'].remove(card)
         seat['hand_count'] = len(seat['hand'])
@@ -465,7 +467,8 @@ class Thousand(MultiplayerGame):
             nxt = active_indices[0]
 
         self.game_state['current_player_idx'] = nxt
-        self.game_state['current_player'] = self.seats[nxt]['socketId']
+        if self.seats[nxt]:
+            self.game_state['current_player'] = self.seats[nxt]['socketId']
 
     def get_state(self) -> Dict[str, Any]:
         public_seats = []

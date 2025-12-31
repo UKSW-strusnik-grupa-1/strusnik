@@ -21,7 +21,6 @@ def get_thousand_state_for_player(game, player_sid):
 
     return state
 
-
 def handle_thousand_move(game, room, player_id, move_data):
     room_id = room.uuid
     prev_stage = game.game_state['stage']
@@ -96,4 +95,4 @@ def handle_thousand_move(game, room, player_id, move_data):
                 if seat is not None:
                     emit('game_state_update', {'my_hand': seat['hand']}, to=seat['socketId'])
     else:
-        emit('error', {'msg': res['msg']}, to=player_id)
+        emit('error', {'msg': res.get('msg', 'Blad ruchu')}, to=player_id)

@@ -568,7 +568,7 @@ def handle_send_invite(data):
             if str(token) == str(target_user_id):
                 target_session = session
                 break
-                
+
     if target_session:
         if target_session.get('connected'):
             target_sid = target_session['sid']

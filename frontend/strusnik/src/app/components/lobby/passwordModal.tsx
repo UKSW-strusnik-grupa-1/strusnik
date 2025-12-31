@@ -58,7 +58,7 @@ export default function PasswordModal({
         </div>
 
         {errorMessage && (
-          <div className="bg-[#3f1d1d]/50 border border-red-500/30 rounded p-2 mb-4 animate-pulse">
+          <div className="bg-[#3f1d1d]/50 border border-red-500/30 rounded p-2 mb-4">
             <p className="text-red-300 text-xs font-bold text-center">
               {errorMessage}
             </p>

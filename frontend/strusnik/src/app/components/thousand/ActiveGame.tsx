@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import GameCard from '../blackjack/gameCard';
-import { useRouter } from 'next/navigation'; // DODANO
+import { useRouter } from 'next/navigation';
 
 interface Player {
     socketId: string;
@@ -75,6 +75,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
     const [gameStage, setGameStage] = useState<string>("waiting_for_players"); 
     const [stockCards, setStockCards] = useState<string[]>([]);
     const [cardsToGive, setCardsToGive] = useState<number>(0);
+    const [stockRecipients, setStockRecipients] = useState<number[]>([]); 
     const [trumpSuit, setTrumpSuit] = useState<string | null>(null);
 
     const [cardsOnTable, setCardsOnTable] = useState<any[]>([]);
@@ -89,6 +90,8 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
     const pendingCardRef = useRef<string | null>(null);
     const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
+    const localDistributedToRef = useRef<number[]>([]);
+
     const gameSeatsRef = useRef(gameSeats);
     const myIdRef = useRef(myId);
     const gameStageRef = useRef(gameStage);
@@ -182,6 +185,11 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
             if (state.stage !== undefined) {
                 const newStage = state.stage;
                 const prevStage = gameStageRef.current;
+                
+                if (newStage !== 'distributing') {
+                    localDistributedToRef.current = [];
+                }
+
                 if ((newStage === 'declaring' || newStage === 'distributing') && prevStage === 'stock_reveal') {
                     setIsInteractionLocked(true);
                     setTimeout(() => { setIsInteractionLocked(false); }, 1200);
@@ -190,6 +198,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
             }
 
             if (state.cards_to_give !== undefined) setCardsToGive(state.cards_to_give);
+            if (state.stock_recipients !== undefined) setStockRecipients(state.stock_recipients); 
             if (state.trump_suit !== undefined) setTrumpSuit(state.trump_suit);
             
             if (state.stock && state.stock.length > 0) {
@@ -230,7 +239,6 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
             }
             setProcessingMove(false);
             if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
-
             socket.emit('sync_state', { roomId });
         });
 
@@ -334,23 +342,49 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
             let checkIdx = (myIdx + 1) % 4;
             
             for (let i = 0; i < 3; i++) {
-                if (gameSeats[checkIdx] && checkIdx !== dealerIdx) opponentsIndices.push(checkIdx);
+                // POPRAWKA: Wykluczamy dealera TYLKO jeśli gra 4 graczy.
+                // W grze 3-osobowej dealer (który nie pauzuje) jest normalnym przeciwnikiem, któremu można oddać kartę.
+                const isPausingDealer = activePlayersCount === 4 && checkIdx === dealerIdx;
+                
+                if (gameSeats[checkIdx] && !isPausingDealer) {
+                    opponentsIndices.push(checkIdx);
+                }
                 checkIdx = (checkIdx + 1) % 4;
             }
 
-            let targetIdx = -1;
-            if (opponentsIndices.length >= 2) {
-                targetIdx = cardsToGive === 2 ? opponentsIndices[0] : opponentsIndices[1]; 
-            } else if (opponentsIndices.length === 1) {
-                targetIdx = opponentsIndices[0];
+            const alreadyReceived = new Set([...stockRecipients, ...localDistributedToRef.current]);
+            let targetIdx = opponentsIndices.find(idx => !alreadyReceived.has(idx));
+            
+            if (targetIdx === undefined && opponentsIndices.length > 0) {
+                 targetIdx = opponentsIndices[0];
             }
 
-            if (targetIdx !== -1) {
+            if (targetIdx !== undefined) {
+                setProcessingMove(true);
+                
+                localDistributedToRef.current.push(targetIdx);
+
+                pendingCardRef.current = cardCode;
+                lastProcessedCardRef.current = cardCode;
+
                 setMyHand((prev) => prev.filter((c) => c !== cardCode));
+                
                 socket.emit('player_move', { 
                     roomId, 
                     move: { type: 'give_card', card: cardCode, target_idx: targetIdx } 
                 });
+
+                if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
+                fallbackTimeoutRef.current = setTimeout(() => {
+                    console.warn("Brak odpowiedzi serwera przy rozdawaniu. Przywracam stan.");
+                    setMyHand(prev => {
+                        if (!prev.includes(cardCode)) return [...prev, cardCode];
+                        return prev;
+                    });
+                    setProcessingMove(false);
+                    pendingCardRef.current = null;
+                    if (socket) socket.emit('sync_state', { roomId });
+                }, 3000);
             }
         }
     };

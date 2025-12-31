@@ -123,7 +123,7 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
                     Oczekiwanie na graczy... ({readyPlayersCount}/{maxPlayers})
                     <br/>
                     <span className="text-xs text-gray-500">
-                        {maxPlayers === readyPlayersCount ? "Pokój pełny" : `Wymagane min. ${maxPlayers === 4 ? 3 : maxPlayers}`}
+                        {maxPlayers === readyPlayersCount ? "Pokoj pelny" : `Wymagane min. ${maxPlayers === 4 ? 3 : maxPlayers}`}
                     </span>
                 </p>
                 
