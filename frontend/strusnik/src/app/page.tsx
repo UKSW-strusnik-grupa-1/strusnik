@@ -28,7 +28,8 @@ export default function HomePage() {
                 <Button 
                     alt="Rankingi" 
                     text="Rankingi"
-                    active={false} 
+                    href="/rankings"
+                    active={true}
                     inactiveText="Rankingi sa nieaktywne."    
                 />
                 <span 

@@ -3,9 +3,11 @@ import time
 from typing import List, Dict, Any, Optional
 from .base import MultiplayerGame
 
+from models import db, User, GameStats
+from flask import current_app
+
 WINNING_SCORE = 1000
 BARREL_THRESHOLD = 800
-
 
 class Thousand(MultiplayerGame):
     player_range = [3, 4]
@@ -212,6 +214,26 @@ class Thousand(MultiplayerGame):
                 'userId': potential_winner['userId']
             }
             self.game_state['stage'] = 'game_over'
+
+            try:
+                if current_app:
+                    with current_app.app_context():
+                        winner_name = potential_winner['name']
+                        user = User.query.filter_by(username=winner_name).first()
+
+                        if user:
+                            stat = GameStats.query.filter_by(user_id=user.id, game_name='Tysiac').first()
+
+                            if not stat:
+                                stat = GameStats(user_id=user.id, game_name='Tysiac', wins=1)
+                                db.session.add(stat)
+                            else:
+                                stat.wins += 1
+
+                            db.session.commit()
+            except Exception as e:
+                print(e)
+
             return
 
         if self.dealer_idx in seated_indices:
