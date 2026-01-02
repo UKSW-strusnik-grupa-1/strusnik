@@ -14,7 +14,11 @@ export default function HomePage() {
           text="ZAGRAJ Z INNYMI"
           href="/multiplayer"
         />
-        <Button alt="rankingi" text="RANKINGI" />
+        <Button 
+            alt="rankingi" 
+            text="RANKINGI"
+            href="/rankings"
+        />
         <button type="button" className="menu-logout">
           WYLOGUJ
         </button>
