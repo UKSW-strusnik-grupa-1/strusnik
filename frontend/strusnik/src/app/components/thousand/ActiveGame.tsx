@@ -243,7 +243,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
         });
 
         socket.on('game_ended_timeout', () => {
-             alert("Gra zakończona - gracz nie powrócił.");
+             alert("GRA ZAKONCZONA - GRACZ NIE POWROCIL");
              router.push(`/lobby/Tysiac`);
         });
 
@@ -478,7 +478,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-700">
                     <div className="flex flex-col items-center bg-[#2b1d15] border-2 border-amber-500 rounded-xl p-8 shadow-[0_0_50px_rgba(245,158,11,0.5)]">
                         <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-linear-to-r from-amber-300 to-yellow-600 mb-2 uppercase tracking-widest">
-                            Koniec Gry!
+                            KONIEC GRY!
                         </h1>
                         <div className="text-6xl mb-4">👑</div>
                         <p className="text-gray-300 text-lg mb-1">Zwyciezca:</p>
@@ -490,7 +490,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
                             onClick={handleExit}
                             className="cursor-pointer bg-green-700 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105"
                         >
-                            Wroc do Lobby
+                            WROC DO LOBBY
                         </button>
                     </div>
                 </div>

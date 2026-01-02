@@ -7,7 +7,8 @@ export default function SingleplayerGamesPage() {
         <div>
             <ReturnArrow href="/"/>
             <CardContainer>
-                <Card imgSrc='/gameTiles/tile_blackjack.webp' gameName='Blackjack'/>
+                <Card imgSrc='/gameTiles/tile_blackjack.png' gameName='Blackjack'/>
+                <Card imgSrc='/gameTiles/tile_snake.png' gameName='Snake'/>
             </CardContainer>
         </div>
     )

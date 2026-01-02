@@ -17,29 +17,18 @@ export default function Card({gameName, imgSrc} : CardProps) {
     return `/lobby/${gameName}`;
   }
 
-  return (
-    <div className='flex flex-col gap-1'>
+return (
+    <Link href={getGameLink()}>
+      <div className="flex flex-col gap-1 cursor-pointer transition-all hover:scale-[1.03]">
 
-      <img
-        alt={gameName}
-        src={imgSrc}
-        className='w-[200px] h-[265.11px]'
-      />
+        <img
+          alt={gameName}
+          src={imgSrc}
+          className="w-[300px] h-auto object-cover"
+        />
 
-      <Link href={getGameLink() || ""}>
-        <div className='relative group'>
-          <img
-            alt="Przycisk zagraj"
-            src="/main/button.png"
-            className='w-[200px] h-auto transition-all group-hover:brightness-110'
-          />
+      </div>
+    </Link>
+  );
 
-          <p className="absolute inset-0 flex items-center justify-center text-white font-bold cursor-pointer transition-all group-hover:scale-105">
-            Zagraj
-          </p>
-        </div>
-      </Link>
-
-    </div>
-  )
 }

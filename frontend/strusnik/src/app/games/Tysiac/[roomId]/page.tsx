@@ -12,7 +12,7 @@ export default function RoomPage() {
     if (!params?.roomId) {
         return (
             <div className="flex items-center justify-center h-screen w-full bg-[#1a120b] text-amber-50">
-                <h1 className="text-xl animate-pulse">Ładowanie parametrów...</h1>
+                <h1 className="text-xl animate-pulse">LADOWANIE PARAMETROW...</h1>
             </div>
         );
     }

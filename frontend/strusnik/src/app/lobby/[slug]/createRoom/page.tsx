@@ -57,7 +57,7 @@ export default function CreateRoomPage() {
 
         const roomData = {
             "game_name": gameName,
-            "room_name": roomName || `Pokój gracza`,
+            "room_name": roomName || `POKOJ GRACZA`,
             "max_players": maxPlayers,
             "password": isPasswordEnabled ? password : null,
             "userToken": userInfo?.userId
@@ -68,26 +68,20 @@ export default function CreateRoomPage() {
 
     return (
         <div className='relative w-full min-h-screen flex items-center justify-center p-4 overflow-y-auto'>
-            <ReturnArrow href={`/lobby/${gameName}`} text="Powrót do listy pokojów"/>
-
-            <img
-                alt="Tło"
-                src="/main/background.png"
-                className="fixed w-full h-full object-cover -z-10"
-            />
+            <ReturnArrow href={`/lobby/${gameName}`} text="POKOJE"/>
 
             <div className="z-10 flex flex-col gap-8 w-full max-w-md my-10">
 
                 <div className="flex flex-col gap-2">
                     <label className="text-sm font-bold uppercase tracking-wide ml-1 text-gray-200">
-                        Nazwa pokoju
+                        NAZWA POKOJU
                     </label>
                     <SearchInput text={roomName} setText={setRoomName} placeholder="Podaj nazwe pokoju..."/>
                 </div>
 
                 <div className="flex flex-col gap-3">
                     <label className="text-sm font-bold uppercase tracking-wide ml-1 text-gray-200">
-                        Ilosc graczy
+                        ILOSC GRACZY
                     </label>
                     <div className="flex flex-row justify-evenly gap-3 flex-wrap">
                         {playerOptions.map((num) => (
@@ -119,7 +113,7 @@ export default function CreateRoomPage() {
                             }
                         `}
                     >
-                        <span className="uppercase tracking-wide text-sm">Haslo do pokoju</span>
+                        <span className="uppercase tracking-wide text-sm">HASLO DO POKOJU</span>
                         
                         <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-300 cursor-pointer
                             ${isPasswordEnabled 
@@ -147,7 +141,7 @@ export default function CreateRoomPage() {
                     />
 
                     <p className="z-10 text-amber-50 font-bold text-lg transition-all duration-300 group-hover:scale-105">
-                        {!socket ? "Laczenie..." : "Stwórz pokój"}
+                        {!socket ? "LACZENIE..." : "STWORZ POKOJ"}
                     </p>
                 </button>
 

@@ -71,7 +71,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
             <button 
                 onClick={() => setIsOpen(true)}
                 className="absolute top-4 right-4 z-50 w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer"
-                title="Pokaż graczy online"
+                title="pokaz graczy online"
             >
                 <Users className="text-white" size={24} />
                 <span className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-black">
@@ -95,7 +95,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         `}>
             <div className="flex items-center justify-between border-b border-white/20 pb-2 mb-2">
                 <h3 className="text-lg font-bold text-white flex gap-2 items-center">
-                    {inviteMode ? "Zaproś graczy" : "Online"} 
+                    {inviteMode ? "zapros graczy" : "online"} 
                     <span className="text-sm font-normal text-gray-400">({players.length})</span>
                 </h3>
                 
@@ -111,7 +111,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
             
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {players.length === 0 ? (
-                    <p className="text-gray-400 text-center text-sm italic mt-10">Brak graczy online</p>
+                    <p className="text-gray-400 text-center text-sm italic mt-10">BRAK GRACZY ONLINE</p>
                 ) : (
                     players.map((player) => {
                         const isMe = String(player.userId) === String(userInfo.userId);
@@ -150,7 +150,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
                                                 ? "bg-green-500/20 text-green-400 cursor-default" 
                                                 : "bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-white"
                                         }`}
-                                        title="Zaproś"
+                                        title="zapros"
                                     >
                                         {wasInvited ? <Check size={16} /> : <UserPlus size={16} />}
                                     </button>

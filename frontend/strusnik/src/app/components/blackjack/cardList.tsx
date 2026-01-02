@@ -32,7 +32,7 @@ export default function CardList({
       return (
         <div className="flex flex-col items-center animate-in zoom-in duration-300">
           <h2 className="text-xl md:text-5xl font-black uppercase text-transparent bg-clip-text bg-linear-to-b from-green-300 to-green-600 drop-shadow-[0_0_15px_rgba(34,197,94,0.6)]">
-            Wygrales!
+            UDALO CI SIE WYGRAC!
           </h2>
           <p className="text-white font-bold text-xl mt-2 drop-shadow-md">
             +{cashout}$
@@ -44,7 +44,7 @@ export default function CardList({
       return (
         <div className="flex flex-col items-center animate-in zoom-in duration-300">
           <h3 className="text-xl md:text-5xl font-black uppercase text-transparent bg-clip-text bg-linear-to-b from-red-400 to-red-700 drop-shadow-[0_0_15px_rgba(239,68,68,0.6)]">
-            Przegrales
+            NIESTETY PRZEGRALES
           </h3>
 
         </div>
@@ -54,10 +54,10 @@ export default function CardList({
       return (
         <div className="flex flex-col items-center animate-in zoom-in duration-300">
           <h2 className="text-xl md:text-5xl font-black uppercase text-transparent bg-clip-text bg-linear-to-b from-yellow-300 to-yellow-600 drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]">
-            Remis
+            REMIS
           </h2>
           <p className="text-white font-bold text-xl mt-2 drop-shadow-md">
-            Zwrot stawki
+            ZWROT STAWKI
           </p>
         </div>
       );
@@ -70,7 +70,7 @@ export default function CardList({
       
       <div className="w-full flex flex-col items-center justify-center">
         <p className="text-white font-bold text-lg uppercase tracking-widest mb-4 drop-shadow-md bg-black/40 px-4 py-1 rounded-full border border-white/10">
-          Krupier ({dealerDeckValue})
+          KRUPIER ({dealerDeckValue})
         </p>
         <div className="flex flex-row flex-wrap justify-center gap-2 md:gap-4 min-h-40">
           {dealerDeck.map((card, index) => {
@@ -88,7 +88,7 @@ export default function CardList({
 
       <div className="w-full flex flex-col items-center justify-center gap-6">
         <p className="text-white font-bold text-lg uppercase tracking-widest drop-shadow-md bg-black/40 px-4 py-1 rounded-full border border-white/10">
-          Ty ({playerDeckValue})
+          TY ({playerDeckValue})
         </p>
 
         <div className="flex flex-row flex-wrap justify-center gap-2 md:gap-4 min-h-40">
@@ -117,7 +117,7 @@ export default function CardList({
                   alt="Hit"
                 />
                 <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105">
-                  Dobierz
+                  DOBIERZ
                 </p>
               </div>
 
@@ -131,7 +131,7 @@ export default function CardList({
                   alt="Stand"
                 />
                 <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105">
-                  Pass
+                  PASS
                 </p>
               </div>
             </div>

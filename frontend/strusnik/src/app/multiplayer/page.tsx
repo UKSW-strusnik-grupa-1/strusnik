@@ -7,8 +7,8 @@ export default function MultiplayerGamesPage() {
         <div>
             <ReturnArrow href="/"/>
             <CardContainer>
-                <Card imgSrc='/gameTiles/tile_tysiac.webp' gameName='Tysiac'/>
-                <Card imgSrc='/gameTiles/tile_stratego.webp' gameName='Stratego'/>
+                <Card imgSrc='/gameTiles/tile_tysiac.png' gameName='Tysiac'/>
+                <Card imgSrc='/gameTiles/tile_stratego.png' gameName='Stratego'/>
             </CardContainer>
         </div>
     )

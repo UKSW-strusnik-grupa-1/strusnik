@@ -4,6 +4,7 @@ from config import Config
 
 from routes.auth import authentication
 from routes.blackjack import blackjack
+from routes.snake import snake
 
 from models import db
 
@@ -24,6 +25,7 @@ db.init_app(app)
 
 app.register_blueprint(authentication, url_prefix="/api/auth")
 app.register_blueprint(blackjack, url_prefix="/api/games/blackjack")
+app.register_blueprint(snake, url_prefix="/api/games/snake")
 
 with app.app_context():
     for i in range(5):

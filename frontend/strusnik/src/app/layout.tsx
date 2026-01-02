@@ -1,35 +1,27 @@
 import type { Metadata } from "next";
-import localFont from 'next/font/local'
+import localFont from "next/font/local";
 import "./globals.css";
 import { SocketProvider } from "./context/SocketContext";
 import { UserProvider } from "./context/UserContext";
 import InvitationModal from "./components/lobby/invitationModal";
 
 const Perciles = localFont({
-  src: './fonts/Perciles.ttf',
-})
+  src: "./fonts/Perciles.ttf",
+  variable: "--font-perciles",
+});
 
 export const metadata: Metadata = {
-  title: "Struśnik",
-  description: "Struśnik",
-  icons: {
-    icon: '/favicon.ico',
-  },
+  title: "STRUŚNIK - GRY ONLINE",
+  icons: { icon: "/favicon.ico", },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body
-        className={`${Perciles.className} antialiased`}
-      >
+    <html lang="pl" className={Perciles.variable}>
+      <body className="antialiased font-sans">
         <UserProvider>
           <SocketProvider>
-            <InvitationModal/>
+            <InvitationModal />
             {children}
           </SocketProvider>
         </UserProvider>

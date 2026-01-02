@@ -63,7 +63,7 @@ export default function InvitationModal() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
                 
                 <h3 className="text-xl font-bold text-[#eaddcf] mb-6 drop-shadow-md">
-                    Zaproszenie do gry!
+                    ZAPROSZENIE DO GRY!
                 </h3>
                 
                 <div className="
@@ -74,14 +74,14 @@ export default function InvitationModal() {
                     shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7)]
                 ">
                     <p className="text-[#8b735b] mb-2 text-sm uppercase tracking-wide font-semibold">
-                        Gracz
+                        GRACZ
                     </p>
                     <p className="text-[#eaddcf] font-bold text-lg mb-4 truncate">
                         {invitation.hostName}
                     </p>
                     
                     <p className="text-[#8b735b] text-sm mb-1">
-                        zaprasza Cie do gry w:
+                        ZAPRASZA CIE DO GRY W:
                     </p>
                     <p className="text-amber-500/90 font-bold text-xl drop-shadow-sm">
                         {invitation.gameName}
@@ -109,7 +109,7 @@ export default function InvitationModal() {
                             active:scale-95
                         "
                     >
-                        Odrzuc
+                        ODRZUC
                     </button>
 
                     <button 
@@ -132,7 +132,7 @@ export default function InvitationModal() {
                             active:scale-95
                         "
                     >
-                        Dolacz
+                        DOLACZ
                     </button>
                 </div>
             </div>

@@ -56,7 +56,7 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
                     <p className={`font-bold text-center leading-tight ${isMe ? 'text-amber-400' : 'text-gray-200'}`}>
                         {isMe ? 'TY' : data.name}
                     </p>
-                    {isMe && <p className="text-[10px] text-green-400 uppercase font-bold mt-1">Gotowy</p>}
+                    {isMe && <p className="text-[10px] text-green-400 uppercase font-bold mt-1">GOTOWY</p>}
                 </div>
             );
         }
@@ -67,7 +67,7 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
                 className={`absolute ${positionClass} group flex flex-col items-center justify-center w-[14vh] h-[14vh] rounded-full border-4 border-dashed border-gray-600 bg-black/20 hover:bg-amber-900/30 hover:border-amber-500/50 transition-all cursor-pointer`}
             >
                 <span className="text-2xl text-gray-500 group-hover:text-amber-200 transition-colors">+</span>
-                <span className="text-xs uppercase font-bold text-gray-500 group-hover:text-amber-200 mt-1">Dolacz</span>
+                <span className="text-xs uppercase font-bold text-gray-500 group-hover:text-amber-200 mt-1">DOLACZ</span>
             </button>
         );
     };
@@ -118,9 +118,9 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
             />
 
             <div className="absolute inset-0 m-auto w-[40%] h-[30%] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 p-4 text-center z-0">
-                <h2 className="text-2xl font-bold text-amber-50 mb-2">Poczekalnia</h2>
+                <h2 className="text-2xl font-bold text-amber-50 mb-2">POCZEKALNIA</h2>
                 <p className="text-gray-300 mb-4">
-                    Oczekiwanie na graczy... ({readyPlayersCount}/{maxPlayers})
+                    OCZEKIWANIE NA GRACZY... ({readyPlayersCount}/{maxPlayers})
                     <br/>
                     <span className="text-xs text-gray-500">
                         {maxPlayers === readyPlayersCount ? "Pokoj pelny" : `Wymagane min. ${maxPlayers === 4 ? 3 : maxPlayers}`}

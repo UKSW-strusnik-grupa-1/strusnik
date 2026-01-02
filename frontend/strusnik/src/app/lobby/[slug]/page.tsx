@@ -19,7 +19,6 @@ export default async function LobbyPage({ params }: { params: Promise<{ slug: st
             <ReturnArrow href="/multiplayer" />
 
             <div className="relative w-full h-screen flex items-center justify-center flex-col">
-                <img alt="Tło" src="/main/background.png" className="absolute w-full h-full object-cover -z-10"/>
 
                 <div className="relative">
                     <div className="w-[650px] h-[430px] rounded-lg flex flex-col items-center justify-start"> 
@@ -36,7 +35,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ slug: st
                         />
 
                         <p className="absolute inset-0 flex items-center justify-center text-white font-bold cursor-pointer transition-all group-hover:scale-105 text-center">
-                            Stwórz pokój
+                            STWORZ POKOJ
                         </p>
                     </Link>
                 </div>

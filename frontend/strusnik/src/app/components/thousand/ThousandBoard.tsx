@@ -136,7 +136,6 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     if (connectionError) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center p-4">
-                <img alt="Tło" src="/main/background.png" className="fixed w-full h-full object-cover -z-10" />
                 
                 <div className="bg-[#1a120b]/90 p-8 rounded-xl border-2 border-red-600/50 text-center shadow-2xl backdrop-blur-md max-w-md w-full">
                     <h2 className="text-2xl text-red-500 font-bold mb-4 uppercase tracking-widest">Blad polaczenia</h2>
@@ -144,7 +143,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
                     <p className="text-gray-500 text-xs mb-6 font-mono">ID Pokoju: {roomId}</p>
                     
                     <a href={`/lobby/${gameName}`} className="inline-block w-full bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg uppercase tracking-wide text-sm">
-                        Wroc do lobby
+                        WROC DO LOBBY
                     </a>
                 </div>
             </div>
@@ -153,14 +152,9 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
     return (
         <div className='relative w-full h-screen flex flex-col p-1 overflow-hidden'>
-            <img
-                alt="Tło"
-                src="/main/background.png"
-                className="fixed w-full h-full object-cover -z-10 top-0 left-0"
-            />
             
             <div className="shrink-0 mb-1 pl-2" onClickCapture={handleExitSignal}>
-                <ReturnArrow href={`/lobby/${gameName}`} text="Wyjdz" />
+                <ReturnArrow href={`/lobby/${gameName}`} text="WYJDZ" />
             </div>
 
             <PasswordModal 

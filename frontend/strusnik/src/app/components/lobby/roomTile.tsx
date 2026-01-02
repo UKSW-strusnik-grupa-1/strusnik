@@ -42,7 +42,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
           )}
           
           <p className="text-gray-200 font-bold text-base drop-shadow-md whitespace-nowrap">
-            Gracze: <span className="text-white">{players + "/" + maxPlayers}</span>
+            GRACZE: <span className="text-white">{players + "/" + maxPlayers}</span>
           </p>
         </div>
 
@@ -57,7 +57,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
               
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <p className="text-white text-sm font-bold uppercase tracking-wide drop-shadow-md">
-                  Dolacz
+                  DOLACZ
                 </p>
               </div>
             </div>

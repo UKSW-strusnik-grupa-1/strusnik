@@ -27,13 +27,7 @@ export default function BlackjackPage() {
 
     return (
         <div className='relative w-full h-screen flex flex-col overflow-hidden'>
-            <ReturnArrow href="/singleplayer" text='Wyjdz z gry'/>
-            
-            <img 
-                alt="background" 
-                src="/blackjack/blackjack_bg.png" 
-                className="absolute w-full h-full object-cover -z-10"
-            />
+            <ReturnArrow href="/singleplayer" text='WYJDZ'/>
 
             {gameStatus !== "NOT-STARTED" && 
                 <div className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none flex items-center justify-center">
@@ -73,7 +67,7 @@ export default function BlackjackPage() {
                     </div>
                     
                     <h1 className='font-bold text-3xl text-white drop-shadow-lg tracking-wider'>
-                        Saldo: {balance}$
+                        SALDO: {balance}$
                     </h1>
                     
                     <div className='pointer-events-auto flex items-center justify-center gap-4 bg-black/30 p-4 rounded-2xl backdrop-blur-sm'>
@@ -88,7 +82,7 @@ export default function BlackjackPage() {
                             src="/main/button.png"
                             className='w-60 transition-all group-hover:scale-105 group-hover:brightness-110 drop-shadow-xl'
                         />
-                        <p className='absolute font-bold text-xl text-white transition-all group-hover:scale-105'>Rozpocznij</p>
+                        <p className='absolute font-bold text-xl text-white transition-all group-hover:scale-105'>ROZPOCZNIJ</p>
                     </div>
                 </div>
             )}

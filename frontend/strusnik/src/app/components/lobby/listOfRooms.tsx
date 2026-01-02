@@ -52,7 +52,7 @@ export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
                 <div className="shrink-0 pt-2 px-4">
                     <SearchInput placeholder='Wyszukaj pokoj...'/>
                 </div>
-                <p className="text-center text-gray-400 font-bold">Ladowanie...</p>
+                <p className="text-center text-gray-400 font-bold">LADOWANIE...</p>
              </div>
         )
     }
@@ -68,7 +68,7 @@ export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
 
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1 pb-2 pl-4 pr-2">
                 {rooms.length === 0 && !isLoading && (
-                    <h1 className='font-bold text-center mt-4 text-gray-400'>Nie znaleziono zadnego pokoju.</h1>
+                    <h1 className='font-bold text-center mt-4 text-gray-400'>NIE ZNALEZIONO ZADNEGO POKOJU</h1>
                 )}
                 
                 {rooms.map(room => (
