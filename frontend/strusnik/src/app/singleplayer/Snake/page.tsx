@@ -66,6 +66,40 @@ function useSnappedBoard(
   return m;
 }
 
+type Dir = "UP" | "DOWN" | "LEFT" | "RIGHT";
+
+const vecToDir = (dx: number, dy: number): Dir => {
+  if (dx === 1 && dy === 0) return "RIGHT";
+  if (dx === -1 && dy === 0) return "LEFT";
+  if (dx === 0 && dy === 1) return "DOWN";
+  return "UP";
+};
+
+const isPair = (a: Dir, b: Dir, p: Dir, q: Dir) =>
+  (a === p && b === q) || (a === q && b === p);
+
+const degFromFacingRight = (dir: Dir) => {
+  if (dir === "RIGHT") return 0;
+  if (dir === "DOWN") return 90;
+  if (dir === "LEFT") return 180;
+  return 270;
+};
+
+const degFromTailTipLeft = (tipDir: Dir) => {
+  if (tipDir === "LEFT") return 0;
+  if (tipDir === "DOWN") return 270;
+  if (tipDir === "RIGHT") return 180;
+  return 90;
+};
+
+const SNAKE_SPRITES = {
+  head: "/snake/head.png",
+  straight: "/snake/straight.png",
+  turn: "/snake/turn.png",
+  tail: "/snake/tail.png",
+} as const;
+
+
 export default function SnakePage() {
   const {
     BOARD_SIZE,
@@ -89,6 +123,43 @@ export default function SnakePage() {
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const metrics = useSnappedBoard(boardRef, BOARD_SIZE, BOARD_IMG, GRID_RECT);
+
+  const getSnakeSpriteAtIndex = (i: number): { src: string; rot: number } => {
+
+  if (i === 0) {
+    if (snake.length < 2) return { src: SNAKE_SPRITES.head, rot: 0 };
+    const head = snake[0];
+    const neck = snake[1];
+    const moveDir = vecToDir(head.x - neck.x, head.y - neck.y);
+    return { src: SNAKE_SPRITES.head, rot: degFromFacingRight(moveDir) };
+  }
+
+  if (i === snake.length - 1) {
+    const tail = snake[i];
+    const prev = snake[i - 1];
+    const tipDir = vecToDir(tail.x - prev.x, tail.y - prev.y);
+    return { src: SNAKE_SPRITES.tail, rot: degFromTailTipLeft(tipDir) };
+  }
+
+  const prev = snake[i - 1];
+  const curr = snake[i];
+  const next = snake[i + 1];
+
+  const d1 = vecToDir(prev.x - curr.x, prev.y - curr.y);
+  const d2 = vecToDir(next.x - curr.x, next.y - curr.y);
+
+  if (isPair(d1, d2, "LEFT", "RIGHT")) return { src: SNAKE_SPRITES.straight, rot: 0 };
+  if (isPair(d1, d2, "UP", "DOWN")) return { src: SNAKE_SPRITES.straight, rot: 90 };
+
+  let rot = 0;
+  if (isPair(d1, d2, "RIGHT", "DOWN")) rot = 0;
+  else if (isPair(d1, d2, "DOWN", "LEFT")) rot = 90;
+  else if (isPair(d1, d2, "LEFT", "UP")) rot = 180;
+  else if (isPair(d1, d2, "UP", "RIGHT")) rot = 270;
+
+  return { src: SNAKE_SPRITES.turn, rot };
+};
+
 
   return (
     <div className="fixed inset-0 overflow-hidden">
@@ -137,17 +208,44 @@ export default function SnakePage() {
                       const snakeHere = isSnakeCell(x, y);
                       const foodHere = isFoodCell(x, y);
 
+                      const snakeIndex = snakeHere
+                        ? snake.findIndex((seg) => seg.x === x && seg.y === y)
+                        : -1;
+
+                      const snakeSprite = snakeIndex >= 0 ? getSnakeSpriteAtIndex(snakeIndex) : null;
+
                       return (
-                        <div
-                          key={`${x}-${y}`}
-                          style={{ width: metrics.cell, height: metrics.cell }}
-                          className={[
-                            "bg-black/0",
-                            snakeHere ? "bg-emerald-400" : "",
-                            foodHere ? "bg-red-400" : "",
-                          ].join(" ")}
-                        />
-                      );
+							          <div
+								          key={`${x}-${y}`}
+								          style={{
+									          width: metrics.cell,
+									          height: metrics.cell,
+									          position: snakeSprite || foodHere ? "relative" : undefined,
+								          }}
+								          className="bg-black/0"
+							          >
+								          {foodHere && (
+									          <img
+										          src="/favicon.ico"
+										          alt=""
+										          draggable={false}
+										          className="absolute inset-0 w-full h-full select-none pointer-events-none"
+									          />
+								          )}
+								          {snakeSprite && (
+									          <img
+										          src={snakeSprite.src}
+										          alt=""
+										          draggable={false}
+										          className="absolute inset-0 w-full h-full select-none pointer-events-none"
+										          style={{
+											          transform: `rotate(${snakeSprite.rot}deg)`,
+											          transformOrigin: "50% 50%",
+										          }}
+									          />
+								          )}
+							          </div>
+						          );
                     })
                   )}
                 </div>
