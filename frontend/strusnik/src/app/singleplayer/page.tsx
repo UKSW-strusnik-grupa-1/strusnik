@@ -9,6 +9,7 @@ export default function SingleplayerGamesPage() {
             <CardContainer>
                 <Card imgSrc='/gameTiles/tile_blackjack.png' gameName='Blackjack'/>
                 <Card imgSrc='/gameTiles/tile_snake.png' gameName='Snake'/>
+                <Card imgSrc='/gameTiles/tile_tictactoe.png' gameName='TicTacToe'/>
             </CardContainer>
         </div>
     )

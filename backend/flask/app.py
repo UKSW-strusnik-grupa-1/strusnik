@@ -6,6 +6,7 @@ from routes.auth import authentication
 from routes.blackjack import blackjack
 from routes.snake import snake
 from routes.rankings import rankings
+from routes.tictactoe import tictactoe
 from models import db
 
 from sockets.socket_manager import socket
@@ -27,6 +28,7 @@ app.register_blueprint(authentication, url_prefix="/api/auth")
 app.register_blueprint(blackjack, url_prefix="/api/games/blackjack")
 app.register_blueprint(rankings, url_prefix="/api/rankings")
 app.register_blueprint(snake, url_prefix="/api/snake")
+app.register_blueprint(tictactoe, url_prefix="/api/games/tictactoe")
 
 with app.app_context():
     for i in range(5):

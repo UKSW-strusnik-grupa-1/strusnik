@@ -1,4 +1,4 @@
 export const Games: Record<string, Array<string>> ={
-    singleplayer: ["Blackjack", "Snake"],
+    singleplayer: ["Blackjack", "Snake", "TicTacToe"],
     multiplayer: ["Stratego", "Tysiac"]
 }
