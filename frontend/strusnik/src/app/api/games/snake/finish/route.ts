@@ -18,7 +18,6 @@ async function safeJson(res: Response) {
 export async function POST(request: NextRequest) {
   const bodyText = await request.text();
 
-  // Minimalna walidacja pod fallback:
   let parsed: any = null;
   try {
     parsed = bodyText ? JSON.parse(bodyText) : null;
@@ -26,7 +25,6 @@ export async function POST(request: NextRequest) {
     parsed = null;
   }
 
-  // 1) Najpierw spróbuj backend (Flask)
   try {
     const res = await fetch(`${BACKEND_URL}/api/games/snake/finish`, {
       method: "POST",
@@ -38,7 +36,6 @@ export async function POST(request: NextRequest) {
     const data = await safeJson(res);
     return NextResponse.json(data ?? {}, { status: res.status });
   } catch (err) {
-    // 2) Fallback: licz wynik lokalnie, żeby UI nie wysypywało się na końcu gry
     const uuid = parsed?.uuid;
     const foodsEaten = parsed?.foodsEaten;
 

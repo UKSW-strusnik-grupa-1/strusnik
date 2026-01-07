@@ -29,7 +29,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ slug: st
                 <div className="relative mt-5 group">
                     <Link href={`/lobby/${slug}/createRoom`}>
                         <img
-                            alt="Tło"
+                            alt="Tlo"
                             src="/main/button.png"
                             className="object-cover -z-10 w-[175px] items-center transition-all group-hover:brightness-110"
                         />

@@ -16,7 +16,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
   return (
     <div className="relative w-[600px] h-[75px] select-none group/tile">
       <img
-        alt="Tło pokoju"
+        alt="Tlo pokoju"
         src="/lobby/tile_room.png"
         className="absolute inset-0 w-full h-full object-cover rounded-lg shadow-md"
       />
@@ -50,7 +50,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
           <Link href={`/games/${gameName}/${uuid}`}>
             <div className="relative group cursor-pointer w-[100px]">
               <img
-                alt="Przycisk dołącz"
+                alt="PRZYCISK DOLACZ"
                 src="/lobby/join.png"
                 className="w-full h-auto transition-transform duration-200 group-hover:scale-105 group-hover:brightness-110"
               />

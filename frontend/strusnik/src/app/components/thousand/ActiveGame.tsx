@@ -227,7 +227,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
         });
 
         socket.on('error', (data: any) => {
-            console.error("Błąd gry:", data);
+            console.error("BLAD GRY:", data);
             
             if (pendingCardRef.current) {
                 const cardToRestore = pendingCardRef.current;
@@ -600,7 +600,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
 
                 <div className="w-[140px] md:w-[220px] lg:w-[300px] shrink-0 h-full bg-[#000000]/40 border border-[#353434] rounded-xl p-2 flex flex-col gap-2 backdrop-blur-sm overflow-hidden">
                     <div className="bg-[#2b1d15]/60 rounded p-1.5 border border-[#4a3728]">
-                        <p className="text-gray-300 text-[10px] lg:text-sm">Status: <span className={isMyTurn ? "text-green-500 font-bold" : "text-gray-400"}>{amIPausing ? "Obserwujesz" : (isMyTurn ? "Twój ruch!" : "Czekaj...")}</span></p>
+                        <p className="text-gray-300 text-[10px] lg:text-sm">Status: <span className={isMyTurn ? "text-green-500 font-bold" : "text-gray-400"}>{amIPausing ? "Obserwujesz" : (isMyTurn ? "TWOJ RUCH!" : "Czekaj...")}</span></p>
                     </div>
                     <div className="flex flex-col gap-2 mt-2 flex-1">
                         {gameStage === 'bidding' && !amIPausing && (

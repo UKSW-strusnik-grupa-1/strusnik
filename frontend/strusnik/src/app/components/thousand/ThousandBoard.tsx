@@ -86,7 +86,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
             } else {
                 if (response.error_code === 'PASSWORD_REQUIRED') {
                     setShowPasswordModal(true);
-                    if (response.message === 'Błędne hasło') {
+                    if (response.message === 'BLEDNE HASLO') {
                         setErrorMessage("Bledne haslo, sprobuj ponownie.");
                     }
                 } else {

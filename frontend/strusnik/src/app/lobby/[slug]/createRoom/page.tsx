@@ -1,151 +1,235 @@
 'use client';
 
-import { useEffect, useState } from "react";
-import ReturnArrow from "@/app/components/lobby/returnArrow";
-import SearchInput from "@/app/components/lobby/searchInput";
-import { useParams, useRouter } from "next/navigation";
-import { useSocket } from "@/app/hooks/useSocket";
-import { useUser } from "@/app/hooks/useUser";
+import React, { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import { useParams, useRouter } from 'next/navigation';
+
+import ReturnArrow from '@/app/components/lobby/returnArrow';
+import { useSocket } from '@/app/hooks/useSocket';
+import { useUser } from '@/app/hooks/useUser';
+
+type ChessColorPref = 'WHITE' | 'RANDOM' | 'BLACK';
+type TimeChoice = 5 | 10 | 15;
+
+type PlayersChoice = 2 | 3 | 4;
+
+function ButtonPng({
+  label,
+  active,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        'relative w-[170px] h-[46px] transition select-none',
+        disabled ? 'opacity-60 cursor-not-allowed' : 'hover:brightness-110 active:brightness-95',
+      ].join(' ')}
+    >
+      <Image src="/main/button.png" alt="" fill className="object-contain" draggable={false} />
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span
+          className={[
+            'text-white font-extrabold uppercase tracking-wide drop-shadow-md text-sm',
+            active ? 'scale-[1.03]' : '',
+          ].join(' ')}
+        >
+          {label}
+        </span>
+      </div>
+      {active && <div className="absolute inset-0 rounded-xl ring-2 ring-amber-300/70 pointer-events-none" />}
+    </button>
+  );
+}
 
 export default function CreateRoomPage() {
-    const router = useRouter()
-    const params = useParams<{slug: string}>();
-    const gameName = params.slug;
+  const router = useRouter();
+  const params = useParams<{ slug: string }>();
+  const slug = params?.slug ?? 'Chess';
 
-    const [roomName, setRoomName] = useState<string>("")
-    const [maxPlayers, setMaxPlayers] = useState(2);
-    const [playerOptions, setPlayerOptions] = useState<number[]>([]);
-    const [isPasswordEnabled, setIsPasswordEnabled] = useState(false);
-    const [password, setPassword] = useState<string>("")
+  const { socket, isConnected } = useSocket();
+  const { userInfo } = useUser();
 
-    const { socket, isConnected } = useSocket();
-    const { userInfo } = useUser();
+  const userToken = useMemo(() => {
+    const v = (userInfo as any)?.userId;
+    return v !== undefined && v !== null ? String(v) : null;
+  }, [userInfo]);
 
-    useEffect(() => {
-        if (!socket) return;
+  const [roomName, setRoomName] = useState('');
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState('');
 
-        socket.emit("get_game_info", { game_name: gameName });
+  const isChess = String(slug).toLowerCase() === 'chess';
 
-        const handleGameInfo = (data: any) => {
-            if (data.player_range && Array.isArray(data.player_range)) {
-                setPlayerOptions(data.player_range);
-                if (data.player_range.length > 0) {
-                    setMaxPlayers(data.player_range[0]);
-                }
-            }
-        };
+  // chess-specific
+  const [timeChoice, setTimeChoice] = useState<TimeChoice>(10);
+  const [colorPref, setColorPref] = useState<ChessColorPref>('RANDOM');
 
-        const handleRoomCreated = (data: any) => {
-            router.push(`/games/${gameName}/${data.room_id}?autojoin=true`); 
-        };
+  // generic
+  const [playersChoice, setPlayersChoice] = useState<PlayersChoice>(2);
 
-        socket.on('game_info', handleGameInfo);
-        socket.on('room_created', handleRoomCreated);
-        socket.on('error', (err) => alert(err.msg)); 
+  const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
-        return () => {
-            socket.off('game_info', handleGameInfo);
-            socket.off('room_created', handleRoomCreated);
-            socket.off('error');
-        };
-    }, [socket, router, gameName]);
+  useEffect(() => {
+    if (!socket) return;
 
-    const createRoom = () => {
-        if (!socket) {
-            return;
-        }
+    const onRoomCreated = (payload: any) => {
+      try {
+        if (!payload?.room_id) return;
+        const game = String(payload?.game ?? '');
+        if (game.toLowerCase() !== String(slug).toLowerCase()) return;
 
-        const roomData = {
-            "game_name": gameName,
-            "room_name": roomName || `POKOJ GRACZA`,
-            "max_players": maxPlayers,
-            "password": isPasswordEnabled ? password : null,
-            "userToken": userInfo?.userId
-        };
+        setCreating(false);
+        router.push(`/games/${slug}/${payload.room_id}`);
+      } catch {
+        // ignore
+      }
+    };
 
-        socket.emit("create_room", roomData);
+    socket.on('room_created', onRoomCreated);
+    return () => {
+      socket.off('room_created', onRoomCreated);
+    };
+  }, [socket, router, slug]);
+
+  const createRoom = () => {
+    setError(null);
+
+    if (!socket || !isConnected) {
+      setError('BRAK POLACZENIA Z SERWEREM.');
+      return;
     }
 
-    return (
-        <div className='relative w-full min-h-screen flex items-center justify-center p-4 overflow-y-auto'>
-            <ReturnArrow href={`/lobby/${gameName}`} text="POKOJE"/>
+    const name = roomName.trim();
+    if (name.length < 2) {
+      setError('PODAJ NAZWE POKOJU.');
+      return;
+    }
 
-            <div className="z-10 flex flex-col gap-8 w-full max-w-md my-10">
+    setCreating(true);
 
-                <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold uppercase tracking-wide ml-1 text-gray-200">
-                        NAZWA POKOJU
-                    </label>
-                    <SearchInput text={roomName} setText={setRoomName} placeholder="Podaj nazwe pokoju..."/>
-                </div>
+    const payload: any = {
+      game_name: slug,
+      room_name: name,
+      userToken: userToken ?? undefined,
+    };
 
-                <div className="flex flex-col gap-3">
-                    <label className="text-sm font-bold uppercase tracking-wide ml-1 text-gray-200">
-                        ILOSC GRACZY
-                    </label>
-                    <div className="flex flex-row justify-evenly gap-3 flex-wrap">
-                        {playerOptions.map((num) => (
-                            <button
-                                key={num}
-                                onClick={() => setMaxPlayers(num)}
-                                className={`
-                                    rounded-xl font-bold text-xl p-4 min-w-[60px] transition-all duration-300 flex-1 cursor-pointer border
-                                    ${maxPlayers === num
-                                        ? "bg-[#2b1d15]/90 border-[#6b5645] text-amber-50 scale-105 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-                                        : "bg-[#000000]/40 border-[#353434] text-gray-400 hover:bg-[#000000]/60"
-                                    }
-                                `}
-                            >
-                                {num}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+    if (usePassword) {
+      payload.password = password || '';
+    }
 
-                <div className="flex flex-col gap-3">
-                    <button
-                        onClick={() => setIsPasswordEnabled(!isPasswordEnabled)}
-                        className={`
-                            w-full py-4 px-5 rounded-xl font-bold text-left transition-all duration-300 border flex items-center justify-between group
-                            ${isPasswordEnabled
-                                ? "bg-[#2b1d15]/90 border-[#6b5645] text-amber-50"
-                                : "bg-[#000000]/40 border-[#353434] text-gray-400 hover:bg-[#000000]/60"
-                            }
-                        `}
-                    >
-                        <span className="uppercase tracking-wide text-sm">HASLO DO POKOJU</span>
-                        
-                        <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-300 cursor-pointer
-                            ${isPasswordEnabled 
-                                ? 'border-[#6b5645] bg-[#4a3728]' 
-                                : 'border-[#353434] bg-transparent'
-                            }`}>
-                            {isPasswordEnabled && <span className="text-sm font-bold">✓</span>}
-                        </div>
-                    </button>
+    if (isChess) {
+      payload.max_players = 2;
+      payload.time_control_min = timeChoice;
+      payload.color_preference =
+        colorPref === 'WHITE' ? 'white' : colorPref === 'BLACK' ? 'black' : 'random';
+    } else {
+      payload.max_players = playersChoice;
+    }
 
-                    <div className={`transition-all duration-200 ease-in-out overflow-hidden ${isPasswordEnabled ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <SearchInput text={password} setText={setPassword} placeholder="Podaj haslo do pokoju..." />
-                    </div>
-                </div>
+    socket.emit('create_room', payload);
+  };
 
-                <button 
-                    className="relative group flex justify-center items-center w-full h-[60px] bg-transparent border-none cursor-pointer disabled:opacity-50" 
-                    onClick={createRoom}
-                    disabled={!socket}
-                >
-                    <img
-                        alt="Przycisk"
-                        src="/main/button.png"
-                        className="absolute object-fill w-full h-full -z-10 transition-all duration-300 group-hover:brightness-110 group-hover:scale-105 drop-shadow-xl rounded-lg"
-                    />
+  return (
+    <div className="relative w-screen h-screen overflow-hidden">
+      
+      <div className="absolute inset-0 bg-black/35" />
 
-                    <p className="z-10 text-amber-50 font-bold text-lg transition-all duration-300 group-hover:scale-105">
-                        {!socket ? "LACZENIE..." : "STWORZ POKOJ"}
-                    </p>
-                </button>
+      {/* Return */}
+      <div className="absolute left-4 top-4 z-20">
+        <ReturnArrow href={`/lobby/${slug}`} text="WYJDZ" />
+      </div>
 
+      <div className="relative z-10 w-full h-full flex items-center justify-center px-4">
+        <div className="w-full max-w-[820px]">
+          <div className="mx-auto w-full max-w-[560px] space-y-5">
+            {/* Room name */}
+            <div className="space-y-2">
+              <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">Nazwa pokoju</div>
+              <div className="relative">
+                <input
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                  placeholder="PODAJ NAZWE POKOJU..."
+                  className="w-full h-[46px] rounded-lg bg-black/45 border border-white/10 px-4 text-white placeholder:text-white/40 outline-none focus:border-white/25"
+                />
+              </div>
             </div>
-        </div>  
-    )
+
+            {/* Chess options */}
+            {isChess ? (
+              <>
+                <div className="space-y-2">
+                  <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">Czas</div>
+                  <div className="flex flex-wrap gap-3">
+                    <ButtonPng label="5 MIN" active={timeChoice === 5} onClick={() => setTimeChoice(5)} />
+                    <ButtonPng label="10 MIN" active={timeChoice === 10} onClick={() => setTimeChoice(10)} />
+                    <ButtonPng label="15 MIN" active={timeChoice === 15} onClick={() => setTimeChoice(15)} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">Gram</div>
+                  <div className="flex flex-wrap gap-3">
+                    <ButtonPng label="BIALE" active={colorPref === 'WHITE'} onClick={() => setColorPref('WHITE')} />
+                    <ButtonPng label="LOSOWO" active={colorPref === 'RANDOM'} onClick={() => setColorPref('RANDOM')} />
+                    <ButtonPng label="CZARNE" active={colorPref === 'BLACK'} onClick={() => setColorPref('BLACK')} />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">ILOSC GRACZY</div>
+                <div className="flex flex-wrap gap-3">
+                  <ButtonPng label="2" active={playersChoice === 2} onClick={() => setPlayersChoice(2)} />
+                  <ButtonPng label="3" active={playersChoice === 3} onClick={() => setPlayersChoice(3)} />
+                  <ButtonPng label="4" active={playersChoice === 4} onClick={() => setPlayersChoice(4)} />
+                </div>
+              </div>
+            )}
+
+            {/* Password */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">HASLO DO POKOJU</div>
+                <button
+                  type="button"
+                  onClick={() => setUsePassword((v) => !v)}
+                  className="w-6 h-6 rounded border border-white/20 bg-black/40 flex items-center justify-center"
+                  aria-label="Toggle password"
+                >
+                  {usePassword ? <div className="w-3 h-3 bg-amber-300/80 rounded-sm" /> : null}
+                </button>
+              </div>
+
+              {usePassword && (
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="WPISZ HASLO..."
+                  className="w-full h-[46px] rounded-lg bg-black/45 border border-white/10 px-4 text-white placeholder:text-white/40 outline-none focus:border-white/25"
+                />
+              )}
+            </div>
+
+            {/* Create */}
+            <div className="pt-2 flex items-center justify-center">
+              <ButtonPng label={creating ? 'TWORZENIE...' : 'STWORZ POKOJ'} onClick={createRoom} disabled={creating} />
+            </div>
+
+            {error && <div className="text-center text-red-200 font-semibold drop-shadow-md">{error}</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

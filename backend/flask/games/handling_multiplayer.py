@@ -2,10 +2,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, Optional, Type, List, Set, Any
 from uuid import uuid4
+
 from games.base import MultiplayerGame
+
 
 class GameType(Enum):
     Multiplayer = "Multiplayer"
+
 
 @dataclass
 class Room:
@@ -18,6 +21,14 @@ class Room:
     room_name: Optional[str] = None
     game_instance: Optional[MultiplayerGame] = None
     player_tokens: Set[str] = field(default_factory=set)
+
+    # --- chess / game settings ---
+    time_control_min: Optional[int] = None
+
+    # chess-specific host settings (ignored by other games)
+    host_user_token: Optional[str] = None  # stable host identity (token)
+    host_color_pref: Optional[str] = None  # 'white'|'black'|'random'
+    host_seat_index: Optional[int] = None  # 0=white, 1=black
 
     def to_dict(self):
         real_players_count = 0
@@ -34,6 +45,15 @@ class Room:
             "is_active": self.game_instance is not None,
             "host_id": self.host_id,
             "has_password": self.password is not None,
+
+            # time control (used by Chess UI)
+            "time_control_min": self.time_control_min,
+            "time_min": self.time_control_min,
+
+            # chess host fields (safe to include for other games)
+            "host_user_token": self.host_user_token,
+            "host_color_pref": self.host_color_pref,
+            "host_seat_index": self.host_seat_index,
         }
 
 
@@ -43,8 +63,18 @@ class Lobby:
     game_class: Type[MultiplayerGame]
     rooms: Dict[str, Room] = field(default_factory=dict)
 
-    def create_room(self, host_id: str, room_name: str, game_name: str, max_players: int,
-                    password: Optional[str] = None):
+    def create_room(
+        self,
+        host_id: str,
+        room_name: str,
+        game_name: str,
+        max_players: int,
+        password: Optional[str] = None,
+        time_control_min: Optional[int] = None,
+        host_user_token: Optional[str] = None,
+        host_color_pref: Optional[str] = None,
+        host_seat_index: Optional[int] = None,
+    ):
         room_uuid = str(uuid4())
         room = Room(
             uuid=room_uuid,
@@ -54,21 +84,29 @@ class Lobby:
             players=[host_id],
             maxPlayers=max_players,
             password=password,
-            player_tokens=set()
+            player_tokens=set(),
+            time_control_min=time_control_min,
+            host_user_token=host_user_token,
+            host_color_pref=host_color_pref,
+            host_seat_index=host_seat_index,
         )
         self.rooms[room_uuid] = room
         return room
 
     def join_room(self, room_uuid: str, player_id: str, user_token: str):
         room = self.rooms.get(room_uuid)
-
         if not room:
             return None
 
+        # allow re-join by the same token even if full
         if user_token in room.player_tokens:
             if player_id not in room.players:
                 room.players.append(player_id)
             return room
+
+        # basic capacity check (socket_manager has additional chess logic)
+        if len(room.player_tokens) >= int(room.maxPlayers or 0):
+            return None
 
         room.player_tokens.add(user_token)
         room.players.append(player_id)

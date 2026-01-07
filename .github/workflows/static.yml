@@ -22,12 +22,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # (opcjonalnie dla SPA – odświeżanie podstron ma działać)
       - name: SPA fallback (404 -> index.html)
         run: |
           cp frontend/index.html frontend/404.html
 
-      # Tu mówimy: publikuj to, co jest w katalogu frontend/
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:

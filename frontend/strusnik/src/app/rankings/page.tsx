@@ -29,11 +29,11 @@ export default function RankingsPage() {
                     const data = await res.json();
                     setRankingData(data);
                 } else {
-                    console.error("Błąd pobierania danych");
+                    console.error("BLAD POBIERANIA DANYCH");
                     setRankingData([]);
                 }
             } catch (error) {
-                console.error("Błąd sieci:", error);
+                console.error("BLAD SIECI:", error);
                 setRankingData([]);
             } finally {
                 setLoading(false);
@@ -45,13 +45,10 @@ export default function RankingsPage() {
 
     return (
         <div className='relative w-full h-screen flex flex-col items-center justify-center text-white overflow-hidden'>
-            <img
-                alt="Tło"
-                src="/main/background.png"
-                className="absolute w-full h-full object-cover -z-10"
-            />
-
-            <ReturnArrow href="/" />
+            
+        <div className="absolute w-full h-screen flex flex-col overflow-visible">
+            <ReturnArrow href="/singleplayer" text="WYJDZ" />
+        </div>
 
             <div className="z-10 w-[95%] md:w-full md:max-w-4xl lg:max-w-5xl p-2 md:p-6 flex flex-col gap-3 md:gap-6 h-[85vh] md:h-[80vh]">
                 

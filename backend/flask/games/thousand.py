@@ -44,14 +44,14 @@ class Thousand(MultiplayerGame):
 
     def sit_player(self, player_id: str, player_name: str, seat_index: int, user_token: str) -> Dict[str, Any]:
         if not (0 <= seat_index < 4):
-            return {"success": False, "msg": "Nieprawidłowe miejsce."}
+            return {"success": False, "msg": "NIEPRAWIDLOWE MIEJSCE."}
 
         if self.seats[seat_index] is not None:
-            return {"success": False, "msg": "Miejsce zajęte."}
+            return {"success": False, "msg": "MIEJSCE ZAJETE."}
 
         for s in self.seats:
             if s and s.get('userId') == user_token:
-                return {"success": False, "msg": "Już siedzisz przy stole."}
+                return {"success": False, "msg": "JUZ SIEDZISZ PRZY STOLE."}
 
         self.seats[seat_index] = {
             "socketId": player_id,
@@ -350,14 +350,14 @@ class Thousand(MultiplayerGame):
         card = move_data.get('card')
         target = move_data.get('target_idx')
         seat = self.seats[player_idx]
-        if card not in seat['hand']: return {"success": False, "msg": "Brak karty"}
+        if card not in seat['hand']: return {"success": False, "msg": "BRAK KARTY"}
         if target is None or not (0 <= target < 4) or not self.seats[target]: return {"success": False,
-                                                                                      "msg": "Błędny cel"}
-        if target == player_idx: return {"success": False, "msg": "Nie sobie"}
+                                                                                      "msg": "BLEDNY CEL"}
+        if target == player_idx: return {"success": False, "msg": "NIE SOBIE"}
         if len([s for s in self.seats if s]) == 4 and target == self.dealer_idx: return {"success": False,
-                                                                                         "msg": "Nie możesz dać karty pauzującemu."}
+                                                                                         "msg": "NIE MOZESZ DAC KARTY PAUZUJACEMU."}
         if target in self.game_state['stock_recipients']: return {"success": False,
-                                                                  "msg": "Ten gracz juz dostal karte."}
+                                                                  "msg": "TEN GRACZ JUZ DOSTAL KARTE."}
 
         seat['hand'].remove(card)
         seat['hand_count'] = len(seat['hand'])
