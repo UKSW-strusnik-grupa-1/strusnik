@@ -5,14 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1023b583-6fe1-42ba-a4ef-9c72f2ddc121" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/models/GameStats.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/routes/rankings.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/api/rankings/[game]/route.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/rankings/page.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sockets/events_stratego.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/games/thousand.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/thousand.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/games/stratego.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/stratego.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sockets/events_thousand.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/events_thousand.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sockets/socket_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/socket_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/returnArrow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/returnArrow.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../package-lock.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,21 +48,21 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "Merging main",
-    "last_opened_file_path": "C:/Users/mrigo/Desktop/strusnik-repo/backend/flask",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;Stratego&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/mrigo/Desktop/strusnik-repo/backend/flask&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\mrigo\Desktop\strusnik-repo\backend\flask\socket" />
@@ -119,7 +119,10 @@
       <workItem from="1766923615772" duration="8816000" />
       <workItem from="1767004472048" duration="11081000" />
       <workItem from="1767286586003" duration="3146000" />
-      <workItem from="1767377722550" duration="147000" />
+      <workItem from="1767377722550" duration="632000" />
+      <workItem from="1767454951506" duration="1083000" />
+      <workItem from="1767532212148" duration="5185000" />
+      <workItem from="1767803677876" duration="2397000" />
     </task>
     <servers />
   </component>

@@ -68,8 +68,9 @@ export default function CreateRoomPage() {
 
     return (
         <div className='relative w-full min-h-screen flex items-center justify-center p-4 overflow-y-auto'>
-            <ReturnArrow href={`/lobby/${gameName}`} text="POKOJE"/>
-
+            <div className="absolute w-full h-screen flex flex-col overflow-visible">
+                <ReturnArrow href={`/lobby/${gameName}`} text="POKOJE"/>
+            </div>
             <div className="z-10 flex flex-col gap-8 w-full max-w-md my-10">
 
                 <div className="flex flex-col gap-2">
