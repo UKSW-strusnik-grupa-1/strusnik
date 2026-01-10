@@ -5,18 +5,18 @@ import { useSocket } from "@/app/hooks/useSocket";
 import { useSearchParams, useRouter } from 'next/navigation';
 import ReturnArrow from '@/app/components/lobby/returnArrow';
 import WaitingRoom from './WaitingRoom';
-import Game from './Game';
 import PasswordModal from '../lobby/passwordModal';
 import { GameChat } from '@/app/components/chat/GameChat'; 
+import Game from './Game';
 
-interface ThousandBoardProps {
+interface StrategoBoardProps {
     gameName: string;
     roomId: string;
     myId: string;
     myName: string;
 }
 
-export default function ThousandBoard({ gameName, roomId, myId, myName }: ThousandBoardProps) {
+export default function StrategoBoard({ gameName, roomId, myId, myName }: StrategoBoardProps) {
     const { socket } = useSocket();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -24,10 +24,9 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     const autoJoinAttempted = useRef(false);
 
     const [gameStage, setGameStage] = useState<string>("waiting_for_players");
-    const [seats, setSeats] = useState<any[]>([null, null, null, null]);
-    const [myHand, setMyHand] = useState<string[]>([]);
+    const [seats, setSeats] = useState<any[]>([null, null]);
+    const [gameState, setGameState] = useState<any>(null);
     const [hostId, setHostId] = useState<string | null>(null);
-    const [maxPlayers, setMaxPlayers] = useState<number>(4);
 
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -59,13 +58,8 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
         }
 
         const handleJoinResponse = (response: any) => {
-
             if (response.success && response.room_data) {
                 setHostId(response.room_data.host_id);
-                if (response.room_data.max_players) {
-                    setMaxPlayers(response.room_data.max_players);
-                }
-                
                 setShowPasswordModal(false);
                 setConnectionError(null);
                 setErrorMessage("");
@@ -74,19 +68,16 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
                 
                 if (shouldAutoJoin && !autoJoinAttempted.current) {
                     autoJoinAttempted.current = true;
-
                     socket.emit('sit_down', { 
                         roomId, 
                         seatIndex: 0, 
                         playerName: myName 
                     });
-
-                    router.replace(`/games/${gameName}/${roomId}`, { scroll: false });
                 }
             } else {
                 if (response.error_code === 'PASSWORD_REQUIRED') {
                     setShowPasswordModal(true);
-                    if (response.message === 'BLEDNE HASLO') {
+                    if (response.message === 'Błędne hasło') {
                         setErrorMessage("Bledne haslo, sprobuj ponownie.");
                     }
                 } else {
@@ -99,7 +90,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
         const handleGameState = (state: any) => {
             if (state.stage) setGameStage(state.stage);
             if (state.seats) setSeats(state.seats);
-            if (state.my_hand) setMyHand(state.my_hand);
+            setGameState(state);
         };
 
         const handleError = (err: any) => {
@@ -136,12 +127,9 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     if (connectionError) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center p-4">
-                
                 <div className="bg-[#1a120b]/90 p-8 rounded-xl border-2 border-red-600/50 text-center shadow-2xl backdrop-blur-md max-w-md w-full">
                     <h2 className="text-2xl text-red-500 font-bold mb-4 uppercase tracking-widest">Blad polaczenia</h2>
                     <p className="text-gray-200 mb-6 font-medium">{connectionError}</p>
-                    <p className="text-gray-500 text-xs mb-6 font-mono">ID Pokoju: {roomId}</p>
-                    
                     <a href={`/lobby/${gameName}`} className="inline-block w-full bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg uppercase tracking-wide text-sm">
                         WROC DO LOBBY
                     </a>
@@ -151,9 +139,8 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     }
 
     return (
-        <div className='relative w-full h-screen flex flex-col p-1 overflow-hidden'>
-            
-            <div className="shrink-0 mb-1 pl-2" onClickCapture={handleExitSignal}>
+        <div className='relative w-full h-screen flex flex-col p-1 overflow-hidden text-amber-50'>
+            <div className="shrink-0 mb-1 pl-2 z-10" onClickCapture={handleExitSignal}>
                 <ReturnArrow href={`/lobby/${gameName}`} text="WYJDZ" />
             </div>
 
@@ -168,13 +155,13 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
             {gameStage === "waiting_for_players" ? (
                 <>
                     <WaitingRoom 
+                        maxPlayers={2}
                         socket={socket} 
                         roomId={roomId} 
                         seats={seats} 
                         myId={myId} 
                         myName={myName}
                         hostId={hostId}
-                        maxPlayers={maxPlayers}
                     />
                     <GameChat 
                         socket={socket}
@@ -190,9 +177,8 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
                     <Game 
                         socket={socket}
                         roomId={roomId}
-                        seats={seats}
+                        gameState={gameState}
                         myId={myId}
-                        initialHand={myHand}
                     />
                     <GameChat 
                         socket={socket}

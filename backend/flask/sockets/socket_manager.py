@@ -11,7 +11,12 @@ from games.thousand import Thousand
 from games.stratego import Stratego
 from games.chess import Chess
 
-from sockets.events_thousand import handle_thousand_move, get_thousand_state_for_player
+try:
+    from sockets.events_thousand import handle_thousand_move, get_thousand_state_for_player
+    from sockets.events_stratego import handle_stratego_move, broadcast_stratego_state
+except ImportError:
+    from events_thousand import handle_thousand_move, get_thousand_state_for_player
+    from events_stratego import handle_stratego_move, broadcast_stratego_state
 
 socket = SocketIO(cors_allowed_origins="*", async_mode='eventlet')
 
@@ -69,6 +74,12 @@ def broadcast_player_list():
 def get_game_state_safe(game, player_sid):
     if isinstance(game, Thousand):
         return get_thousand_state_for_player(game, player_sid)
+
+    if isinstance(game, Stratego):
+        if hasattr(game, 'get_player_view'):
+            return game.get_player_view(player_sid)
+        return game.get_state()
+
     return game.get_state()
 
 
@@ -157,7 +168,10 @@ def process_player_loss(sid):
             status_changed = game.set_player_connection_status(user_token, False, sid=sid)
 
             if status_changed:
-                emit('game_state_update', game.get_state(), to=room_id)
+                if isinstance(game, Stratego):
+                    broadcast_stratego_state(game, room_id)
+                else:
+                    emit('game_state_update', game.get_state(), to=room_id)
 
                 still_seated = False
                 if hasattr(game, 'seats'):
@@ -231,7 +245,10 @@ def handle_explicit_leave_room(data):
                                 game.set_player_connection_status(user_token, False, sid=sender_sid)
                         break
 
-            emit('game_state_update', game.get_state(), to=roomId)
+            if isinstance(game, Stratego):
+                broadcast_stratego_state(game, roomId)
+            else:
+                emit('game_state_update', game.get_state(), to=roomId)
 
         socketio_leave_room(roomId)
 
@@ -289,9 +306,14 @@ def handle_connect(auth):
 
                 emit('join_room_response', {'success': True, 'room_data': found_room.to_dict()})
 
+                # ZMIANA: Wysyłanie bezpiecznego stanu
                 state = get_game_state_safe(game, new_sid)
                 emit('game_state_update', state)
-                emit('game_state_update', game.get_state(), to=old_room_id)
+
+                if isinstance(game, Stratego):
+                    broadcast_stratego_state(game, old_room_id)
+                else:
+                    emit('game_state_update', game.get_state(), to=old_room_id)
 
                 if hasattr(game, 'get_player_hand_by_token'):
                     hand = game.get_player_hand_by_token(user_token)
@@ -434,6 +456,12 @@ def handle_join_game_room(data):
         del room_deletion_timers[room_id]
 
     lobby = get_lobby_case_insensitive(game_name)
+    if not lobby and room_id:
+        for l_name, l in manager.lobbies.items():
+            if room_id in l.rooms:
+                lobby = l
+                break
+
     if not lobby:
         emit('join_room_response', {'success': False, 'message': f'LOBBY GRY NIE ISTNIEJE ({game_name})'})
         return
@@ -564,7 +592,10 @@ def handle_sit_down(data):
                                                                                               'msg': 'Auth err'}
 
     if res['success']:
-        emit('game_state_update', game.get_state(), to=room_id)
+        if isinstance(game, Stratego):
+            broadcast_stratego_state(game, room_id)
+        else:
+            emit('game_state_update', game.get_state(), to=room_id)
     else:
         emit('error', {'msg': res['msg']}, to=player_id)
 
@@ -589,11 +620,15 @@ def handle_start_game(data):
 
     if res['success']:
         broadcast_player_list()
-        for seat in game.seats:
-            if seat is not None:
-                player_state = get_game_state_safe(game, seat['socketId'])
-                player_state['my_hand'] = seat['hand']
-                emit('game_state_update', player_state, to=seat['socketId'])
+
+        if isinstance(game, Stratego):
+            broadcast_stratego_state(game, room_id)
+        else:
+            for seat in game.seats:
+                if seat is not None:
+                    player_state = get_game_state_safe(game, seat['socketId'])
+                    player_state['my_hand'] = seat['hand']
+                    emit('game_state_update', player_state, to=seat['socketId'])
     else:
         emit('error', {'msg': res['msg']}, to=requesting_player_id)
 
@@ -640,6 +675,17 @@ def handle_player_move(data):
             if room_id not in room_deletion_timers:
                 t = eventlet.spawn_after(30, delete_room, room_id)
                 room_deletion_timers[room_id] = t
+
+    elif isinstance(game, Stratego):
+        handle_stratego_move(game, found_room, player_id, move_data)
+
+        if game.game_state.get('stage') == 'game_over':
+            broadcast_player_list()
+
+            if room_id not in room_deletion_timers:
+                t = eventlet.spawn_after(60, delete_room, room_id)
+                room_deletion_timers[room_id] = t
+
     else:
         res = game.handle_move(player_id, move_data)
         if res['success']:
