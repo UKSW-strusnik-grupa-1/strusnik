@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import SearchInput from "@/app/components/lobby/searchInput"; // Upewnij się, że ścieżka jest poprawna
+import SearchInput from "@/app/components/lobby/searchInput";
 
 interface PasswordModalProps {
   isOpen: boolean;

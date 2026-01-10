@@ -9,14 +9,21 @@ from flask_socketio import SocketIO, emit, join_room, leave_room as socketio_lea
 from games.handling_multiplayer import LobbyManager, GameType
 from games.thousand import Thousand
 from games.stratego import Stratego
+from games.chess import Chess
 
-from sockets.events_thousand import handle_thousand_move, get_thousand_state_for_player
+try:
+    from sockets.events_thousand import handle_thousand_move, get_thousand_state_for_player
+    from sockets.events_stratego import handle_stratego_move, broadcast_stratego_state
+except ImportError:
+    from events_thousand import handle_thousand_move, get_thousand_state_for_player
+    from events_stratego import handle_stratego_move, broadcast_stratego_state
 
 socket = SocketIO(cors_allowed_origins="*", async_mode='eventlet')
 
 manager = LobbyManager()
 manager.register_game("Tysiac", GameType.Multiplayer, Thousand)
 manager.register_game("Stratego", GameType.Multiplayer, Stratego)
+manager.register_game("Chess", GameType.Multiplayer, Chess)
 
 active_sessions = {}
 disconnect_timers = {}
@@ -67,6 +74,12 @@ def broadcast_player_list():
 def get_game_state_safe(game, player_sid):
     if isinstance(game, Thousand):
         return get_thousand_state_for_player(game, player_sid)
+
+    if isinstance(game, Stratego):
+        if hasattr(game, 'get_player_view'):
+            return game.get_player_view(player_sid)
+        return game.get_state()
+
     return game.get_state()
 
 
@@ -92,7 +105,7 @@ def delete_room(room_id):
             break
 
     if found_room and found_lobby:
-        socket.emit('error', {'msg': 'Pokój został zamknięty.'}, to=room_id)
+        socket.emit('error', {'msg': 'POKOJ ZOSTAL ZAMKNIETY.'}, to=room_id)
         socket.emit('game_ended_timeout', {'roomId': room_id}, to=room_id)
 
         for token in list(found_room.player_tokens):
@@ -155,7 +168,10 @@ def process_player_loss(sid):
             status_changed = game.set_player_connection_status(user_token, False, sid=sid)
 
             if status_changed:
-                emit('game_state_update', game.get_state(), to=room_id)
+                if isinstance(game, Stratego):
+                    broadcast_stratego_state(game, room_id)
+                else:
+                    emit('game_state_update', game.get_state(), to=room_id)
 
                 still_seated = False
                 if hasattr(game, 'seats'):
@@ -229,7 +245,10 @@ def handle_explicit_leave_room(data):
                                 game.set_player_connection_status(user_token, False, sid=sender_sid)
                         break
 
-            emit('game_state_update', game.get_state(), to=roomId)
+            if isinstance(game, Stratego):
+                broadcast_stratego_state(game, roomId)
+            else:
+                emit('game_state_update', game.get_state(), to=roomId)
 
         socketio_leave_room(roomId)
 
@@ -287,9 +306,14 @@ def handle_connect(auth):
 
                 emit('join_room_response', {'success': True, 'room_data': found_room.to_dict()})
 
+                # ZMIANA: Wysyłanie bezpiecznego stanu
                 state = get_game_state_safe(game, new_sid)
                 emit('game_state_update', state)
-                emit('game_state_update', game.get_state(), to=old_room_id)
+
+                if isinstance(game, Stratego):
+                    broadcast_stratego_state(game, old_room_id)
+                else:
+                    emit('game_state_update', game.get_state(), to=old_room_id)
 
                 if hasattr(game, 'get_player_hand_by_token'):
                     hand = game.get_player_hand_by_token(user_token)
@@ -318,28 +342,84 @@ def handle_create_room(data):
     game_name = data.get('game_name')
     room_name = data.get('room_name')
     max_players = data.get('max_players', 3)
+
+    if str(game_name).lower() == "chess":
+        max_players = 2
+
     password = data.get('password')
+
+    # chess options
+    time_control_min = None
+    host_color_pref = None
+    host_seat_index = None
+
+    if str(game_name).lower() == "chess":
+        # time control
+        t = data.get("time_control_min")
+        try:
+            t = int(t)
+        except Exception:
+            t = 10
+        if t not in (5, 10, 15):
+            t = 10
+        time_control_min = t
+
+        # host color preference: "white" | "black" | "random"
+        pref = (data.get("color_preference") or data.get("colorPref") or "random")
+        pref = str(pref).lower().strip()
+        if pref not in ("white", "black", "random"):
+            pref = "random"
+        host_color_pref = pref
+
+        # decide host seat index ONCE for the room (stable)
+        import random
+        if pref == "white":
+            host_seat_index = 0
+        elif pref == "black":
+            host_seat_index = 1
+        else:
+            host_seat_index = random.choice([0, 1])
+
     host_id = request.sid
     user_token = next((token for token, d in active_sessions.items() if d['sid'] == host_id), None)
-    if not user_token: user_token = data.get('userToken')
+    if not user_token:
+        user_token = data.get('userToken')
 
     lobby = get_lobby_case_insensitive(game_name)
-    if not lobby: return
+    if not lobby:
+        return
 
     try:
-        room = lobby.create_room(host_id, room_name, game_name, max_players, password)
+        room = lobby.create_room(
+            host_id,
+            room_name,
+            game_name,
+            max_players,
+            password,
+            time_control_min=time_control_min,
+            host_user_token=user_token,
+            host_color_pref=host_color_pref,
+            host_seat_index=host_seat_index,
+        )
+
         if user_token:
             room.player_tokens.add(user_token)
             if user_token in active_sessions:
                 active_sessions[user_token]['room_id'] = room.uuid
             else:
-                active_sessions[user_token] = {'sid': host_id, 'room_id': room.uuid, 'username': 'Host',
-                                               'connected': True}
+                active_sessions[user_token] = {
+                    'sid': host_id,
+                    'room_id': room.uuid,
+                    'username': 'Host',
+                    'connected': True
+                }
+
         join_room(room.uuid)
         emit('room_created', {'room_id': room.uuid, 'game': game_name}, to=host_id)
         broadcast_player_list()
+
     except Exception:
-        import traceback;
+        import traceback
         traceback.print_exc()
 
 
@@ -362,66 +442,128 @@ def handle_join_game_room(data):
                 active_sessions[user_token]['connected'] = True
 
     if not user_token:
-        emit('join_room_response', {'success': False, 'message': 'Błąd autoryzacji'})
+        emit('join_room_response', {'success': False, 'message': 'BLAD AUTORYZACJI'})
         return
 
+    # cancel disconnect timers
     if user_token in disconnect_timers:
         disconnect_timers[user_token].cancel()
         del disconnect_timers[user_token]
 
+    # cancel pending room deletion timer
     if room_id in room_deletion_timers:
         room_deletion_timers[room_id].cancel()
         del room_deletion_timers[room_id]
 
     lobby = get_lobby_case_insensitive(game_name)
+    if not lobby and room_id:
+        for l_name, l in manager.lobbies.items():
+            if room_id in l.rooms:
+                lobby = l
+                break
+
     if not lobby:
-        emit('join_room_response', {'success': False, 'message': f'Lobby gry nie istnieje ({game_name})'})
+        emit('join_room_response', {'success': False, 'message': f'LOBBY GRY NIE ISTNIEJE ({game_name})'})
         return
 
     found_room = lobby.rooms.get(room_id)
-
     if not found_room:
-        emit('join_room_response', {'success': False, 'message': 'Pokoj nie istnieje lub zostal usuniety.'})
+        emit('join_room_response', {'success': False, 'message': 'POKOJ NIE ISTNIEJE LUB ZOSTAL USUNIETY.'})
         return
 
     is_returning_player = user_token in found_room.player_tokens
 
+    # password gate (only for first time)
     if found_room.password and not is_returning_player:
         if not provided_password or provided_password != found_room.password:
             emit('join_room_response', {
                 'success': False,
-                'message': 'Wymagane hasło' if not provided_password else 'Błędne hasło',
+                'message': 'WYMAGANE HASLO' if not provided_password else 'BLEDNE HASLO',
                 'error_code': 'PASSWORD_REQUIRED'
             })
             return
 
     room = lobby.join_room(room_id, current_sid, user_token)
 
-    if room:
-        join_room(room_id)
-        active_sessions[user_token]['room_id'] = room_id
+    if not room:
+        emit('join_room_response', {'success': False, 'message': 'NIE UDALO SIE DOLACZYC DO POKOJU.'})
+        return
 
-        if room.game_instance:
-            game = room.game_instance
+    join_room(room_id)
+    active_sessions[user_token]['room_id'] = room_id
+    room.player_tokens.add(user_token)
 
-            if hasattr(game, 'set_player_connection_status'):
-                game.set_player_connection_status(user_token, True, current_sid)
-            elif hasattr(game, 'update_player_sid'):
-                game.update_player_sid(user_token, current_sid)
+    # ---- CHESS: auto-create + auto-seat + auto-start ----
+    if str(game_name).lower() == "chess":
+        # ensure game instance exists
+        if room.game_instance is None:
+            room.game_instance = lobby.game_class(room.players)
 
-            state = get_game_state_safe(game, current_sid)
-            emit('game_state_update', state, to=current_sid)
-            emit('game_state_update', game.get_state(), to=room_id)
+            # apply room time control if provided
+            if getattr(room, "time_control_min", None) and hasattr(room.game_instance, "set_time_control"):
+                try:
+                    room.game_instance.set_time_control(int(room.time_control_min))
+                except Exception:
+                    pass
 
-            if hasattr(game, 'get_player_hand_by_token'):
-                hand = game.get_player_hand_by_token(user_token)
-                if hand: emit('game_state_update', {'my_hand': hand}, to=current_sid)
+        game = room.game_instance
 
-        emit('join_room_response', {'success': True, 'room_data': room.to_dict()})
-        broadcast_player_list()
-    else:
-        emit('join_room_response', {'success': False, 'message': 'Nie udało się dołączyć'})
+        try:
+            from games.chess import Chess as _Chess
+        except Exception:
+            _Chess = None
 
+        if _Chess is not None and isinstance(game, _Chess):
+            # player display name
+            player_name = active_sessions.get(user_token, {}).get("username") or "Player"
+
+            # check if already seated
+            already_idx = None
+            for i, s in enumerate(getattr(game, "seats", []) or []):
+                if s and str(s.get("userId")) == str(user_token):
+                    already_idx = i
+                    break
+
+            if already_idx is None:
+                # seat selection based on room host seat
+                host_token = getattr(room, "host_user_token", None)
+                host_idx = getattr(room, "host_seat_index", None)
+                if host_idx not in (0, 1):
+                    host_idx = 0
+
+                if host_token and str(user_token) == str(host_token):
+                    seat_index = int(host_idx)
+                else:
+                    seat_index = 1 - int(host_idx)
+
+                res = game.sit_player(current_sid, player_name, seat_index, user_token)
+                if not res.get("success"):
+                    # fallback: other seat
+                    alt = 1 - seat_index
+                    game.sit_player(current_sid, player_name, alt, user_token)
+            else:
+                # reconnect update (optional)
+                if hasattr(game, "set_player_connection_status"):
+                    game.set_player_connection_status(user_token, True, current_sid)
+
+            # auto-start when both seats filled
+            if game.game_state.get("stage") == "waiting_for_players":
+                if len(game.seats) >= 2 and game.seats[0] is not None and game.seats[1] is not None:
+                    game.start_game()
+
+    # respond to join + sync state
+    emit('join_room_response', {'success': True, 'room_data': room.to_dict()})
+
+    if room.game_instance:
+        game = room.game_instance
+        state = get_game_state_safe(game, current_sid)
+
+        # send to the joining player
+        emit('game_state_update', state, to=current_sid)
+        # broadcast full state to room
+        emit('game_state_update', game.get_state(), to=room_id)
+
+    broadcast_player_list()
 
 @socket.on('sit_down')
 def handle_sit_down(data):
@@ -450,7 +592,10 @@ def handle_sit_down(data):
                                                                                               'msg': 'Auth err'}
 
     if res['success']:
-        emit('game_state_update', game.get_state(), to=room_id)
+        if isinstance(game, Stratego):
+            broadcast_stratego_state(game, room_id)
+        else:
+            emit('game_state_update', game.get_state(), to=room_id)
     else:
         emit('error', {'msg': res['msg']}, to=player_id)
 
@@ -469,15 +614,21 @@ def handle_start_game(data):
     if not found_room or found_room.host_id != requesting_player_id or not found_room.game_instance: return
 
     game = found_room.game_instance
+    if isinstance(game, Chess) and getattr(found_room, "time_control_min", None):
+        game.set_time_control(found_room.time_control_min)
     res = game.start_game()
 
     if res['success']:
         broadcast_player_list()
-        for seat in game.seats:
-            if seat is not None:
-                player_state = get_game_state_safe(game, seat['socketId'])
-                player_state['my_hand'] = seat['hand']
-                emit('game_state_update', player_state, to=seat['socketId'])
+
+        if isinstance(game, Stratego):
+            broadcast_stratego_state(game, room_id)
+        else:
+            for seat in game.seats:
+                if seat is not None:
+                    player_state = get_game_state_safe(game, seat['socketId'])
+                    player_state['my_hand'] = seat['hand']
+                    emit('game_state_update', player_state, to=seat['socketId'])
     else:
         emit('error', {'msg': res['msg']}, to=requesting_player_id)
 
@@ -524,6 +675,17 @@ def handle_player_move(data):
             if room_id not in room_deletion_timers:
                 t = eventlet.spawn_after(30, delete_room, room_id)
                 room_deletion_timers[room_id] = t
+
+    elif isinstance(game, Stratego):
+        handle_stratego_move(game, found_room, player_id, move_data)
+
+        if game.game_state.get('stage') == 'game_over':
+            broadcast_player_list()
+
+            if room_id not in room_deletion_timers:
+                t = eventlet.spawn_after(60, delete_room, room_id)
+                room_deletion_timers[room_id] = t
+
     else:
         res = game.handle_move(player_id, move_data)
         if res['success']:

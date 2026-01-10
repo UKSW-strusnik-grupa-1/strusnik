@@ -21,3 +21,4 @@ greenlet~=3.3.0
 pycparser~=2.23
 flask-socketio
 eventlet
+python-chess==1.999

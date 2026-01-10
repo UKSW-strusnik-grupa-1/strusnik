@@ -49,7 +49,6 @@ const BigDisconnectOverlay = ({ timestamp, name }: { timestamp: number, name: st
 
     return (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 border-4 border-red-600/80 rounded-lg backdrop-blur-md shadow-[0_0_30px_rgba(220,38,38,0.5)] p-2">
-            <div className="text-red-500 mb-1">⚠️</div>
             <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mb-1">Rozlaczony</p>
             <p className="text-white text-3xl font-mono font-bold leading-none mb-1">{timeLeft}s</p>
             <p className="text-gray-400 text-[10px] truncate max-w-full">{name}</p>
@@ -57,7 +56,7 @@ const BigDisconnectOverlay = ({ timestamp, name }: { timestamp: number, name: st
     );
 };
 
-export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, initialHand }: ActiveGameProps) {
+export default function Game({ socket, roomId, seats: initialSeats, myId, initialHand }: ActiveGameProps) {
     const router = useRouter(); 
     
     const [gameSeats, setGameSeats] = useState<(Player | null)[]>(initialSeats);
@@ -227,7 +226,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
         });
 
         socket.on('error', (data: any) => {
-            console.error("Błąd gry:", data);
+            console.error("BLAD GRY:", data);
             
             if (pendingCardRef.current) {
                 const cardToRestore = pendingCardRef.current;
@@ -243,7 +242,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
         });
 
         socket.on('game_ended_timeout', () => {
-             alert("GRA ZAKONCZONA - GRACZ NIE POWROCIL");
+             alert("Gra zakończona - gracz nie powrócił.");
              router.push(`/lobby/Tysiac`);
         });
 
@@ -342,8 +341,6 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
             let checkIdx = (myIdx + 1) % 4;
             
             for (let i = 0; i < 3; i++) {
-                // POPRAWKA: Wykluczamy dealera TYLKO jeśli gra 4 graczy.
-                // W grze 3-osobowej dealer (który nie pauzuje) jest normalnym przeciwnikiem, któremu można oddać kartę.
                 const isPausingDealer = activePlayersCount === 4 && checkIdx === dealerIdx;
                 
                 if (gameSeats[checkIdx] && !isPausingDealer) {
@@ -478,7 +475,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-700">
                     <div className="flex flex-col items-center bg-[#2b1d15] border-2 border-amber-500 rounded-xl p-8 shadow-[0_0_50px_rgba(245,158,11,0.5)]">
                         <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-linear-to-r from-amber-300 to-yellow-600 mb-2 uppercase tracking-widest">
-                            KONIEC GRY!
+                            Koniec Gry!
                         </h1>
                         <div className="text-6xl mb-4">👑</div>
                         <p className="text-gray-300 text-lg mb-1">Zwyciezca:</p>
@@ -490,7 +487,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
                             onClick={handleExit}
                             className="cursor-pointer bg-green-700 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105"
                         >
-                            WROC DO LOBBY
+                            Wroc do Lobby
                         </button>
                     </div>
                 </div>
@@ -600,7 +597,7 @@ export default function ActiveGame({ socket, roomId, seats: initialSeats, myId, 
 
                 <div className="w-[140px] md:w-[220px] lg:w-[300px] shrink-0 h-full bg-[#000000]/40 border border-[#353434] rounded-xl p-2 flex flex-col gap-2 backdrop-blur-sm overflow-hidden">
                     <div className="bg-[#2b1d15]/60 rounded p-1.5 border border-[#4a3728]">
-                        <p className="text-gray-300 text-[10px] lg:text-sm">Status: <span className={isMyTurn ? "text-green-500 font-bold" : "text-gray-400"}>{amIPausing ? "Obserwujesz" : (isMyTurn ? "Twój ruch!" : "Czekaj...")}</span></p>
+                        <p className="text-gray-300 text-[10px] lg:text-sm">Status: <span className={isMyTurn ? "text-green-500 font-bold" : "text-gray-400"}>{amIPausing ? "Obserwujesz" : (isMyTurn ? "TWOJ RUCH!" : "Czekaj...")}</span></p>
                     </div>
                     <div className="flex flex-col gap-2 mt-2 flex-1">
                         {gameStage === 'bidding' && !amIPausing && (

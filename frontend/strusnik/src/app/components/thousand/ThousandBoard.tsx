@@ -5,7 +5,7 @@ import { useSocket } from "@/app/hooks/useSocket";
 import { useSearchParams, useRouter } from 'next/navigation';
 import ReturnArrow from '@/app/components/lobby/returnArrow';
 import WaitingRoom from './WaitingRoom';
-import ActiveGame from './ActiveGame';
+import Game from './Game';
 import PasswordModal from '../lobby/passwordModal';
 import { GameChat } from '@/app/components/chat/GameChat'; 
 
@@ -86,7 +86,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
             } else {
                 if (response.error_code === 'PASSWORD_REQUIRED') {
                     setShowPasswordModal(true);
-                    if (response.message === 'Błędne hasło') {
+                    if (response.message === 'BLEDNE HASLO') {
                         setErrorMessage("Bledne haslo, sprobuj ponownie.");
                     }
                 } else {
@@ -187,7 +187,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
                 </>
             ) : (
                 <>
-                    <ActiveGame 
+                    <Game 
                         socket={socket}
                         roomId={roomId}
                         seats={seats}

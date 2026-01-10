@@ -42,7 +42,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
 
     const handleInvite = (targetUserId: string) => {
         if (!socket) return;
-        console.log("Wysyłam zaproszenie do:", targetUserId);
+        console.log("WYSYLAM ZAPROSZENIE DO:", targetUserId);
         socket.emit('send_invite', { targetUserId });
 
         setInvitedPlayers(prev => new Set(prev).add(targetUserId));
