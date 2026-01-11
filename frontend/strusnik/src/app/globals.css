@@ -8,6 +8,20 @@
   --muted: #a6b0c4;
   --amber: #ff8a3d;
   --amber-strong: #ff6a00;
+
+  --bg-image: url("/main/background.png");
+  --bg-position: right bottom;
+}
+
+html[data-theme="light"] {
+  --background: #f6f7fb;
+  --foreground: #111827;
+
+  --text: #111827;
+  --muted: #4b5563;
+
+  --bg-image: url("/main/background_light.png");
+  --bg-position: right 0 bottom -110px;
 }
 
 @theme inline {
@@ -18,9 +32,8 @@
   --font-mono: var(--font-perciles);
 }
 
-
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #000000;
     --foreground: #e9ecf3;
   }
@@ -39,9 +52,13 @@ body {
   box-sizing: border-box;
 }
 
+/* Stabilne tło bez warstw fixed/pseudo-elementów */
 body {
-  background: url("/main/background.png") right bottom / cover no-repeat;
-  color: var(--text);
+  background-color: var(--background);
+  background-image: var(--bg-image);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: var(--bg-position);
 }
 
 .center {
@@ -84,6 +101,11 @@ body {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
+html[data-theme="light"] .menu-button-label {
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
 .menu-logout {
   margin-top: 10px;
   font-size: 12px;
@@ -92,6 +114,10 @@ body {
   text-underline-offset: 3px;
   cursor: pointer;
   letter-spacing: 0.05em;
+}
+
+html[data-theme="light"] .menu-logout {
+  color: #1f2933;
 }
 
 @media (max-width: 1200px) {
@@ -226,4 +252,9 @@ input:-webkit-autofill:active {
 .top-right-btn:focus-visible {
   outline: 2px solid rgba(255, 138, 61, 0.75);
   outline-offset: 2px;
+}
+
+/* jeśli to ma być zawsze białe */
+.top-right-btn {
+  color: #ffffff !important;
 }

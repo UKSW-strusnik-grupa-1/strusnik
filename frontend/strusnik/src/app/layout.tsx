@@ -19,7 +19,29 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" className={Perciles.variable}>
+    <html
+      lang="pl"
+      className={Perciles.variable}
+      data-theme="dark"
+      suppressHydrationWarning
+    >
+      <head>
+        {/* ustawia motyw z localStorage ZANIM strona się wyrenderuje */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(() => {
+  try {
+    const saved = localStorage.getItem("theme");
+    const theme = (saved === "light" || saved === "dark") ? saved : "dark";
+    document.documentElement.dataset.theme = theme;
+  } catch (e) {}
+})();
+            `.trim(),
+          }}
+        />
+      </head>
+
       <body className="antialiased font-sans">
         <LangProvider>
           <UserProvider>

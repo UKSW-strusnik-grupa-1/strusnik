@@ -1,35 +1,51 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLang } from "../lang";
-import { t } from "../i18n"; // ← dopasuj ścieżkę jeśli trzeba
+import { t } from "../i18n";
+
+type Theme = "dark" | "light";
 
 export default function TopRightToggles() {
   const { lang, setLang } = useLang();
-  const [themeStep, setThemeStep] = useState<1 | 2>(1);
+  const [theme, setTheme] = useState<Theme>("dark");
+
+  // wczytaj motyw z localStorage po stronie klienta
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      const initial: Theme =
+        saved === "light" || saved === "dark" ? saved : "dark";
+
+      setTheme(initial);
+      document.documentElement.dataset.theme = initial;
+    } catch (e) {
+      // nic
+    }
+  }, []);
 
   const toggleLang = () => setLang(lang === "pl" ? "en" : "pl");
-  const toggleThemePlaceholder = () =>
-    setThemeStep((v) => (v === 1 ? 2 : 1));
+
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+
+    try {
+      localStorage.setItem("theme", next);
+    } catch (e) {
+      // nic
+    }
+  };
 
   return (
     <div className="top-right-controls" role="group">
-      <button
-        type="button"
-        className="top-right-btn"
-        onClick={toggleLang}
-      >
+      <button type="button" className="top-right-btn" onClick={toggleLang}>
         {lang === "pl" ? "PL" : "EN"}
       </button>
 
-      <button
-        type="button"
-        className="top-right-btn"
-        onClick={toggleThemePlaceholder}
-      >
-        {themeStep === 1
-          ? t(lang, "theme.dark")
-          : t(lang, "theme.light")}
+      <button type="button" className="top-right-btn" onClick={toggleTheme}>
+        {theme === "dark" ? t(lang, "theme.dark") : t(lang, "theme.light")}
       </button>
     </div>
   );
