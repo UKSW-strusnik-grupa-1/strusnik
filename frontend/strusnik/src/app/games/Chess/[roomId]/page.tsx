@@ -2,15 +2,14 @@
 
 import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-
 import ReturnArrow from '@/app/components/lobby/returnArrow';
 import PasswordModal from '@/app/components/lobby/passwordModal';
-
 import { useSocket } from '@/app/hooks/useSocket';
 import { useUser } from '@/app/hooks/useUser';
-
 import ChessBoard from '@/app/components/chess/ChessBoard';
 import { useChess } from '@/app/hooks/useChess';
+import { useLang } from "@/app/lang";
+import { t } from "@/app/i18n";
 
 function formatClock(ms: number | null | undefined) {
   if (ms === null || ms === undefined) return '00:00';
@@ -34,32 +33,34 @@ export default function ChessRoomPage() {
   const myUserId = userInfo?.userId !== undefined && userInfo?.userId !== null ? String(userInfo.userId) : null;
   const myUsername = userInfo?.nickname ?? null;
 
+  const { lang } = useLang();
+
   const chess = useChess({
     socket,
     roomId,
     userId: myUserId,
     username: myUsername,
-    onKickedToLobby: () => router.push('/lobby/Chess'),
+    onKickedToLobby: () => router.push('/lobby/chess'),
   });
 
   const topLeftLabel = useMemo(() => {
-    return `PRZECIWNIK: ${formatClock(chess.opponentTimeMs)}`;
+    return `${t(lang, "chess.enemy")}: ${formatClock(chess.opponentTimeMs)}`;
   }, [chess.opponentTimeMs]);
 
   const topRightLabel = useMemo(() => {
-    return `TY: ${formatClock(chess.myTimeMs)}`;
+    return `${t(lang, "chess.you")}: ${formatClock(chess.myTimeMs)}`;
   }, [chess.myTimeMs]);
 
   const bottomLeftLabel = useMemo(() => {
-    if (chess.drawUiState === 'offered_to_me') return 'ZAAKCEPTUJ REMIS';
-    if (chess.drawUiState === 'offered_by_me') return 'REMIS ZAPROPONOWANY';
-    return 'ZAPROPONUJ REMIS';
+    if (chess.drawUiState === 'offered_to_me') return t(lang, "chess.accept");
+    if (chess.drawUiState === 'offered_by_me') return t(lang, "chess.proposed");
+    return t(lang, "chess.draw");
   }, [chess.drawUiState]);
 
   const bottomRightLabel = useMemo(() => {
-    if (chess.drawUiState === 'offered_to_me') return 'ODRZUC REMIS';
-    if (chess.drawUiState === 'offered_by_me') return 'PODDAJ SIE';
-    return 'PODDAJ SIE';
+    if (chess.drawUiState === 'offered_to_me') return t(lang, "chess.decline");
+    if (chess.drawUiState === 'offered_by_me') return t(lang, "chess.surrender");
+    return t(lang, "chess.surrender");
   }, [chess.drawUiState]);
 
   const handleBottomLeft = () => {
@@ -75,7 +76,7 @@ export default function ChessRoomPage() {
   };
 
   const showToast = (!socket || !isConnected) || !!chess.joinError;
-  const toastText = !socket || !isConnected ? 'LACZENIE Z SERWEREM...' : chess.joinError;
+  const toastText = !socket || !isConnected ? t(lang, "chess.loading") : chess.joinError;
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden flex items-center justify-center">
@@ -83,12 +84,12 @@ export default function ChessRoomPage() {
       <div className="absolute inset-0 bg-black/35" />
 
       <div className="absolute w-full h-screen flex flex-col overflow-visible">
-        <ReturnArrow href="/singleplayer" text="WYJDZ" />
+        <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} />
       </div>
 
       <PasswordModal
         isOpen={chess.passwordModalOpen}
-        gameName="Chess"
+        gameName="chess"
         errorMessage={chess.passwordModalMessage}
         onSubmit={(pwd) => chess.submitJoinPassword(pwd)}
         onClose={() => chess.closePasswordModal()}
@@ -151,7 +152,7 @@ export default function ChessRoomPage() {
                 </h2>
                 <p className="mt-2 text-center text-gray-200">{chess.endSubtitle}</p>
                 <div className="mt-5 flex items-center justify-center gap-3">
-                  <button onClick={() => router.push('/lobby/Chess')} className="relative w-[260px] h-[64px] group">
+                  <button onClick={() => router.push('/lobby/chess')} className="relative w-[260px] h-[64px] group">
                     <img
                       src="/main/button.png"
                       alt=""
@@ -159,7 +160,7 @@ export default function ChessRoomPage() {
                       draggable={false}
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-amber-50 font-extrabold uppercase tracking-wide drop-shadow-md">WROC DO POKOI</p>
+                      <p className="text-amber-50 font-extrabold uppercase tracking-wide drop-shadow-md">{t(lang, "chess.back")}</p>
                     </div>
                   </button>
                 </div>

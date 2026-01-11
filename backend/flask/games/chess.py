@@ -20,7 +20,6 @@ def _other(color: Color) -> Color:
 
 
 def _turn_to_color(turn_bool: bool) -> Color:
-    # python-chess: True = White to move
     return "w" if turn_bool else "b"
 
 
@@ -28,13 +27,7 @@ def _color_to_turn(color: Color) -> bool:
     return True if color == "w" else False
 
 
-class Chess(MultiplayerGame):
-    """
-    Multiplayer Chess game (2 players).
-    - seatIndex 0 = White, 1 = Black
-    - Uses python-chess for legality + end conditions
-    - Time control (5/10/15) stored in self.time_control_min
-    """
+class chess(MultiplayerGame):
 
     player_range = [2]
 
@@ -43,7 +36,7 @@ class Chess(MultiplayerGame):
         self.seats: List[Optional[Dict[str, Any]]] = [None, None]
 
         self.board: pychess.Board = pychess.Board()
-        self.time_control_min: int = 10  # default; will be overridden by room config
+        self.time_control_min: int = 10
         self.white_ms: Optional[int] = None
         self.black_ms: Optional[int] = None
         self._last_clock_ts: Optional[float] = None
@@ -54,10 +47,8 @@ class Chess(MultiplayerGame):
 
         self.game_state = self.init_board()
 
-    # ---------- lifecycle / config ----------
-
     def set_time_control(self, minutes: int) -> None:
-        """Call this right after creating game instance (before start_game)."""
+        
         try:
             m = int(minutes)
         except Exception:
@@ -124,8 +115,6 @@ class Chess(MultiplayerGame):
 
         return {"success": True}
 
-    # ---------- seating / connection ----------
-
     def sit_player(self, player_id: str, player_name: str, seat_index: int, user_token: str) -> Dict[str, Any]:
         if seat_index not in (0, 1):
             return {"success": False, "msg": "NIEPRAWIDLOWE MIEJSCE."}
@@ -136,7 +125,6 @@ class Chess(MultiplayerGame):
         if self.seats[seat_index] is not None:
             return {"success": False, "msg": "MIEJSCE ZAJETE."}
 
-        # prevent same user in both seats
         for s in self.seats:
             if s and s.get("userId") == user_token:
                 return {"success": False, "msg": "JUZ SIEDZISZ PRZY STOLE."}
@@ -147,7 +135,6 @@ class Chess(MultiplayerGame):
             "name": player_name,
             "connected": True,
             "disconnect_timestamp": None,
-            # IMPORTANT: keep 'hand' so socket_manager.py doesn't crash (it assumes seat['hand'])
             "hand": [],
         }
 
@@ -155,16 +142,10 @@ class Chess(MultiplayerGame):
         return {"success": True, "msg": "USIADLES."}
 
     def set_player_connection_status(self, user_token: str, is_connected: bool, sid: str = None):
-        """
-        Used by socket_manager reconnect/disconnect.
-        Behaves like Thousand:
-        - if disconnect while waiting_for_players -> remove seat
-        - if disconnect while active -> mark connected False and timestamp
-        - if reconnect -> mark connected True, update socketId
-        """
+
         for i, seat in enumerate(self.seats):
             if seat and seat.get("userId") == user_token:
-                # if disconnect comes from old sid, ignore
+                
                 if not is_connected and sid and seat.get("socketId") != sid:
                     return False
 
@@ -185,9 +166,7 @@ class Chess(MultiplayerGame):
                         seat["socketId"] = sid
                 return True
         return False
-
-    # ---------- core helpers ----------
-
+    
     def _seat_by_sid(self, sid: str) -> Tuple[Optional[int], Optional[Dict[str, Any]]]:
         for i, s in enumerate(self.seats):
             if s and s.get("socketId") == sid:
@@ -204,7 +183,7 @@ class Chess(MultiplayerGame):
         return self.game_state.get("stage") == "active" and not self.game_state.get("ended", False)
 
     def _update_clock(self) -> None:
-        """Subtract elapsed time from side to move. If timeout occurs -> end game."""
+        
         if not self._ensure_active():
             return
         if self.white_ms is None or self.black_ms is None:
@@ -228,7 +207,7 @@ class Chess(MultiplayerGame):
                 self._end_game(status="loss", reason="timeout", winner="w")
 
     def _sync_state_fields(self) -> None:
-        """Bring game_state in sync with internal board/clocks."""
+        
         self.game_state["seats"] = self.seats
         self.game_state["fen"] = self.board.fen()
         self.game_state["turn"] = _turn_to_color(self.board.turn)
@@ -239,7 +218,7 @@ class Chess(MultiplayerGame):
         self.game_state["lastClientMoveId"] = self.last_client_move_id
 
     def _record_win(self, winner_color: Color) -> None:
-        """Increment wins in GameStats for winner (by username), game_name='Chess'."""
+        
         try:
             winner_seat = self.seats[0] if winner_color == "w" else self.seats[1]
             if not winner_seat:
@@ -254,9 +233,9 @@ class Chess(MultiplayerGame):
                     if not user:
                         return
 
-                    stat = GameStats.query.filter_by(user_id=user.id, game_name="Chess").first()
+                    stat = GameStats.query.filter_by(user_id=user.id, game_name="chess").first()
                     if not stat:
-                        stat = GameStats(user_id=user.id, game_name="Chess", wins=1)
+                        stat = GameStats(user_id=user.id, game_name="chess", wins=1)
                         db.session.add(stat)
                     else:
                         stat.wins += 1
@@ -277,14 +256,13 @@ class Chess(MultiplayerGame):
         }
         self.game_state["msg"] = ""
 
-        # stop clock updates
         self._last_clock_ts = None
 
         if winner in ("w", "b") and reason in ("checkmate", "timeout", "resign"):
             self._record_win(winner)
 
     def _check_end_conditions_after_move(self) -> None:
-        # Called after a legal move has been pushed
+        
         if self.board.is_checkmate():
             loser = _turn_to_color(self.board.turn)
             winner = _other(loser)
@@ -299,17 +277,8 @@ class Chess(MultiplayerGame):
             self._end_game(status="draw", reason="insufficient_material", winner=None)
             return
 
-    # ---------- moves / actions ----------
-
     def handle_move(self, player_id: str, move_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        move_data supports:
-        - {"type":"move","from":"e2","to":"e4","promotion":"q"?,"clientMoveId":"..."}
-        - {"type":"draw_offer"}
-        - {"type":"draw_accept"}
-        - {"type":"draw_decline"}
-        - {"type":"resign"}
-        """
+
         if not move_data or not isinstance(move_data, dict):
             return {"success": False, "msg": "NIEPRAWIDLOWY RUCH."}
 
@@ -325,15 +294,12 @@ class Chess(MultiplayerGame):
         if player_color is None:
             return {"success": False, "msg": "NIE SIEDZISZ PRZY STOLE."}
 
-        # update clock before processing any action that consumes time (including move)
         self._update_clock()
-
-        # If timeout ended game during _update_clock()
+        
         if self.game_state.get("ended"):
             self._sync_state_fields()
             return {"success": True, "msg": "OK"}
 
-        # Handle resign
         if mtype == "resign":
             self.draw_offer_by = None
             self.last_client_move_id = None
@@ -341,16 +307,15 @@ class Chess(MultiplayerGame):
             self._sync_state_fields()
             return {"success": True, "msg": "OK"}
 
-        # Draw offer / accept / decline
         if mtype == "draw_offer":
-            # allow only if no active offer
+            
             if self.draw_offer_by is None:
                 self.draw_offer_by = player_color
             self._sync_state_fields()
             return {"success": True, "msg": "OK"}
 
         if mtype == "draw_decline":
-            # only opponent can decline
+            
             if self.draw_offer_by is None:
                 self._sync_state_fields()
                 return {"success": True, "msg": "OK"}
@@ -371,11 +336,9 @@ class Chess(MultiplayerGame):
             self._sync_state_fields()
             return {"success": True, "msg": "OK"}
 
-        # Handle chess move
         if mtype != "move":
             return {"success": False, "msg": "NIEZNANY TYP RUCHU."}
 
-        # must be player's turn
         to_move = _turn_to_color(self.board.turn)
         if to_move != player_color:
             return {"success": False, "msg": "NIE TWOJA TURA."}
@@ -394,7 +357,6 @@ class Chess(MultiplayerGame):
             if p in ("q", "r", "b", "n"):
                 prom = p
 
-        # if pawn move to last rank and no promotion -> default queen
         try:
             piece = self.board.piece_at(pychess.parse_square(frm))
             if piece and piece.piece_type == pychess.PAWN:
@@ -415,15 +377,12 @@ class Chess(MultiplayerGame):
         if move not in self.board.legal_moves:
             return {"success": False, "msg": "NIELEGALNY RUCH."}
 
-        # clear any draw offer on a real move
         self.draw_offer_by = None
 
         self.board.push(move)
 
-        # after making a move, reset clock timestamp for new side
         self._last_clock_ts = _now()
 
-        # save last client move id for optional ack on frontend
         self.last_client_move_id = str(client_id) if client_id is not None else None
 
         self._check_end_conditions_after_move()
@@ -431,10 +390,8 @@ class Chess(MultiplayerGame):
         self._sync_state_fields()
         return {"success": True, "msg": "OK"}
 
-    # ---------- state ----------
-
     def get_state(self) -> Dict[str, Any]:
-        # Keep clocks moving (authoritative) when someone asks for state
+        
         self._update_clock()
         self._sync_state_fields()
         return self.game_state

@@ -3,6 +3,8 @@
 import ReturnArrow from "@/app/components/lobby/returnArrow";
 import { useSnake } from "@/app/hooks/useSnake";
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { useLang } from "@/app/lang";
+import { t } from "@/app/i18n";
 
 type BoardMetrics = {
   cell: number;
@@ -75,8 +77,7 @@ const vecToDir = (dx: number, dy: number): Dir => {
   return "UP";
 };
 
-const isPair = (a: Dir, b: Dir, p: Dir, q: Dir) =>
-  (a === p && b === q) || (a === q && b === p);
+const isPair = (a: Dir, b: Dir, p: Dir, q: Dir) => (a === p && b === q) || (a === q && b === p);
 
 const degFromFacingRight = (dir: Dir) => {
   if (dir === "RIGHT") return 0;
@@ -99,83 +100,66 @@ const SNAKE_SPRITES = {
   tail: "/snake/tail.png",
 } as const;
 
-
 export default function SnakePage() {
-  const {
-    BOARD_SIZE,
-    snake,
-    food,
-    gameStatus,
-    score,
-    isSubmittingScore,
-    startGame,
-    resetGame,
-  } = useSnake();
+  const { BOARD_SIZE, snake, food, gameStatus, score, isSubmittingScore, startGame, resetGame } = useSnake();
+  const { lang } = useLang();
 
-  const isSnakeCell = (x: number, y: number) =>
-    snake.some((seg) => seg.x === x && seg.y === y);
-
+  const isSnakeCell = (x: number, y: number) => snake.some((seg) => seg.x === x && seg.y === y);
   const isFoodCell = (x: number, y: number) => food.x === x && food.y === y;
 
   const plankClass =
     "w-full h-16 bg-no-repeat bg-center bg-cover flex items-center justify-center text-white font-extrabold tracking-wide drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)]";
 
   const boardRef = useRef<HTMLDivElement | null>(null);
-
   const metrics = useSnappedBoard(boardRef, BOARD_SIZE, BOARD_IMG, GRID_RECT);
 
   const getSnakeSpriteAtIndex = (i: number): { src: string; rot: number } => {
+    if (i === 0) {
+      if (snake.length < 2) return { src: SNAKE_SPRITES.head, rot: 0 };
+      const head = snake[0];
+      const neck = snake[1];
+      const moveDir = vecToDir(head.x - neck.x, head.y - neck.y);
+      return { src: SNAKE_SPRITES.head, rot: degFromFacingRight(moveDir) };
+    }
 
-  if (i === 0) {
-    if (snake.length < 2) return { src: SNAKE_SPRITES.head, rot: 0 };
-    const head = snake[0];
-    const neck = snake[1];
-    const moveDir = vecToDir(head.x - neck.x, head.y - neck.y);
-    return { src: SNAKE_SPRITES.head, rot: degFromFacingRight(moveDir) };
-  }
+    if (i === snake.length - 1) {
+      const tail = snake[i];
+      const prev = snake[i - 1];
+      const tipDir = vecToDir(tail.x - prev.x, tail.y - prev.y);
+      return { src: SNAKE_SPRITES.tail, rot: degFromTailTipLeft(tipDir) };
+    }
 
-  if (i === snake.length - 1) {
-    const tail = snake[i];
     const prev = snake[i - 1];
-    const tipDir = vecToDir(tail.x - prev.x, tail.y - prev.y);
-    return { src: SNAKE_SPRITES.tail, rot: degFromTailTipLeft(tipDir) };
-  }
+    const curr = snake[i];
+    const next = snake[i + 1];
 
-  const prev = snake[i - 1];
-  const curr = snake[i];
-  const next = snake[i + 1];
+    const d1 = vecToDir(prev.x - curr.x, prev.y - curr.y);
+    const d2 = vecToDir(next.x - curr.x, next.y - curr.y);
 
-  const d1 = vecToDir(prev.x - curr.x, prev.y - curr.y);
-  const d2 = vecToDir(next.x - curr.x, next.y - curr.y);
+    if (isPair(d1, d2, "LEFT", "RIGHT")) return { src: SNAKE_SPRITES.straight, rot: 0 };
+    if (isPair(d1, d2, "UP", "DOWN")) return { src: SNAKE_SPRITES.straight, rot: 90 };
 
-  if (isPair(d1, d2, "LEFT", "RIGHT")) return { src: SNAKE_SPRITES.straight, rot: 0 };
-  if (isPair(d1, d2, "UP", "DOWN")) return { src: SNAKE_SPRITES.straight, rot: 90 };
+    let rot = 0;
+    if (isPair(d1, d2, "RIGHT", "DOWN")) rot = 0;
+    else if (isPair(d1, d2, "DOWN", "LEFT")) rot = 90;
+    else if (isPair(d1, d2, "LEFT", "UP")) rot = 180;
+    else if (isPair(d1, d2, "UP", "RIGHT")) rot = 270;
 
-  let rot = 0;
-  if (isPair(d1, d2, "RIGHT", "DOWN")) rot = 0;
-  else if (isPair(d1, d2, "DOWN", "LEFT")) rot = 90;
-  else if (isPair(d1, d2, "LEFT", "UP")) rot = 180;
-  else if (isPair(d1, d2, "UP", "RIGHT")) rot = 270;
-
-  return { src: SNAKE_SPRITES.turn, rot };
-};
-
+    return { src: SNAKE_SPRITES.turn, rot };
+  };
 
   return (
     <div className="fixed inset-0 overflow-hidden">
       <div className="absolute w-full h-screen flex flex-col overflow-visible">
-        <ReturnArrow href="/singleplayer" text="WYJDZ" />
+        <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} />
       </div>
 
       <div className="relative z-10 w-full h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 w-[min(680px,92vw)]">
-          <div
-            className={plankClass}
-            style={{ backgroundImage: "url('/main/button.png')" }}
-          >
+          <div className={plankClass} style={{ backgroundImage: "url('/main/button.png')" }}>
             <span className="text-lg">
-              WYNIK: {score}
-              {isSubmittingScore && " ..."}
+              {t(lang, "snake.score")}: {score}
+              {isSubmittingScore && t(lang, "snake.submitting")}
             </span>
           </div>
 
@@ -208,44 +192,42 @@ export default function SnakePage() {
                       const snakeHere = isSnakeCell(x, y);
                       const foodHere = isFoodCell(x, y);
 
-                      const snakeIndex = snakeHere
-                        ? snake.findIndex((seg) => seg.x === x && seg.y === y)
-                        : -1;
-
+                      const snakeIndex = snakeHere ? snake.findIndex((seg) => seg.x === x && seg.y === y) : -1;
                       const snakeSprite = snakeIndex >= 0 ? getSnakeSpriteAtIndex(snakeIndex) : null;
 
                       return (
-							          <div
-								          key={`${x}-${y}`}
-								          style={{
-									          width: metrics.cell,
-									          height: metrics.cell,
-									          position: snakeSprite || foodHere ? "relative" : undefined,
-								          }}
-								          className="bg-black/0"
-							          >
-								          {foodHere && (
-									          <img
-										          src="/favicon.ico"
-										          alt=""
-										          draggable={false}
-										          className="absolute inset-0 w-full h-full select-none pointer-events-none"
-									          />
-								          )}
-								          {snakeSprite && (
-									          <img
-										          src={snakeSprite.src}
-										          alt=""
-										          draggable={false}
-										          className="absolute inset-0 w-full h-full select-none pointer-events-none"
-										          style={{
-											          transform: `rotate(${snakeSprite.rot}deg)`,
-											          transformOrigin: "50% 50%",
-										          }}
-									          />
-								          )}
-							          </div>
-						          );
+                        <div
+                          key={`${x}-${y}`}
+                          style={{
+                            width: metrics.cell,
+                            height: metrics.cell,
+                            position: snakeSprite || foodHere ? "relative" : undefined,
+                          }}
+                          className="bg-black/0"
+                        >
+                          {foodHere && (
+                            <img
+                              src="/favicon.ico"
+                              alt=""
+                              draggable={false}
+                              className="absolute inset-0 w-full h-full select-none pointer-events-none"
+                            />
+                          )}
+
+                          {snakeSprite && (
+                            <img
+                              src={snakeSprite.src}
+                              alt=""
+                              draggable={false}
+                              className="absolute inset-0 w-full h-full select-none pointer-events-none"
+                              style={{
+                                transform: `rotate(${snakeSprite.rot}deg)`,
+                                transformOrigin: "50% 50%",
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
                     })
                   )}
                 </div>
@@ -253,10 +235,34 @@ export default function SnakePage() {
             )}
           </div>
 
-          {gameStatus === "NOT-STARTED" && (<button onClick={startGame} className={plankClass + " hover:brightness-110 transition"} style={{ backgroundImage: "url('/main/button.png')" }}>ZAGRAJ</button>)}
-          {gameStatus === "STARTED" && (<button className={plankClass + " hover:brightness-110 transition"} style={{ backgroundImage: "url('/main/button.png')" }}>W TRAKCIE</button>)}
-          {gameStatus === "FINISHED" && (<button onClick={startGame} className={plankClass + " hover:brightness-110 transition"} style={{ backgroundImage: "url('/main/button.png')" }}>ZAGRAJ PONOWNIE</button>)}
-       
+          {gameStatus === "NOT-STARTED" && (
+            <button
+              onClick={startGame}
+              className={plankClass + " hover:brightness-110 transition"}
+              style={{ backgroundImage: "url('/main/button.png')" }}
+            >
+              {t(lang, "snake.play")}
+            </button>
+          )}
+
+          {gameStatus === "STARTED" && (
+            <button
+              className={plankClass + " hover:brightness-110 transition"}
+              style={{ backgroundImage: "url('/main/button.png')" }}
+            >
+              {t(lang, "snake.in_progress")}
+            </button>
+          )}
+
+          {gameStatus === "FINISHED" && (
+            <button
+              onClick={startGame}
+              className={plankClass + " hover:brightness-110 transition"}
+              style={{ backgroundImage: "url('/main/button.png')" }}
+            >
+              {t(lang, "snake.play_again")}
+            </button>
+          )}
         </div>
       </div>
     </div>

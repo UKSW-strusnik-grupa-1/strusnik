@@ -46,7 +46,7 @@ class Room:
             "host_id": self.host_id,
             "has_password": self.password is not None,
 
-            # time control (used by Chess UI)
+            # time control (used by chess UI)
             "time_control_min": self.time_control_min,
             "time_min": self.time_control_min,
 

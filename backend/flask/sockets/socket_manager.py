@@ -9,7 +9,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room as socketio_lea
 from games.handling_multiplayer import LobbyManager, GameType
 from games.thousand import Thousand
 from games.stratego import Stratego
-from games.chess import Chess
+from games.chess import chess
 
 try:
     from sockets.events_thousand import handle_thousand_move, get_thousand_state_for_player
@@ -23,7 +23,7 @@ socket = SocketIO(cors_allowed_origins="*", async_mode='eventlet')
 manager = LobbyManager()
 manager.register_game("Tysiac", GameType.Multiplayer, Thousand)
 manager.register_game("Stratego", GameType.Multiplayer, Stratego)
-manager.register_game("Chess", GameType.Multiplayer, Chess)
+manager.register_game("chess", GameType.Multiplayer, chess)
 
 active_sessions = {}
 disconnect_timers = {}
@@ -306,7 +306,6 @@ def handle_connect(auth):
 
                 emit('join_room_response', {'success': True, 'room_data': found_room.to_dict()})
 
-                # ZMIANA: Wysyłanie bezpiecznego stanu
                 state = get_game_state_safe(game, new_sid)
                 emit('game_state_update', state)
 
@@ -348,13 +347,12 @@ def handle_create_room(data):
 
     password = data.get('password')
 
-    # chess options
     time_control_min = None
     host_color_pref = None
     host_seat_index = None
 
     if str(game_name).lower() == "chess":
-        # time control
+        
         t = data.get("time_control_min")
         try:
             t = int(t)
@@ -364,14 +362,12 @@ def handle_create_room(data):
             t = 10
         time_control_min = t
 
-        # host color preference: "white" | "black" | "random"
         pref = (data.get("color_preference") or data.get("colorPref") or "random")
         pref = str(pref).lower().strip()
         if pref not in ("white", "black", "random"):
             pref = "random"
         host_color_pref = pref
 
-        # decide host seat index ONCE for the room (stable)
         import random
         if pref == "white":
             host_seat_index = 0
@@ -445,12 +441,10 @@ def handle_join_game_room(data):
         emit('join_room_response', {'success': False, 'message': 'BLAD AUTORYZACJI'})
         return
 
-    # cancel disconnect timers
     if user_token in disconnect_timers:
         disconnect_timers[user_token].cancel()
         del disconnect_timers[user_token]
 
-    # cancel pending room deletion timer
     if room_id in room_deletion_timers:
         room_deletion_timers[room_id].cancel()
         del room_deletion_timers[room_id]
@@ -473,7 +467,6 @@ def handle_join_game_room(data):
 
     is_returning_player = user_token in found_room.player_tokens
 
-    # password gate (only for first time)
     if found_room.password and not is_returning_player:
         if not provided_password or provided_password != found_room.password:
             emit('join_room_response', {
@@ -493,13 +486,11 @@ def handle_join_game_room(data):
     active_sessions[user_token]['room_id'] = room_id
     room.player_tokens.add(user_token)
 
-    # ---- CHESS: auto-create + auto-seat + auto-start ----
     if str(game_name).lower() == "chess":
-        # ensure game instance exists
+        
         if room.game_instance is None:
             room.game_instance = lobby.game_class(room.players)
 
-            # apply room time control if provided
             if getattr(room, "time_control_min", None) and hasattr(room.game_instance, "set_time_control"):
                 try:
                     room.game_instance.set_time_control(int(room.time_control_min))
@@ -509,15 +500,14 @@ def handle_join_game_room(data):
         game = room.game_instance
 
         try:
-            from games.chess import Chess as _Chess
+            from games.chess import chess as _chess
         except Exception:
-            _Chess = None
+            _chess = None
 
-        if _Chess is not None and isinstance(game, _Chess):
-            # player display name
+        if _chess is not None and isinstance(game, _chess):
+            
             player_name = active_sessions.get(user_token, {}).get("username") or "Player"
 
-            # check if already seated
             already_idx = None
             for i, s in enumerate(getattr(game, "seats", []) or []):
                 if s and str(s.get("userId")) == str(user_token):
@@ -525,7 +515,7 @@ def handle_join_game_room(data):
                     break
 
             if already_idx is None:
-                # seat selection based on room host seat
+                
                 host_token = getattr(room, "host_user_token", None)
                 host_idx = getattr(room, "host_seat_index", None)
                 if host_idx not in (0, 1):
@@ -538,29 +528,23 @@ def handle_join_game_room(data):
 
                 res = game.sit_player(current_sid, player_name, seat_index, user_token)
                 if not res.get("success"):
-                    # fallback: other seat
                     alt = 1 - seat_index
                     game.sit_player(current_sid, player_name, alt, user_token)
             else:
-                # reconnect update (optional)
                 if hasattr(game, "set_player_connection_status"):
                     game.set_player_connection_status(user_token, True, current_sid)
 
-            # auto-start when both seats filled
             if game.game_state.get("stage") == "waiting_for_players":
                 if len(game.seats) >= 2 and game.seats[0] is not None and game.seats[1] is not None:
                     game.start_game()
 
-    # respond to join + sync state
     emit('join_room_response', {'success': True, 'room_data': room.to_dict()})
 
     if room.game_instance:
         game = room.game_instance
         state = get_game_state_safe(game, current_sid)
-
-        # send to the joining player
+        
         emit('game_state_update', state, to=current_sid)
-        # broadcast full state to room
         emit('game_state_update', game.get_state(), to=room_id)
 
     broadcast_player_list()
@@ -614,7 +598,7 @@ def handle_start_game(data):
     if not found_room or found_room.host_id != requesting_player_id or not found_room.game_instance: return
 
     game = found_room.game_instance
-    if isinstance(game, Chess) and getattr(found_room, "time_control_min", None):
+    if isinstance(game, chess) and getattr(found_room, "time_control_min", None):
         game.set_time_control(found_room.time_control_min)
     res = game.start_game()
 

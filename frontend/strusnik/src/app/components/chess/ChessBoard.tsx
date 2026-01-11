@@ -269,7 +269,7 @@ export default function ChessBoard({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      {/* base chessboard */}
+
       <img
         src="/chess/chessboard.png"
         alt="Chessboard"
@@ -277,7 +277,6 @@ export default function ChessBoard({
         draggable={false}
       />
 
-      {/* highlight legal targets while dragging */}
       {drag &&
         legalTargets.map((sq) => {
           const { x, y } = squareToPixel(sq);
@@ -295,8 +294,7 @@ export default function ChessBoard({
             />
           );
         })}
-
-      {/* pieces */}
+      
       {pieces.map(({ square, piece }) => {
         const sprite = getPieceSprite(piece);
         const { x, y } = squareToPixel(square);
@@ -337,7 +335,6 @@ export default function ChessBoard({
         );
       })}
 
-      {/* dragged piece */}
       {drag && pointerPos && (() => {
         const sprite = getPieceSprite(drag.piece);
         if (!sprite) return null;
@@ -374,7 +371,6 @@ export default function ChessBoard({
         );
       })()}
 
-      {/* frame overlay ABOVE everything */}
       <img
         src="/chess/frame.png"
         alt="Frame"

@@ -2,10 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useLang } from "@/app/lang";
+import { t } from "@/app/i18n";
 
 export default function LoginModal() {
   const [error, setError] = useState<string>("");
   const router = useRouter();
+  const { lang } = useLang();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,11 +45,11 @@ export default function LoginModal() {
             className="w-full h-[430px] bg-cover bg-no-repeat bg-center flex flex-col items-center"
             style={{ backgroundImage: "url('/main/login_details.png')" }}>
 
-            <h1 className="text-2xl font-bold mt-12 mb-8">WITAJ NA STRUSNIKU!</h1>
+            <h1 className="text-2xl font-bold mt-12 mb-8">{t(lang, "logging_in.greeting")}</h1>
             
             <div className="w-[78%] flex flex-col gap-7">
               <div className="flex flex-col gap-2">
-                <span className="text-sm tracking-wide">LOGIN</span>
+                <span className="text-sm tracking-wide">{t(lang, "logging_in.name")}</span>
                 <input
                   type="text"
                   name="username"
@@ -67,7 +70,7 @@ export default function LoginModal() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <span className="text-sm tracking-wide">HASLO</span>
+                <span className="text-sm tracking-wide">{t(lang, "logging_in.password")}</span>
                 <input
                   type="password"
                   name="password"
@@ -106,7 +109,7 @@ export default function LoginModal() {
                   drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)]
                   hover:brightness-110 transition
                 "
-                style={{ backgroundImage: "url('/main/button.png')" }}>ZALOGUJ SIE</button>
+                style={{ backgroundImage: "url('/main/button.png')" }}>{t(lang, "logging_in.login")}</button>
 
               <button
                 type="button"
@@ -120,7 +123,7 @@ export default function LoginModal() {
                   drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)]
                   hover:brightness-110 transition
                 "
-                style={{ backgroundImage: "url('/main/button.png')" }}>UTWORZ KONTO</button>
+                style={{ backgroundImage: "url('/main/button.png')" }}>{t(lang, "logging_in.register")}</button>
             </div>
 
             <button
@@ -134,7 +137,7 @@ export default function LoginModal() {
                 drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)]
                 hover:brightness-110 transition
               "
-              style={{ backgroundImage: "url('/main/button.png')" }}>KONTYNUUJ JAKO GOSC</button>
+              style={{ backgroundImage: "url('/main/button.png')" }}>{t(lang, "logging_in.guest")}</button>
           </div>
         </form>
       </div>

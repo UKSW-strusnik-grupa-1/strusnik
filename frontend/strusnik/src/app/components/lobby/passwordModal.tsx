@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import SearchInput from "@/app/components/lobby/searchInput";
+import { useLang } from "@/app/lang";
+import { t } from "@/app/i18n";
 
 interface PasswordModalProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ export default function PasswordModal({
   onClose,
 }: PasswordModalProps) {
   const [password, setPassword] = useState("");
+  const { lang } = useLang();
 
   if (!isOpen) return null;
 
@@ -39,15 +42,15 @@ export default function PasswordModal({
         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
 
         <h3 className="text-xl font-bold text-[#eaddcf] mb-1 drop-shadow-md uppercase tracking-wide">
-          POKOJ PRYWATNY
+          {t(lang, "rooms.private")}
         </h3>
         <p className="text-[#8b735b] text-xs mb-6 font-medium">
-          WYMAGANE UWIERZYTELNIENIE
+          {t(lang, "rooms.authentication")}
         </p>
 
         <div className="mb-4">
           <label className="block text-left text-xs text-[#8b735b] font-bold uppercase ml-1 mb-1 tracking-wider">
-            HASLO DO POKOJU
+            {t(lang, "rooms.password")}
           </label>
           <SearchInput
             text={password}
@@ -87,7 +90,7 @@ export default function PasswordModal({
               uppercase text-xs tracking-wider
             "
           >
-            ANULUJ
+            {t(lang, "rooms.cancel")}
           </button>
 
           <button
@@ -111,7 +114,7 @@ export default function PasswordModal({
               uppercase text-xs tracking-wider
             "
           >
-            DOLACZ
+            {t(lang, "rooms.join")}
           </button>
         </div>
       </div>

@@ -185,3 +185,45 @@ input:-webkit-autofill:active {
     0 0 1px currentColor,
     0 0 1px currentColor;
 }
+
+.top-right-controls {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+
+  display: flex;
+  gap: 10px;
+}
+
+.top-right-btn {
+  appearance: none;
+  border: 1px solid rgba(233, 236, 243, 0.28);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+
+  padding: 8px 10px;
+  border-radius: 10px;
+
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+
+  cursor: pointer;
+  user-select: none;
+  backdrop-filter: blur(6px);
+}
+
+.top-right-btn:hover {
+  border-color: rgba(233, 236, 243, 0.5);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.top-right-btn:active {
+  transform: translateY(1px);
+}
+
+.top-right-btn:focus-visible {
+  outline: 2px solid rgba(255, 138, 61, 0.75);
+  outline-offset: 2px;
+}

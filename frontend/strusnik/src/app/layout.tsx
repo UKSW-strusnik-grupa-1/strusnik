@@ -4,6 +4,8 @@ import "./globals.css";
 import { SocketProvider } from "./context/SocketContext";
 import { UserProvider } from "./context/UserContext";
 import InvitationModal from "./components/lobby/invitationModal";
+import { LangProvider } from "./lang";
+import TopRightToggles from "./components/TopRightToggles";
 
 const Perciles = localFont({
   src: "./fonts/Perciles.ttf",
@@ -12,19 +14,22 @@ const Perciles = localFont({
 
 export const metadata: Metadata = {
   title: "STRUŚNIK - GRY ONLINE",
-  icons: { icon: "/favicon.ico", },
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" className={Perciles.variable}>
       <body className="antialiased font-sans">
-        <UserProvider>
-          <SocketProvider>
-            <InvitationModal />
-            {children}
-          </SocketProvider>
-        </UserProvider>
+        <LangProvider>
+          <UserProvider>
+            <SocketProvider>
+              <TopRightToggles />
+              <InvitationModal />
+              {children}
+            </SocketProvider>
+          </UserProvider>
+        </LangProvider>
       </body>
     </html>
   );

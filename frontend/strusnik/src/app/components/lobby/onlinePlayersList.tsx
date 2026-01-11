@@ -111,7 +111,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
             
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {players.length === 0 ? (
-                    <p className="text-gray-400 text-center text-sm italic mt-10">BRAK GRACZY ONLINE</p>
+                    <p className="text-gray-400 text-center text-sm italic mt-10">-</p>
                 ) : (
                     players.map((player) => {
                         const isMe = String(player.userId) === String(userInfo.userId);

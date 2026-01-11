@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
+import { useLang } from '@/app/lang';
+import { t } from '@/app/i18n';
 
 type Color = 'w' | 'b';
 type Seats = [any | null, any | null];
@@ -37,41 +39,51 @@ function computeMyColorFromSeats(seats: Seats, userId: string | null): Color | n
   return null;
 }
 
-function deriveEndText(myColor: Color | null, result: any): { title: string; subtitle: string } {
-  if (!result) return { title: 'KONIEC GRY', subtitle: '' };
+function deriveEndText(
+  lang: any,
+  myColor: Color | null,
+  result: any
+): { title: string; subtitle: string } {
+  if (!result) return { title: t(lang, 'chess.end.game_over'), subtitle: '' };
+
   const reason = String(result.reason || result.status || '').toLowerCase();
   const winner = (result.winner as Color | null) ?? null;
 
   if (result.status === 'draw' || reason.includes('draw') || reason.includes('remis')) {
-    return { title: 'REMIS', subtitle: 'ZGODA' };
+    return { title: t(lang, 'chess.end.draw'), subtitle: t(lang, 'chess.end.agreement') };
   }
-  if (reason.includes('stalemate')) return { title: 'REMIS', subtitle: 'PAT' };
-  if (reason.includes('insufficient')) return { title: 'REMIS', subtitle: 'BRAK MATERIALU' };
+  if (reason.includes('stalemate')) return { title: t(lang, 'chess.end.draw'), subtitle: t(lang, 'chess.end.stalemate') };
+  if (reason.includes('insufficient')) {
+    return { title: t(lang, 'chess.end.draw'), subtitle: t(lang, 'chess.end.insufficient_material') };
+  }
 
   if (reason.includes('timeout')) {
-    if (!winner || !myColor) return { title: 'KONIEC GRY', subtitle: 'CZAS' };
+    if (!winner || !myColor) return { title: t(lang, 'chess.end.game_over'), subtitle: t(lang, 'chess.end.time') };
     return winner === myColor
-      ? { title: 'WYGRALES', subtitle: 'PRZECIWNIKOWI SKONCZYL SIE CZAS' }
-      : { title: 'PRZEGRALES', subtitle: 'SKONCZYL CI SIE CZAS' };
+      ? { title: t(lang, 'chess.end.win'), subtitle: t(lang, 'chess.end.opponent_time_out') }
+      : { title: t(lang, 'chess.end.lose'), subtitle: t(lang, 'chess.end.you_time_out') };
   }
 
   if (reason.includes('resign')) {
-    if (!winner || !myColor) return { title: 'KONIEC GRY', subtitle: 'PODDANIE' };
+    if (!winner || !myColor) return { title: t(lang, 'chess.end.game_over'), subtitle: t(lang, 'chess.end.resignation') };
     return winner === myColor
-      ? { title: 'WYGRALES', subtitle: 'PRZECIWNIK SIE PODDAL' }
-      : { title: 'PRZEGRALES', subtitle: 'PODDALES SIE' };
+      ? { title: t(lang, 'chess.end.win'), subtitle: t(lang, 'chess.end.opponent_resigned') }
+      : { title: t(lang, 'chess.end.lose'), subtitle: t(lang, 'chess.end.you_resigned') };
   }
 
   if (reason.includes('checkmate') || reason.includes('mat')) {
-    if (!winner || !myColor) return { title: 'MAT', subtitle: 'KONIEC GRY' };
-    return winner === myColor ? { title: 'WYGRALES', subtitle: 'MAT' } : { title: 'PRZEGRALES', subtitle: 'MAT' };
+    if (!winner || !myColor) return { title: t(lang, 'chess.end.checkmate'), subtitle: t(lang, 'chess.end.game_over') };
+    return winner === myColor
+      ? { title: t(lang, 'chess.end.win'), subtitle: t(lang, 'chess.end.mate') }
+      : { title: t(lang, 'chess.end.lose'), subtitle: t(lang, 'chess.end.mate') };
   }
 
-  return { title: 'KONIEC GRY', subtitle: String(result.reason || result.status || '') };
+  return { title: t(lang, 'chess.end.game_over'), subtitle: String(result.reason || result.status || '') };
 }
 
 export function useChess({ socket, roomId, userId, username, onKickedToLobby }: UseChessArgs) {
-  const gameName = 'Chess';
+  const { lang } = useLang();
+  const gameName = 'chess';
 
   const [hostId, setHostId] = useState<string | null>(null);
   const [seats, setSeats] = useState<Seats>([null, null]);
@@ -91,7 +103,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   const [joinError, setJoinError] = useState<string | null>(null);
 
   const [gameEnded, setGameEnded] = useState(false);
-  const [endTitle, setEndTitle] = useState('KONIEC GRY');
+  const [endTitle, setEndTitle] = useState(t(lang, 'chess.end.game_over'));
   const [endSubtitle, setEndSubtitle] = useState('');
 
   const pendingMoveRef = useRef<{ prevFen: string; clientMoveId: string } | null>(null);
@@ -137,7 +149,6 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       return {};
     }
   }, [fen]);
-
 
   const emitJoin = (pwd?: string) => {
     if (!socket || !roomId) return;
@@ -217,9 +228,9 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
         const rd = payload.room_data || {};
         setHostId(rd.host_id ?? null);
 
-        const t = rd.time_control_min ?? rd.time_min;
-        if (t !== undefined && t !== null) {
-          const m = Number(t);
+        const tMin = rd.time_control_min ?? rd.time_min;
+        if (tMin !== undefined && tMin !== null) {
+          const m = Number(tMin);
           if (!Number.isNaN(m)) setRoomTimeMin(m);
         }
 
@@ -230,7 +241,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       }
 
       const code = String(payload.error_code || '');
-      const msg = String(payload.message || 'BLAD POLACZENIA');
+      const msg = String(payload.message || t(lang, 'chess.error.connection'));
 
       if (code === 'PASSWORD_REQUIRED') {
         setPasswordModalOpen(true);
@@ -281,7 +292,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
 
       if (state.ended || state.stage === 'ended') {
         setGameEnded(true);
-        const txt = deriveEndText(localMyColor, state.result);
+        const txt = deriveEndText(lang, localMyColor, state.result);
         setEndTitle(txt.title);
         setEndSubtitle(txt.subtitle);
       } else {
@@ -296,13 +307,13 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     };
 
     const onError = (payload: any) => {
-      const msg = String(payload?.msg || 'BLAD');
+      const msg = String(payload?.msg || t(lang, 'chess.error.generic'));
       if (pendingMoveRef.current) {
         setFen(pendingMoveRef.current.prevFen);
         pendingMoveRef.current = null;
         socket.emit('sync_state', { roomId });
       }
-      console.error('Chess socket error:', msg);
+      console.error('chess socket error:', msg);
     };
 
     socket.off('join_room_response', onJoinResponse);
@@ -321,7 +332,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       socket.off('game_state_update', onGameState);
       socket.off('error', onError);
     };
-  }, [socket, roomId, userId]);
+  }, [socket, roomId, userId, lang]);
 
   useEffect(() => {
     if (stage !== 'active') return;
@@ -352,12 +363,12 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   }, [stage, gameEnded, roomTimeMin, turn, whiteTimeMs, blackTimeMs]);
 
   const waitingHint = useMemo(() => {
-    if (stage === 'ended') return 'Gra zakończona.';
-    if (stage === 'active') return 'Gra trwa.';
+    if (stage === 'ended') return t(lang, 'chess.hint.ended');
+    if (stage === 'active') return t(lang, 'chess.hint.active');
     const bothSeated = !!seats?.[0] && !!seats?.[1];
-    if (!bothSeated) return 'Czekamy na przeciwnika...';
-    return 'Start...';
-  }, [stage, seats]);
+    if (!bothSeated) return t(lang, 'chess.hint.waiting_opponent');
+    return t(lang, 'chess.hint.starting');
+  }, [stage, seats, lang]);
 
   return {
     fen,

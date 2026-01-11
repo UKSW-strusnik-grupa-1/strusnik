@@ -3,14 +3,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
-
 import ReturnArrow from '@/app/components/lobby/returnArrow';
 import { useSocket } from '@/app/hooks/useSocket';
 import { useUser } from '@/app/hooks/useUser';
+import { useLang } from '@/app/lang';
+import { t } from '@/app/i18n';
 
 type ChessColorPref = 'WHITE' | 'RANDOM' | 'BLACK';
 type TimeChoice = 5 | 10 | 15;
-
 type PlayersChoice = 2 | 3 | 4;
 
 function ButtonPng({
@@ -51,33 +51,30 @@ function ButtonPng({
 }
 
 export default function CreateRoomPage() {
+  const { lang } = useLang();
+
   const router = useRouter();
   const params = useParams<{ slug: string }>();
-  const slug = params?.slug ?? 'Chess';
-
+  const slug = params?.slug ?? 'chess';
   const { socket, isConnected } = useSocket();
   const { userInfo } = useUser();
-
-  const userToken = useMemo(() => {
-    const v = (userInfo as any)?.userId;
-    return v !== undefined && v !== null ? String(v) : null;
-  }, [userInfo]);
 
   const [roomName, setRoomName] = useState('');
   const [usePassword, setUsePassword] = useState(false);
   const [password, setPassword] = useState('');
 
   const isChess = String(slug).toLowerCase() === 'chess';
-
-  // chess-specific
   const [timeChoice, setTimeChoice] = useState<TimeChoice>(10);
   const [colorPref, setColorPref] = useState<ChessColorPref>('RANDOM');
-
-  // generic
   const [playersChoice, setPlayersChoice] = useState<PlayersChoice>(2);
 
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
+  const userToken = useMemo(() => {
+    const v = (userInfo as any)?.userId;
+    return v !== undefined && v !== null ? String(v) : null;
+  }, [userInfo]);
 
   useEffect(() => {
     if (!socket) return;
@@ -105,13 +102,13 @@ export default function CreateRoomPage() {
     setError(null);
 
     if (!socket || !isConnected) {
-      setError('BRAK POLACZENIA Z SERWEREM.');
+      setError(t(lang, 'create_room.error.no_server_connection'));
       return;
     }
 
     const name = roomName.trim();
     if (name.length < 2) {
-      setError('PODAJ NAZWE POKOJU.');
+      setError(t(lang, 'create_room.error.enter_room_name'));
       return;
     }
 
@@ -130,8 +127,7 @@ export default function CreateRoomPage() {
     if (isChess) {
       payload.max_players = 2;
       payload.time_control_min = timeChoice;
-      payload.color_preference =
-        colorPref === 'WHITE' ? 'white' : colorPref === 'BLACK' ? 'black' : 'random';
+      payload.color_preference = colorPref === 'WHITE' ? 'white' : colorPref === 'BLACK' ? 'black' : 'random';
     } else {
       payload.max_players = playersChoice;
     }
@@ -141,54 +137,70 @@ export default function CreateRoomPage() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden">
-      
       <div className="absolute inset-0 bg-black/35" />
 
-      {/* Return */}
-      <div className="absolute left-4 top-4 z-20">
-        <ReturnArrow href={`/lobby/${slug}`} text="WYJDZ" />
+      <div className="absolute w-full h-screen flex flex-col overflow-visible">
+        <ReturnArrow href={`/lobby/${slug}`} text={t(lang, 'arrow')} />
       </div>
 
       <div className="relative z-10 w-full h-full flex items-center justify-center px-4">
         <div className="w-full max-w-[820px]">
           <div className="mx-auto w-full max-w-[560px] space-y-5">
-            {/* Room name */}
             <div className="space-y-2">
-              <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">Nazwa pokoju</div>
+              <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">
+                {t(lang, 'create_room.room_name_label')}
+              </div>
               <div className="relative">
                 <input
                   value={roomName}
                   onChange={(e) => setRoomName(e.target.value)}
-                  placeholder="PODAJ NAZWE POKOJU..."
+                  placeholder={t(lang, 'rooms.wtd_name')}
                   className="w-full h-[46px] rounded-lg bg-black/45 border border-white/10 px-4 text-white placeholder:text-white/40 outline-none focus:border-white/25"
                 />
               </div>
             </div>
 
-            {/* Chess options */}
             {isChess ? (
               <>
                 <div className="space-y-2">
-                  <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">Czas</div>
+                  <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">
+                    {t(lang, 'create_room.time_label')}
+                  </div>
                   <div className="flex flex-wrap gap-3">
-                    <ButtonPng label="5 MIN" active={timeChoice === 5} onClick={() => setTimeChoice(5)} />
-                    <ButtonPng label="10 MIN" active={timeChoice === 10} onClick={() => setTimeChoice(10)} />
-                    <ButtonPng label="15 MIN" active={timeChoice === 15} onClick={() => setTimeChoice(15)} />
+                    <ButtonPng label={t(lang, 'create_room.time_5_min')} active={timeChoice === 5} onClick={() => setTimeChoice(5)} />
+                    <ButtonPng label={t(lang, 'create_room.time_10_min')} active={timeChoice === 10} onClick={() => setTimeChoice(10)} />
+                    <ButtonPng label={t(lang, 'create_room.time_15_min')} active={timeChoice === 15} onClick={() => setTimeChoice(15)} />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">Gram</div>
+                  <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">
+                    {t(lang, 'create_room.side_label')}
+                  </div>
                   <div className="flex flex-wrap gap-3">
-                    <ButtonPng label="BIALE" active={colorPref === 'WHITE'} onClick={() => setColorPref('WHITE')} />
-                    <ButtonPng label="LOSOWO" active={colorPref === 'RANDOM'} onClick={() => setColorPref('RANDOM')} />
-                    <ButtonPng label="CZARNE" active={colorPref === 'BLACK'} onClick={() => setColorPref('BLACK')} />
+                    <ButtonPng
+                      label={t(lang, 'rooms.chess_color.white')}
+                      active={colorPref === 'WHITE'}
+                      onClick={() => setColorPref('WHITE')}
+                    />
+                    <ButtonPng
+                      label={t(lang, 'rooms.chess_color.random')}
+                      active={colorPref === 'RANDOM'}
+                      onClick={() => setColorPref('RANDOM')}
+                    />
+                    <ButtonPng
+                      label={t(lang, 'rooms.chess_color.black')}
+                      active={colorPref === 'BLACK'}
+                      onClick={() => setColorPref('BLACK')}
+                    />
                   </div>
                 </div>
               </>
             ) : (
               <div className="space-y-2">
-                <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">ILOSC GRACZY</div>
+                <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">
+                  {t(lang, 'rooms.players')}
+                </div>
                 <div className="flex flex-wrap gap-3">
                   <ButtonPng label="2" active={playersChoice === 2} onClick={() => setPlayersChoice(2)} />
                   <ButtonPng label="3" active={playersChoice === 3} onClick={() => setPlayersChoice(3)} />
@@ -197,15 +209,16 @@ export default function CreateRoomPage() {
               </div>
             )}
 
-            {/* Password */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">HASLO DO POKOJU</div>
+                <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">
+                  {t(lang, 'rooms.password')}
+                </div>
                 <button
                   type="button"
                   onClick={() => setUsePassword((v) => !v)}
                   className="w-6 h-6 rounded border border-white/20 bg-black/40 flex items-center justify-center"
-                  aria-label="Toggle password"
+                  aria-label={t(lang, 'create_room.toggle_password')}
                 >
                   {usePassword ? <div className="w-3 h-3 bg-amber-300/80 rounded-sm" /> : null}
                 </button>
@@ -215,15 +228,18 @@ export default function CreateRoomPage() {
                 <input
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="WPISZ HASLO..."
+                  placeholder={t(lang, 'create_room.password_placeholder')}
                   className="w-full h-[46px] rounded-lg bg-black/45 border border-white/10 px-4 text-white placeholder:text-white/40 outline-none focus:border-white/25"
                 />
               )}
             </div>
 
-            {/* Create */}
             <div className="pt-2 flex items-center justify-center">
-              <ButtonPng label={creating ? 'TWORZENIE...' : 'STWORZ POKOJ'} onClick={createRoom} disabled={creating} />
+              <ButtonPng
+                label={creating ? t(lang, 'create_room.creating') : t(lang, 'rooms.create')}
+                onClick={createRoom}
+                disabled={creating}
+              />
             </div>
 
             {error && <div className="text-center text-red-200 font-semibold drop-shadow-md">{error}</div>}

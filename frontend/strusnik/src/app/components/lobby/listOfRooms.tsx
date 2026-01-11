@@ -4,16 +4,20 @@ import { useSocket } from '@/app/hooks/useSocket'
 import React, { useEffect, useState } from 'react'
 import RoomTile from './roomTile';
 import SearchInput from './searchInput';
-import RefreshButton from './refreshButton'; 
+import RefreshButton from './refreshButton';
+import { useLang } from "@/app/lang";
+import { t } from "@/app/i18n";
 
 interface ListOfRoomsProps {
     gameName: string;
 }
 
 export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
+
     const { socket } = useSocket();
     const [rooms, setRooms] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const { lang } = useLang();
 
     const handleRefresh = () => {
         if (!socket) return;
@@ -50,9 +54,9 @@ export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
                 <RefreshButton onClick={handleRefresh} isLoading={isLoading} />
 
                 <div className="shrink-0 pt-2 px-4">
-                    <SearchInput placeholder='Wyszukaj pokoj...'/>
+                    <SearchInput placeholder={t(lang, "rooms.search_placeholder")}/>
                 </div>
-                <p className="text-center text-gray-400 font-bold">LADOWANIE...</p>
+                <p className="text-center text-gray-400 font-bold">{t(lang, "loading")}</p>
              </div>
         )
     }
@@ -63,12 +67,12 @@ export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
             <RefreshButton onClick={handleRefresh} isLoading={isLoading} />
 
             <div className="shrink-0 pt-2 px-4">
-                <SearchInput placeholder='Wyszukaj pokoj...'/>
+                <SearchInput placeholder={t(lang, "rooms.search_placeholder")}/>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1 pb-2 pl-4 pr-2">
                 {rooms.length === 0 && !isLoading && (
-                    <h1 className='font-bold text-center mt-4 text-gray-400'>NIE ZNALEZIONO ZADNEGO POKOJU</h1>
+                    <h1 className='font-bold text-center mt-4 text-gray-400'>{t(lang, "rooms.lack")}</h1>
                 )}
                 
                 {rooms.map(room => (

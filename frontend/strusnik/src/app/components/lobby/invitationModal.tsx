@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/app/hooks/useSocket";
+import { useLang } from "@/app/lang";
+import { t } from "@/app/i18n";
 
 interface InvitationData {
     hostName: string;
@@ -12,10 +14,11 @@ interface InvitationData {
 }
 
 export default function InvitationModal() {
+
     const { socket } = useSocket();
-    
     const [invitation, setInvitation] = useState<InvitationData | null>(null);
     const router = useRouter();
+    const { lang } = useLang();
 
     useEffect(() => {
         if (!socket) return;
@@ -63,7 +66,7 @@ export default function InvitationModal() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
                 
                 <h3 className="text-xl font-bold text-[#eaddcf] mb-6 drop-shadow-md">
-                    ZAPROSZENIE DO GRY!
+                    t(lang, "invitation.notification")
                 </h3>
                 
                 <div className="
@@ -73,15 +76,12 @@ export default function InvitationModal() {
                     border border-[#403832]/50
                     shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7)]
                 ">
-                    <p className="text-[#8b735b] mb-2 text-sm uppercase tracking-wide font-semibold">
-                        GRACZ
-                    </p>
                     <p className="text-[#eaddcf] font-bold text-lg mb-4 truncate">
                         {invitation.hostName}
                     </p>
                     
                     <p className="text-[#8b735b] text-sm mb-1">
-                        ZAPRASZA CIE DO GRY W:
+                        t(lang, "invitation.contents")
                     </p>
                     <p className="text-amber-500/90 font-bold text-xl drop-shadow-sm">
                         {invitation.gameName}
@@ -109,7 +109,7 @@ export default function InvitationModal() {
                             active:scale-95
                         "
                     >
-                        ODRZUC
+                        t(lang, "invitation.decline")
                     </button>
 
                     <button 
@@ -132,7 +132,7 @@ export default function InvitationModal() {
                             active:scale-95
                         "
                     >
-                        DOLACZ
+                        t(lang, "invitation.accept")
                     </button>
                 </div>
             </div>

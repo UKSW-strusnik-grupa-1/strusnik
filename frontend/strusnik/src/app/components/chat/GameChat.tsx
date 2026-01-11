@@ -126,7 +126,7 @@ export function GameChat({
             {isBubble ? (
                 <div className={`flex items-center justify-between px-3 py-2 ${headerClassName}`}>
                     <span className="text-white text-[10px] font-bold uppercase tracking-wider flex gap-2 items-center">
-                        <MessageCircle size={12}/> Czat
+                        <MessageCircle size={12}/> CHAT
                     </span>
                     <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white transition-colors">
                         <Minimize2 size={14} />

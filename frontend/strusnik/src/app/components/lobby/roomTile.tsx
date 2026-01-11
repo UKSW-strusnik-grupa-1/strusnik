@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import React from 'react'
+import { useLang } from "@/app/lang";
+import { t } from "@/app/i18n";
 
 interface RoomTileProps {
   uuid: string;
@@ -13,6 +15,9 @@ interface RoomTileProps {
 }
 
 export default function RoomTile({ gameName, roomName, isPrivate = false, players, maxPlayers, uuid }: RoomTileProps) {
+
+  const { lang } = useLang()
+
   return (
     <div className="relative w-[600px] h-[75px] select-none group/tile">
       <img
@@ -42,7 +47,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
           )}
           
           <p className="text-gray-200 font-bold text-base drop-shadow-md whitespace-nowrap">
-            GRACZE: <span className="text-white">{players + "/" + maxPlayers}</span>
+            {t(lang, "rooms.players")} <span className="text-white">{players + "/" + maxPlayers}</span>
           </p>
         </div>
 
@@ -57,7 +62,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
               
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <p className="text-white text-sm font-bold uppercase tracking-wide drop-shadow-md">
-                  DOLACZ
+                  {t(lang, "rooms.join")}
                 </p>
               </div>
             </div>
