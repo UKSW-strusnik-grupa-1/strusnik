@@ -125,6 +125,13 @@ class Lobby:
 
         return True
 
+    def destroy_room(self, room_uuid: str):
+        if room_uuid in self.rooms:
+            del self.rooms[room_uuid]
+            print(f"Pokój {room_uuid} został usunięty.")
+            return True
+        return False
+
 
 @dataclass
 class LobbyManager:

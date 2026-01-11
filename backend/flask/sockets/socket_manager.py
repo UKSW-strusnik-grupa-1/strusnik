@@ -667,7 +667,7 @@ def handle_player_move(data):
             broadcast_player_list()
 
             if room_id not in room_deletion_timers:
-                t = eventlet.spawn_after(60, delete_room, room_id)
+                t = eventlet.spawn_after(10, delete_room, room_id)
                 room_deletion_timers[room_id] = t
 
     else:
