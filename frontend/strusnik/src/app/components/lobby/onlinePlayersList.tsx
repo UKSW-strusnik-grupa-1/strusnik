@@ -70,7 +70,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         return (
             <button 
                 onClick={() => setIsOpen(true)}
-                className="absolute top-4 right-4 z-50 w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer"
+                className="absolute top-4 right-40 z-50 w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer"
                 title="pokaz graczy online"
             >
                 <Users className="text-white" size={24} />
@@ -82,7 +82,7 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
     }
 
     const positionClasses = collapsible 
-        ? "top-4 right-4 h-[60vh]" 
+        ? "top-4 right-40 h-[60vh]" 
         : "top-1/2 -translate-y-1/2 left-4 xl:left-10 h-[50vh] xl:h-[65vh]";
 
     return (

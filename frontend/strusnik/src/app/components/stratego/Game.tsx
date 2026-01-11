@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
 
@@ -452,7 +452,7 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
 
                 <div className="flex justify-center gap-4 my-3">
                      <button onClick={handleAutoFill} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs uppercase font-bold tracking-wide transition-colors">Losowo</button>
-                     <button onClick={() => setSetupBoard(Array(4).fill(null).map(() => Array(10).fill(null)))} className="px-3 py-1 bg-red-900/40 hover:bg-red-900 rounded text-xs uppercase font-bold tracking-wide transition-colors text-red-200">WYCZYSC</button>
+                     <button onClick={() => {setSetupBoard(Array(4).fill(null).map(() => Array(10).fill(null))); setAvailablePieces({...SETUP_CONFIG})}} className="px-3 py-1 bg-red-900/40 hover:bg-red-900 rounded text-xs uppercase font-bold tracking-wide transition-colors text-red-200">WYCZYSC</button>
                      <button 
                         onClick={submitSetup} 
                         disabled={piecesLeft > 0}

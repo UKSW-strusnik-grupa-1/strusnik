@@ -64,9 +64,35 @@ export default function CreateRoomPage() {
   const [password, setPassword] = useState('');
 
   const isChess = String(slug).toLowerCase() === 'chess';
+  const gameSlug = String(slug).toLowerCase();
+
+  // Określenie dostępnych opcji liczby graczy na podstawie gry
+  const availablePlayerCounts = useMemo(() => {
+    if (gameSlug === 'tysiac') {
+      return [3, 4];
+    }
+    if (gameSlug === 'stratego') {
+      return [2];
+    }
+    // Domyślnie dla reszty gier (poza szachami, które mają osobne UI)
+    return [2, 3, 4];
+  }, [gameSlug]);
+
   const [timeChoice, setTimeChoice] = useState<TimeChoice>(10);
   const [colorPref, setColorPref] = useState<ChessColorPref>('RANDOM');
-  const [playersChoice, setPlayersChoice] = useState<PlayersChoice>(2);
+  
+  // Inicjalizacja stanu z poprawną wartością dla danej gry
+  const [playersChoice, setPlayersChoice] = useState<PlayersChoice>(() => {
+    const validDefault = availablePlayerCounts[0];
+    return (validDefault === 2 || validDefault === 3 || validDefault === 4) ? validDefault : 2;
+  });
+
+  // Korekta liczby graczy, jeśli obecny wybór jest nieprawidłowy dla nowej gry (np. przy zmianie URL)
+  useEffect(() => {
+    if (!availablePlayerCounts.includes(playersChoice as number)) {
+      setPlayersChoice(availablePlayerCounts[0] as PlayersChoice);
+    }
+  }, [availablePlayerCounts, playersChoice]);
 
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -202,9 +228,14 @@ export default function CreateRoomPage() {
                   {t(lang, 'rooms.players')}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <ButtonPng label="2" active={playersChoice === 2} onClick={() => setPlayersChoice(2)} />
-                  <ButtonPng label="3" active={playersChoice === 3} onClick={() => setPlayersChoice(3)} />
-                  <ButtonPng label="4" active={playersChoice === 4} onClick={() => setPlayersChoice(4)} />
+                  {availablePlayerCounts.map((count) => (
+                    <ButtonPng
+                      key={count}
+                      label={String(count)}
+                      active={playersChoice === count}
+                      onClick={() => setPlayersChoice(count as PlayersChoice)}
+                    />
+                  ))}
                 </div>
               </div>
             )}

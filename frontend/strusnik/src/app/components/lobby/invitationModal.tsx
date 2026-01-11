@@ -66,7 +66,7 @@ export default function InvitationModal() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
                 
                 <h3 className="text-xl font-bold text-[#eaddcf] mb-6 drop-shadow-md">
-                    t(lang, "invitation.notification")
+                    {t(lang, "invitation.notification")}
                 </h3>
                 
                 <div className="
@@ -81,7 +81,7 @@ export default function InvitationModal() {
                     </p>
                     
                     <p className="text-[#8b735b] text-sm mb-1">
-                        t(lang, "invitation.contents")
+                        {t(lang, "invitation.contents")}
                     </p>
                     <p className="text-amber-500/90 font-bold text-xl drop-shadow-sm">
                         {invitation.gameName}
@@ -109,7 +109,7 @@ export default function InvitationModal() {
                             active:scale-95
                         "
                     >
-                        t(lang, "invitation.decline")
+                        {t(lang, "invitation.decline")}
                     </button>
 
                     <button 
@@ -132,7 +132,7 @@ export default function InvitationModal() {
                             active:scale-95
                         "
                     >
-                        t(lang, "invitation.accept")
+                        {t(lang, "invitation.accept")}
                     </button>
                 </div>
             </div>
