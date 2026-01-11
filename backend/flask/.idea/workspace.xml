@@ -5,14 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1023b583-6fe1-42ba-a4ef-9c72f2ddc121" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/sockets/events_stratego.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../docker-compose.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/games/handling_multiplayer.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/handling_multiplayer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/games/stratego.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/stratego.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sockets/events_stratego.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/events_stratego.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sockets/events_thousand.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/events_thousand.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sockets/socket_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/socket_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/returnArrow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/returnArrow.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/stratego/Game.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/stratego/Game.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -123,6 +123,7 @@
       <workItem from="1767454951506" duration="1083000" />
       <workItem from="1767532212148" duration="5185000" />
       <workItem from="1767803677876" duration="2397000" />
+      <workItem from="1768165740168" duration="1330000" />
     </task>
     <servers />
   </component>

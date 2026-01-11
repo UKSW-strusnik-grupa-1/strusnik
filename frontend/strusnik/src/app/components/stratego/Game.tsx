@@ -8,7 +8,28 @@ interface ActiveGameProps {
     myId: string;
 }
 
-// Mapowanie logicznej rangi (kod) na końcówkę nazwy pliku
+const BigDisconnectOverlay = ({ timestamp, name }: { timestamp: number, name: string }) => {
+    const [timeLeft, setTimeLeft] = useState(60);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now() / 1000;
+            const validTimestamp = timestamp || now;
+            const diff = 60 - (now - validTimestamp);
+            setTimeLeft(diff > 0 ? Math.floor(diff) : 0);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [timestamp]);
+
+    return (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 border-2 border-red-600/80 rounded-lg backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.5)] p-1">
+            <p className="text-red-500 text-[8px] font-bold uppercase tracking-widest mb-0.5 animate-pulse">Rozlaczony</p>
+            <p className="text-white text-xl font-mono font-bold leading-none mb-0.5">{timeLeft}s</p>
+            <p className="text-gray-400 text-[9px] truncate max-w-full opacity-60">{name}</p>
+        </div>
+    );
+};
+
 const RANK_TO_IMG_SUFFIX: Record<string, string> = {
     'F': 'S', 
     'B': 'B', 
@@ -22,7 +43,6 @@ const PIECE_LABELS: Record<string, string> = {
     '7': '7', '6': '6', '5': '5', '4': '4', '3': '3', '2': '2', 'S': '1'
 };
 
-// Konfiguracja armii (zgodna z backendem)
 const SETUP_CONFIG = {
     'F': 1, 'B': 6, '10': 1, '9': 1, '8': 2, '7': 3, '6': 4, '5': 4, '4': 4, '3': 5, '2': 8, 'S': 1
 };
@@ -36,22 +56,18 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         ? gameState.my_idx 
         : calculatedIdx;
     
-    // --- SETUP LOCAL STATE ---
     const [setupBoard, setSetupBoard] = useState<(string | null)[][]>(
         Array(4).fill(null).map(() => Array(10).fill(null))
     );
     const [availablePieces, setAvailablePieces] = useState<Record<string, number>>({...SETUP_CONFIG});
     const [selectedPieceToPlace, setSelectedPieceToPlace] = useState<string | null>(null);
     
-    // State do podświetlania pola podczas Drag&Drop
     const [dragOverSquare, setDragOverSquare] = useState<{r: number, c: number} | null>(null);
 
-    // --- GAMEPLAY LOCAL STATE ---
     const [selectedSquare, setSelectedSquare] = useState<{r: number, c: number} | null>(null);
 
     const isPlayer0 = my_idx === 0;
     
-    // Helper do generowania ścieżki obrazka
     const getPieceImgSrc = (rank: string, playerIdx: number) => {
         const colorPrefix = playerIdx === 0 ? 'red' : 'blue';
         const suffix = RANK_TO_IMG_SUFFIX[rank] || rank;
@@ -62,7 +78,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         return rank !== 'F' && rank !== 'B';
     };
 
-    // Zamiana współrzędnych Widok <-> Backend
     const viewToBackend = (r_view: number, c_view: number) => {
         if (isPlayer0) {
             return { r: 9 - r_view, c: 9 - c_view };
@@ -76,13 +91,11 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         return lakes.includes(`${r},${c}`);
     };
 
-    // --- SETUP LOGIC (CLICK) ---
     const handlePlacePiece = (r: number, c: number) => {
         if (stage !== 'setup') return;
         
         const existing = setupBoard[r][c];
 
-        // Usuwanie kliknięciem
         if (existing) {
             setAvailablePieces(prev => ({...prev, [existing]: prev[existing] + 1}));
             const newBoard = [...setupBoard.map(row => [...row])];
@@ -91,7 +104,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
             return;
         }
 
-        // Dodawanie kliknięciem
         if (selectedPieceToPlace && availablePieces[selectedPieceToPlace] > 0) {
             const newBoard = [...setupBoard.map(row => [...row])];
             newBoard[r][c] = selectedPieceToPlace;
@@ -104,8 +116,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
             });
         }
     };
-
-    // --- SETUP LOGIC (DRAG AND DROP) ---
 
     const handleDragStart = (e: React.DragEvent, rank: string, fromBoard: boolean, r?: number, c?: number) => {
         const data = JSON.stringify({ rank, fromBoard, r, c });
@@ -122,7 +132,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
-        // onDragLeave logic
     };
 
     const handleDrop = (e: React.DragEvent, targetR: number, targetC: number) => {
@@ -141,11 +150,9 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         const targetPiece = newBoard[targetR][targetC];
 
         if (fromBoard) {
-            // SWAP
             newBoard[targetR][targetC] = rank;
             newBoard[srcR][srcC] = targetPiece; 
         } else {
-            // FROM PALETTE
             if (newAvailable[rank] <= 0) return;
             newAvailable[rank]--;
             if (targetPiece) {
@@ -159,8 +166,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         setSetupBoard(newBoard);
         setAvailablePieces(newAvailable);
     };
-
-    // --- AUTO FILL & SUBMIT ---
 
     const handleAutoFill = () => {
         const newBoard = setupBoard.map(row => [...row]);
@@ -220,7 +225,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         });
     };
 
-    // --- GAMEPLAY HANDLER ---
     const handleSquareClick = (r_view: number, c_view: number) => {
         if (stage !== 'playing') return;
         if (current_player_idx !== my_idx) return;
@@ -262,18 +266,8 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         }
     };
 
-    // --- RENDERERS ---
-    
     const renderGameCell = (r_view: number, c_view: number) => {
         const { r: realR, c: realC } = viewToBackend(r_view, c_view);
-        
-        // if (isLakeBackend(realR, realC)) {
-        //     return (
-        //         <div className="w-full h-full bg-transparent flex items-center justify-center">
-        //             <span className="text-blue-400/30 text-xs select-none">🌊</span>
-        //         </div>
-        //     );
-        // }
 
         const piece = board[realR][realC];
         const isSelected = selectedSquare?.r === r_view && selectedSquare?.c === c_view;
@@ -311,7 +305,7 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                         <img 
                             src={getPieceImgSrc(piece.rank, piece.player)} 
                             alt={piece.rank}
-                            className="w-full h-full object-contain rounded-sm flex"
+                            className="w-full h-full object-fit rounded-sm flex"
                             onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 (e.target as HTMLImageElement).parentElement!.innerText = PIECE_LABELS[piece.rank] || piece.rank;
@@ -332,8 +326,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         );
     };
 
-    // --- MAIN RENDER ---
-    
     if (stage === 'game_over') {
          return (
             <div className="flex flex-col items-center justify-center h-full gap-6 animate-in fade-in duration-700">
@@ -367,8 +359,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
 
         return (
             <div className="flex flex-col h-full w-full p-2 overflow-hidden">
-                {/* ... SETUP BOARD (bez zmian) ... */}
-                {/* SETUP BOARD (4x10) */}
                 <div className="flex-1 flex items-center justify-center min-h-0">
                      <div 
                         className="grid grid-cols-10 gap-1 p-2 border-2 border-amber-900/50 rounded-lg shadow-2xl"
@@ -426,7 +416,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                     </div>
                 </div>
 
-                {/* CONTROLS */}
                 <div className="flex justify-center gap-4 my-3">
                      <button onClick={handleAutoFill} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs uppercase font-bold tracking-wide transition-colors">Losowo</button>
                      <button onClick={() => setSetupBoard(Array(4).fill(null).map(() => Array(10).fill(null)))} className="px-3 py-1 bg-red-900/40 hover:bg-red-900 rounded text-xs uppercase font-bold tracking-wide transition-colors text-red-200">WYCZYSC</button>
@@ -442,7 +431,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                      </button>
                 </div>
 
-                {/* PALETTE */}
                 <div className="h-35 overflow-y-auto bg-black/40 rounded-t-xl border-t border-amber-900/30 p-2 custom-scrollbar">
                     <div className="flex flex-wrap gap-2 justify-center">
                         {Object.entries(SETUP_CONFIG).map(([rank, total]) => {
@@ -465,7 +453,7 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                                         <img 
                                             src={getPieceImgSrc(rank, my_idx)} 
                                             alt={rank} 
-                                            className="w-full h-full object-contain drop-shadow-md"
+                                            className="w-full h-full object-fit drop-shadow-md"
                                         />
                                         {shouldShowRankLabel(rank) && (
                                             <div className="absolute top-0 right-0 bg-black/80 text-white text-[12px] font-bold px-1 rounded-bl">
@@ -483,10 +471,10 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         );
     }
 
-    // --- GAMEPLAY RENDER ---
     const isMyTurn = current_player_idx === my_idx;
+    const opponentIdx = 1 - my_idx;
+    const opponentSeat = seats[opponentIdx];
 
-    // Logika wyświetlania wyniku walki
     let combatResultText = "";
     let combatResultColor = "";
     
@@ -499,7 +487,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
             combatResultText = "Remis!";
             combatResultColor = "text-gray-400";
         } else if (amIAttacker) {
-            // Atakowałem
             if (result === 'win') {
                 combatResultText = "WYGRALES";
                 combatResultColor = "text-green-400";
@@ -508,7 +495,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                 combatResultColor = "text-red-400";
             }
         } else {
-            // Broniłem się
             if (result === 'win') {
                 combatResultText = "PRZEGRALES";
                 combatResultColor = "text-red-400";
@@ -518,11 +504,12 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
             }
         }
     }
+
+    const isOpponentDisconnected = opponentSeat && opponentSeat.connected === false && opponentSeat.disconnect_timestamp;
     
     return (
         <div className="relative flex flex-col items-center h-full w-full justify-center">
             
-            {/* TURA INFO (Środek góra) */}
             <div className="mb-4 flex flex-col items-center gap-2 z-10">
                 <div className={`
                     px-6 py-2 rounded-full text-sm uppercase font-bold border shadow-xl transition-all duration-500
@@ -534,7 +521,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                 </div>
             </div>
 
-            {/* POWIADOMIENIE O WALCE (Prawa strona) */}
             {last_move?.combat && (
                 <div className="absolute right-4 top-24 z-50 flex flex-col items-end gap-2 animate-in slide-in-from-right fade-in duration-500">
                      <div className="bg-black/80 backdrop-blur-md px-4 py-3 rounded-xl border border-amber-900/50 shadow-2xl flex flex-col items-center gap-2 max-w-[200px]">
@@ -542,12 +528,12 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                         
                         <div className="flex items-center gap-2">
                             <div className="flex flex-col items-center">
-                                <img src={getPieceImgSrc(last_move.combat.attacker.rank, last_move.combat.attacker.player)} className="h-10 w-10 object-contain drop-shadow-[0_0_5px_rgba(255,0,0,0.5)]"/>
+                                <img src={getPieceImgSrc(last_move.combat.attacker.rank, last_move.combat.attacker.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(255,0,0,0.5)]"/>
                                 <span className="text-[10px] text-gray-500 mt-1">ATAK</span>
                             </div>
                             <span className="text-gray-400 font-bold">vs</span>
                             <div className="flex flex-col items-center">
-                                <img src={getPieceImgSrc(last_move.combat.defender.rank, last_move.combat.defender.player)} className="h-10 w-10 object-contain drop-shadow-[0_0_5px_rgba(0,0,255,0.5)]"/>
+                                <img src={getPieceImgSrc(last_move.combat.defender.rank, last_move.combat.defender.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(0,0,255,0.5)]"/>
                                 <span className="text-[10px] text-gray-500 mt-1">OBRONA</span>
                             </div>
                         </div>
@@ -559,7 +545,6 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                 </div>
             )}
 
-            {/* BOARD WRAPPER */}
             <div className="relative p-3 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-[#4a3525]">
                 <div 
                     className="grid grid-cols-10 grid-rows-10 gap-0 border-2 border-[#1a120b]"
@@ -580,15 +565,24 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                 </div>
             </div>
 
-            {/* FOOTER */}
-            <div className="mt-6 flex gap-12 text-xs font-mono tracking-widest text-gray-500 opacity-80">
+            <div className="mt-6 flex gap-12 text-xs font-mono tracking-widest text-gray-500 opacity-80 h-14 items-center">
                 <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${my_idx === 0 ? 'bg-red-600 shadow-[0_0_10px_red]' : 'bg-blue-600 shadow-[0_0_10px_blue]'}`}></div>
                     TY ({seats[my_idx]?.name})
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${my_idx === 0 ? 'bg-blue-600' : 'bg-red-600'}`}></div>
-                    WRÓG ({seats[1-my_idx]?.name})
+
+                <div className="relative flex items-center gap-2 min-w-[140px] h-full justify-center">
+                    {isOpponentDisconnected ? (
+                        <BigDisconnectOverlay 
+                            timestamp={opponentSeat.disconnect_timestamp}
+                            name={opponentSeat.name}
+                        />
+                    ) : (
+                        <>
+                            <div className={`w-3 h-3 rounded-full ${my_idx === 0 ? 'bg-blue-600' : 'bg-red-600'}`}></div>
+                            WRÓG ({opponentSeat?.name})
+                        </>
+                    )}
                 </div>
             </div>
         </div>
