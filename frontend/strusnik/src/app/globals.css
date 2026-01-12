@@ -21,7 +21,47 @@ html[data-theme="light"] {
   --muted: #4b5563;
 
   --bg-image: url("/main/background_light.png");
-  --bg-position: right 0 bottom -110px;
+
+  --bg-position: right 0 bottom calc(-110px);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  position: relative;
+  isolation: isolate;
+  background: var(--background);
+}
+
+html::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+
+  background-image: var(--bg-image);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: var(--bg-position);
+
+  pointer-events: none;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+body {
+  background: transparent !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 @theme inline {
@@ -37,28 +77,6 @@ html[data-theme="light"] {
     --background: #000000;
     --foreground: #e9ecf3;
   }
-}
-
-html,
-body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-/* Stabilne tło bez warstw fixed/pseudo-elementów */
-body {
-  background-color: var(--background);
-  background-image: var(--bg-image);
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: var(--bg-position);
 }
 
 .center {
@@ -254,7 +272,6 @@ input:-webkit-autofill:active {
   outline-offset: 2px;
 }
 
-/* jeśli to ma być zawsze białe */
 .top-right-btn {
   color: #ffffff !important;
 }

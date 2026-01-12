@@ -42,7 +42,6 @@ export const I18N = {
 			cancel: 'ANULUJ',
 			refresh: 'ODSWIEZ LISTE POKOI',
 
-			// używane na screenie: ROOMS.SEARCH_PLACEHOLDER
 			search_placeholder: 'WYSZUKAJ POKOJ...',
 		},
 
@@ -75,7 +74,6 @@ export const I18N = {
 			loading: 'LACZENIE Z SERWEREM...',
 			back: 'WROC DO POKOI',
 
-			// na screenie: CHESS.HINT.WAITING_OPPONENT
 			hint: {
 				waiting_opponent: 'CZEKAMY NA PRZECIWNIKA...',
 				active: 'GRA TRWA.',
@@ -120,7 +118,6 @@ export const I18N = {
 		},
 
 		blackjack: {
-			// żeby działały klucze typu: BLACKJACK.BALANCE oraz BLACKJACK.START
 			balance: 'SALDO',
 			start: 'ROZPOCZNIJ',
 
@@ -171,6 +168,20 @@ export const I18N = {
 			turn: 'KOLEJ GRACZA',
 			draw: 'REMIS!',
 			new_game: 'NOWA GRA',
+		},
+
+		thousand: {
+			you: 'TY',
+				waiting_room: {
+					title: 'POCZEKALNIA',
+					waiting: 'OCZEKIWANIE NA GRACZY...',
+					room_full: 'POKOJ PELNY',
+					min_required: 'WYMAGANE MIN.',
+					start_game: 'START GRY',
+					waiting_host: 'OCZEKIWANIE NA HOSTA...',
+					waiting_players: 'OCZEKIWANIE NA RESZTE GRACZY...',
+					ready: 'GOTOWY',
+				},
 		},
 
 		common: {
@@ -350,6 +361,20 @@ export const I18N = {
 			turn: 'PLAYER TURN',
 			draw: 'DRAW!',
 			new_game: 'NEW GAME',
+		},
+
+		thousand: {
+			you: 'YOU',
+			waiting_room: {
+				title: 'WAITING ROOM',
+				waiting: 'WAITING FOR PLAYERS...',
+				room_full: 'ROOM IS FULL',
+				min_required: 'MIN REQUIRED:',
+				start_game: 'START GAME',
+				waiting_host: 'WAITING FOR HOST...',
+				waiting_players: 'WAITING FOR OTHER PLAYERS...',
+				ready: 'READY',
+			},
 		},
 
 		common: {

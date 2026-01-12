@@ -10,7 +10,6 @@ export default function TopRightToggles() {
   const { lang, setLang } = useLang();
   const [theme, setTheme] = useState<Theme>("dark");
 
-  // wczytaj motyw z localStorage po stronie klienta
   useEffect(() => {
     try {
       const saved = localStorage.getItem("theme");
