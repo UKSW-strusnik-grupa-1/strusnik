@@ -9,6 +9,8 @@ import ActiveGame from './ActiveGame';
 import PasswordModal from '../lobby/passwordModal';
 import { GameChat } from '@/app/components/chat/GameChat';
 import OpponentDisconnectedBanner from '@/app/components/common/OpponentDisconnectedBanner';
+import { useLang } from '@/app/lang';
+import { t } from '@/app/i18n';
 
 interface BattleshipsBoardProps {
     gameName: string;
@@ -19,6 +21,7 @@ interface BattleshipsBoardProps {
 
 export default function BattleshipsBoard({ gameName, roomId, myId, myName }: BattleshipsBoardProps) {
     const { socket } = useSocket();
+    const { lang } = useLang();
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -54,7 +57,7 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
         if (!socket) return;
 
         if (!roomId) {
-            setConnectionError("Blad: Brak ID pokoju.");
+            setConnectionError("Error: Missing room ID.");
             return;
         }
 
@@ -87,10 +90,10 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
                 if (response.error_code === 'PASSWORD_REQUIRED') {
                     setShowPasswordModal(true);
                     if (response.message === 'Błędne hasło') {
-                        setErrorMessage("Bledne haslo, sprobuj ponownie.");
+                        setErrorMessage("Wrong password, try again.");
                     }
                 } else {
-                    setConnectionError(response.message || "Nie udalo sie dolaczyc do pokoju.");
+                    setConnectionError(response.message || "Failed to join the room.");
                     setShowPasswordModal(false);
                 }
             }
@@ -100,7 +103,7 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
             if (state.stage) setGameStage(state.stage);
             if (state.seats) {
                 setSeats(state.seats);
-                
+
                 // Check opponent connection status and update disconnect banner
                 const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
                 if (mySeatIdx !== -1 && state.stage === 'playing') {
@@ -207,12 +210,12 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
             <div className="relative w-full h-screen flex flex-col items-center justify-center p-4">
 
                 <div className="bg-[#1a120b]/90 p-8 rounded-xl border-2 border-red-600/50 text-center shadow-2xl backdrop-blur-md max-w-md w-full">
-                    <h2 className="text-2xl text-red-500 font-bold mb-4 uppercase tracking-widest">Blad polaczenia</h2>
+                    <h2 className="text-2xl text-red-500 font-bold mb-4 uppercase tracking-widest">Connection Error</h2>
                     <p className="text-gray-200 mb-6 font-medium">{connectionError}</p>
-                    <p className="text-gray-500 text-xs mb-6 font-mono">ID Pokoju: {roomId}</p>
+                    <p className="text-gray-500 text-xs mb-6 font-mono">Room ID: {roomId}</p>
 
                     <a href={`/lobby/${gameName}`} className="inline-block w-full bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg uppercase tracking-wide text-sm">
-                        WROC DO LOBBY
+                        {t(lang, 'battleships.back_to_lobby')}
                     </a>
                 </div>
             </div>

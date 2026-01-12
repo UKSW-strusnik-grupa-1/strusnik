@@ -60,7 +60,7 @@ def login():
             value=token,
             max_age=current_app.config["TOKEN_MAX_AGE"],
             httponly=True,
-            secure=False, # True dla HTTPS
+            secure=False,
             samesite="Lax"
         )
         

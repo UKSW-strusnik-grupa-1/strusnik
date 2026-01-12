@@ -13,15 +13,15 @@ interface ActiveGameBannerProps {
 }
 
 const gameDisplayNames: Record<string, string> = {
-    chess: 'Szachy',
-    Chess: 'Szachy',
-    Tysiac: 'Tysiąc',
+    chess: 'Chess',
+    Chess: 'Chess',
+    Tysiac: 'Thousand',
     Stratego: 'Stratego',
-    Battleships: 'Statki',
+    Battleships: 'Battleships',
     Set: 'Set',
 };
 
-// Normalizuje nazwę gry do prawidłowej formy (zgodnej z folderami w /games/)
+// Normalizes game name to proper format (matching /games/ folders)
 function normalizeGameName(name: string): string {
     const normalized: Record<string, string> = {
         'chess': 'Chess',

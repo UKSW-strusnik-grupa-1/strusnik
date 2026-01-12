@@ -34,7 +34,7 @@ export default function RoomTile({ gameName, roomName, isPrivate = false, player
   return (
     <div className="relative w-[600px] h-[75px] select-none group/tile">
       <img
-        alt="Tlo pokoju"
+        alt="Room background"
         src="/lobby/tile_room.png"
         className="absolute inset-0 w-full h-full object-cover rounded-lg shadow-md"
       />

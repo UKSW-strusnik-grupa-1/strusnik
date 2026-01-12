@@ -23,10 +23,7 @@ def find_game(uuid: str):
 
 @snake.route("/start", methods=["POST"])
 def start():
-    """
-    Tworzy nową „sesję” Snaka – uuid + meta.
-    Logika ruchu jest po stronie frontu.
-    """
+
     game = create_game()
 
     return jsonify({
@@ -39,10 +36,7 @@ def start():
 
 @snake.route("/finish", methods=["POST"])
 def finish():
-    """
-    Front wysyła liczbę zjedzonych jedzeń (foodsEaten).
-    Wynik = foodsEaten * 100.
-    """
+
     data = request.get_json() or {}
     uuid = data.get("uuid")
     foods_eaten = data.get("foodsEaten")

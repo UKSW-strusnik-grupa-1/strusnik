@@ -1,4 +1,4 @@
-# Socket instance będzie przekazywany jako parametr aby uniknąć circular import
+
 
 def broadcast_stratego_state(game, room_id, socket_instance=None):
     from flask_socketio import emit

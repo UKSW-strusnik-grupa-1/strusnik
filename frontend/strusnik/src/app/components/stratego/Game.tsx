@@ -342,16 +342,16 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
     if (stage === 'game_over') {
         return (
             <div className="flex flex-col items-center justify-center h-full gap-6 animate-in fade-in duration-700">
-                <h2 className="text-5xl text-amber-500 font-bold tracking-widest drop-shadow-lg">KONIEC GRY</h2>
+                <h2 className="text-5xl text-amber-500 font-bold tracking-widest drop-shadow-lg">{t(lang, 'stratego.game_over_title')}</h2>
                 <div className="text-2xl text-gray-200 bg-black/50 px-8 py-4 rounded-xl border border-amber-900/50">
-                    WYGRAL: <span className="text-white font-bold text-3xl ml-2">{winner?.name}</span>
+                    {t(lang, 'stratego.winner_label')}: <span className="text-white font-bold text-3xl ml-2">{winner?.name}</span>
                     <p className="text-sm text-gray-400 mt-2 text-center italic">{winner?.reason}</p>
                 </div>
                 <Link href={"/lobby/Stratego"}>
                     <button
                         className="px-8 py-3 bg-amber-800 hover:bg-amber-700 text-white font-bold rounded shadow-lg transition-all transform hover:scale-105 cursor-pointer"
                     >
-                        WROC DO LOBBY
+                        {t(lang, 'stratego.back_to_lobby')}
                     </button>
                 </Link>
             </div>
@@ -497,22 +497,22 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
         const result = combat.result;
 
         if (result === 'draw') {
-            combatResultText = "Remis!";
+            combatResultText = t(lang, 'stratego.draw_result');
             combatResultColor = "text-gray-400";
         } else if (amIAttacker) {
             if (result === 'win') {
-                combatResultText = "WYGRALES";
+                combatResultText = t(lang, 'stratego.win_result');
                 combatResultColor = "text-green-400";
             } else {
-                combatResultText = "PRZEGRALES";
+                combatResultText = t(lang, 'stratego.lose_result');
                 combatResultColor = "text-red-400";
             }
         } else {
             if (result === 'win') {
-                combatResultText = "PRZEGRALES";
+                combatResultText = t(lang, 'stratego.lose_result');
                 combatResultColor = "text-red-400";
             } else {
-                combatResultText = "WYGRALES";
+                combatResultText = t(lang, 'stratego.win_result');
                 combatResultColor = "text-green-400";
             }
         }
@@ -528,14 +528,14 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
                         ? 'bg-linear-to-r from-green-900 to-green-800 text-green-100 border-green-500 scale-105'
                         : 'bg-gray-900 text-gray-500 border-gray-700'}
                 `}>
-                    {isMyTurn ? "Twoja Tura" : "Tura Przeciwnika"}
+                    {isMyTurn ? t(lang, 'stratego.your_turn') : t(lang, 'stratego.opponent_turn')}
                 </div>
             </div>
 
             {last_move?.combat && (
                 <div className="absolute right-4 top-24 z-50 flex flex-col items-end gap-2 animate-in slide-in-from-right fade-in duration-500">
                     <div className="bg-black/80 backdrop-blur-md px-4 py-3 rounded-xl border border-amber-900/50 shadow-2xl flex flex-col items-center gap-2 max-w-[200px]">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest border-b border-gray-700 w-full text-center pb-1 mb-1">Wynik Walki</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-widest border-b border-gray-700 w-full text-center pb-1 mb-1">{t(lang, 'stratego.combat_result_title')}</span>
 
                         <div className="flex items-center gap-2">
                             <div className="flex flex-col items-center">

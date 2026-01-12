@@ -197,7 +197,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
         move: { type: 'move', from, to, promotion, clientMoveId },
       });
     } catch {
-      // ignore
+
     }
   };
 
@@ -297,18 +297,18 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       else if (localMyColor && offeredBy === localMyColor) setDrawUiState('offered_by_me');
       else setDrawUiState('offered_to_me');
 
-      // Check if opponent is connected - update disconnect banner based on their status
+
       if (nextSeats && localMyColor && normalizeStage(state.stage) === 'active') {
         const opponentSeatIdx = localMyColor === 'w' ? 1 : 0;
         const opponentSeat = nextSeats[opponentSeatIdx];
         if (opponentSeat) {
           if (opponentSeat.connected === true) {
-            // Opponent is connected - clear banner
+
             setOpponentDisconnected(null);
           } else if (opponentSeat.connected === false) {
-            // Opponent is disconnected - show banner if not already showing
+
             setOpponentDisconnected((prev) => {
-              if (prev !== null) return prev; // Keep existing countdown
+              if (prev !== null) return prev;
               return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
             });
           }
@@ -352,7 +352,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     };
 
     const onOpponentReturned = (_data: any) => {
-      // Player is returning after leaving - clear banner and resume game
+
       setOpponentDisconnected(null);
     };
 
@@ -420,7 +420,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     return () => window.clearInterval(interval);
   }, [stage, gameEnded, opponentDisconnected, roomTimeMin, turn, whiteTimeMs, blackTimeMs]);
 
-  // Opponent disconnected countdown
+
   useEffect(() => {
     if (!opponentDisconnected) return;
 

@@ -1,16 +1,3 @@
-"""
-SET Card Game - Backend Logic
-
-Karty mają 4 właściwości, każda z 3 możliwymi wartościami:
-- Kształt (shape): 0, 1, 2 (np. diament, owal, fala)
-- Kolor (color): 0, 1, 2 (np. czerwony, zielony, fioletowy)
-- Wypełnienie (fill): 0, 1, 2 (np. pełne, paski, puste)
-- Liczba (count): 0, 1, 2 (1, 2, lub 3 symbole)
-
-SET to 3 karty, gdzie dla każdej z 4 właściwości:
-wszystkie 3 wartości są takie same LUB wszystkie 3 są różne.
-"""
-
 import random
 import time
 from typing import List, Dict, Any, Optional
@@ -39,13 +26,13 @@ class SetGame(MultiplayerGame):
             "last_set_by": None,
             "last_set_cards": [],
             "winner": None,
-            "winners": [],  # Lista zwycięzców (może być remis)
+            "winners": [],
             "msg": "",
             "game_over": False
         }
 
     def _generate_deck(self) -> List[Dict[str, int]]:
-        """Generuje pełną talię 81 kart SET"""
+
         deck = []
         for shape in range(3):
             for color in range(3):
@@ -61,19 +48,19 @@ class SetGame(MultiplayerGame):
         return deck
 
     def _is_valid_set(self, cards: List[Dict[str, int]]) -> bool:
-        """Sprawdza czy 3 karty tworzą poprawny SET"""
+
         if len(cards) != 3:
             return False
 
         for prop in ["shape", "color", "fill", "count"]:
             values = [card[prop] for card in cards]
-            # Wszystkie takie same lub wszystkie różne
+
             if not (len(set(values)) == 1 or len(set(values)) == 3):
                 return False
         return True
 
     def _find_set_on_table(self) -> Optional[List[int]]:
-        """Znajduje dowolny SET na stole (indeksy), lub None jeśli nie ma"""
+
         active_cards = [(i, c) for i, c in enumerate(self.table_cards) if c is not None]
         
         for i in range(len(active_cards)):
@@ -88,7 +75,7 @@ class SetGame(MultiplayerGame):
         return None
 
     def _deal_initial_cards(self):
-        """Rozdaje początkowe 12 kart na stół"""
+
         self.deck = self._generate_deck()
         random.shuffle(self.deck)
         
@@ -99,23 +86,23 @@ class SetGame(MultiplayerGame):
             else:
                 self.table_cards.append(None)
 
-        # Upewniamy się że jest przynajmniej 1 SET na stole
-        # Jeśli nie ma, dobieramy 3 karty (max 21 kart na stole)
+
+
         while not self._find_set_on_table() and self.deck and len([c for c in self.table_cards if c]) < 21:
             for _ in range(3):
                 if self.deck:
                     self.table_cards.append(self.deck.pop())
 
     def _refill_table(self):
-        """Uzupełnia stół do 12 kart (lub więcej jeśli nie ma SET)"""
-        # Usuń puste sloty i skompresuj
+
+
         self.table_cards = [c for c in self.table_cards if c is not None]
         
-        # Dobierz do 12 kart
+
         while len(self.table_cards) < 12 and self.deck:
             self.table_cards.append(self.deck.pop())
 
-        # Jeśli nadal nie ma SET, dobieraj po 3 karty
+
         while not self._find_set_on_table() and self.deck:
             for _ in range(3):
                 if self.deck:
@@ -123,14 +110,14 @@ class SetGame(MultiplayerGame):
 
     def sit_player(self, player_id: str, player_name: str, seat_index: int, user_token: str) -> Dict[str, Any]:
         if not (0 <= seat_index < 4):
-            return {"success": False, "msg": "NIEPRAWIDLOWE MIEJSCE."}
+            return {"success": False, "msg": "Invalid seat."}
 
         if self.seats[seat_index] is not None:
-            return {"success": False, "msg": "MIEJSCE ZAJETE."}
+            return {"success": False, "msg": "Seat taken."}
 
         for s in self.seats:
             if s and s.get('userId') == user_token:
-                return {"success": False, "msg": "JUZ SIEDZISZ PRZY STOLE."}
+                return {"success": False, "msg": "You are already seated."}
 
         self.seats[seat_index] = {
             "socketId": player_id,
@@ -141,23 +128,23 @@ class SetGame(MultiplayerGame):
             "connected": True,
             "disconnect_timestamp": None
         }
-        return {"success": True, "msg": "Usiadłeś."}
+        return {"success": True, "msg": "Seated."}
 
     def set_player_connection_status(self, user_token: str, is_connected: bool, sid: str = None):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-                # When disconnecting during waiting_for_players, remove the player entirely
+
                 if not is_connected and self.game_state['stage'] == 'waiting_for_players':
                     self.seats[i] = None
                     return True
 
-                # Always update socketId when reconnecting (before status check)
+
                 if is_connected and sid:
                     seat['socketId'] = sid
                     seat['disconnect_timestamp'] = None
 
-                # Skip if status is already the same
+
                 if seat.get('connected') == is_connected:
                     return False
 
@@ -172,29 +159,25 @@ class SetGame(MultiplayerGame):
     def start_game(self) -> Dict[str, Any]:
         seated_count = len([s for s in self.seats if s is not None])
         if seated_count < 2:
-            return {"success": False, "msg": "Za mało graczy (min. 2)."}
+            return {"success": False, "msg": "Not enough players (min. 2)."}
 
         self._deal_initial_cards()
         
         self.game_state['stage'] = 'playing'
         self.game_state['table_cards'] = self.table_cards
         self.game_state['deck_remaining'] = len(self.deck)
-        self.game_state['msg'] = "Gra rozpoczęta! Znajdź SET!"
+        self.game_state['msg'] = "Game started! Find the SET!"
         
         return {"success": True}
 
     def handle_move(self, player_id: str, move_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Obsługuje ruchy gracza:
-        - claim_set: gracz wskazuje 3 karty jako SET
-        - no_set: gracz twierdzi że nie ma SET na stole
-        """
+
         action = move_data.get('action')
 
         if self.game_state['stage'] != 'playing':
-            return {"success": False, "msg": "Gra nie jest w toku."}
+            return {"success": False, "msg": "Game is not running."}
 
-        # Znajdź gracza
+
         player_seat = None
         player_idx = -1
         for i, seat in enumerate(self.seats):
@@ -204,111 +187,111 @@ class SetGame(MultiplayerGame):
                 break
 
         if not player_seat:
-            return {"success": False, "msg": "Nie jesteś przy stole."}
+            return {"success": False, "msg": "You are not seated."}
 
         if action == 'claim_set':
             return self._handle_claim_set(player_seat, player_idx, move_data)
         elif action == 'no_set':
             return self._handle_no_set(player_seat, player_idx)
         else:
-            return {"success": False, "msg": "Nieznana akcja."}
+            return {"success": False, "msg": "Unknown action."}
 
     def _handle_claim_set(self, player_seat: Dict, player_idx: int, move_data: Dict) -> Dict[str, Any]:
-        """Gracz próbuje zgłosić SET"""
+
         card_indices = move_data.get('card_indices', [])
         
         if len(card_indices) != 3:
-            return {"success": False, "msg": "Wybierz dokładnie 3 karty."}
+            return {"success": False, "msg": "Select exactly 3 cards."}
 
-        # Sprawdź czy indeksy są prawidłowe
+
         for idx in card_indices:
             if idx < 0 or idx >= len(self.table_cards) or self.table_cards[idx] is None:
-                return {"success": False, "msg": "Nieprawidłowy wybór kart."}
+                return {"success": False, "msg": "Invalid card selection."}
 
         selected_cards = [self.table_cards[idx] for idx in card_indices]
 
         if self._is_valid_set(selected_cards):
-            # Poprawny SET!
+
             player_seat['score'] += 1
             player_seat['sets_found'] += 1
 
             self.game_state['last_set_by'] = player_seat['name']
             self.game_state['last_set_cards'] = [c['id'] for c in selected_cards]
-            self.game_state['msg'] = f"{player_seat['name']} znalazł SET!"
+            self.game_state['msg'] = f"{player_seat['name']} found a SET!"
 
-            # Usuń karty ze stołu
+
             for idx in sorted(card_indices, reverse=True):
                 self.table_cards[idx] = None
 
-            # Uzupełnij stół
+
             self._refill_table()
             self.game_state['table_cards'] = self.table_cards
             self.game_state['deck_remaining'] = len(self.deck)
 
-            # Sprawdź koniec gry
+
             if self._check_game_end():
                 return {"success": True, "game_over": True}
 
             return {"success": True, "valid_set": True}
         else:
-            # Niepoprawny SET - kara: -1 punkt
+
             player_seat['score'] -= 1
-            self.game_state['msg'] = f"{player_seat['name']} pomylił się! (-1 pkt)"
+            self.game_state['msg'] = f"{player_seat['name']} made a mistake! (-1 pt)"
             return {"success": True, "valid_set": False}
 
     def _handle_no_set(self, player_seat: Dict, player_idx: int) -> Dict[str, Any]:
-        """Gracz twierdzi że nie ma SET na stole"""
+
         existing_set = self._find_set_on_table()
 
         if existing_set is None:
-            # Gracz ma rację - nie ma SET
+
             if self.deck:
-                # Dobierz 3 karty
+
                 for _ in range(3):
                     if self.deck:
                         self.table_cards.append(self.deck.pop())
                 
                 self.game_state['table_cards'] = self.table_cards
                 self.game_state['deck_remaining'] = len(self.deck)
-                self.game_state['msg'] = "Brak SET - dobrano 3 karty."
+                self.game_state['msg'] = "No SET - drew 3 cards."
                 return {"success": True, "was_correct": True}
             else:
-                # Koniec gry
+
                 self._check_game_end()
                 return {"success": True, "was_correct": True, "game_over": True}
         else:
-            # Gracz się pomylił - jest SET na stole
+
             player_seat['score'] -= 1
-            self.game_state['msg'] = f"{player_seat['name']} pomylił się - SET jest na stole! (-1 pkt)"
+            self.game_state['msg'] = f"{player_seat['name']} made a mistake - SET is on the table! (-1 pt)"
             return {"success": True, "was_correct": False}
 
     def _check_game_end(self) -> bool:
-        """Sprawdza czy gra się skończyła"""
-        # Gra kończy się gdy: talia pusta i nie ma SET na stole
+
+
         if not self.deck and not self._find_set_on_table():
             self.game_state['stage'] = 'finished'
             self.game_state['game_over'] = True
             
-            # Znajdź zwycięzcę(ów)
+
             max_score = max((s['score'] for s in self.seats if s), default=0)
             winners = [s['name'] for s in self.seats if s and s['score'] == max_score]
             
             self.game_state['winners'] = winners
             if len(winners) == 1:
                 self.game_state['winner'] = winners[0]
-                self.game_state['msg'] = f"Koniec gry! Wygrywa {winners[0]}!"
+                self.game_state['msg'] = f"Game over! {winners[0]} wins!"
             else:
                 self.game_state['winner'] = None
-                self.game_state['msg'] = f"Koniec gry! Remis: {', '.join(winners)}!"
+                self.game_state['msg'] = f"Game over! Draw: {', '.join(winners)}!"
             
-            # Zapisz statystyki do bazy
+
             self._save_game_stats()
             
             return True
         return False
 
     def _save_game_stats(self):
-        """Zapisuje statystyki gry do bazy danych"""
+
         try:
             for seat in self.seats:
                 if seat and seat.get('userId'):
@@ -344,7 +327,7 @@ class SetGame(MultiplayerGame):
             db.session.rollback()
 
     def get_state(self) -> Dict[str, Any]:
-        """Zwraca pełny stan gry"""
+
         state = {
             "stage": self.game_state['stage'],
             "seats": [

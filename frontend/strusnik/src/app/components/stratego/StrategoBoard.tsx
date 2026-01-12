@@ -87,7 +87,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
           const msg = String(response.message || '');
           const lower = msg.toLowerCase();
 
-          if (lower.includes('błędne hasło') || lower.includes('bledne haslo') || lower.includes('wrong password')) {
+          if (msg.includes('password') || msg.includes('haslo') || msg.includes('błędne') || msg.includes('bledne')) {
             setErrorMessage(t(lang, 'stratego.board.error.wrong_password'));
           }
         } else {
@@ -101,7 +101,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
       if (state.stage) setGameStage(state.stage);
       if (state.seats) {
         setSeats(state.seats);
-        
+
         // Check opponent connection status and update disconnect banner
         const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
         if (mySeatIdx !== -1 && (state.stage === 'playing' || state.stage === 'setup')) {

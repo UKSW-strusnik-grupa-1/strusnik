@@ -109,21 +109,20 @@ class Battleships(MultiplayerGame):
         return -1
 
     def set_player_connection_status(self, user_token: str, is_connected: bool, sid: str = None):
-        """Update connection status and socketId for a player based on user_token.
-        Returns True if status changed, False otherwise."""
+
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-                # When disconnecting during waiting_for_players, remove the player entirely
+
                 if not is_connected and self.game_state['stage'] == 'waiting_for_players':
                     self.seats[i] = None
                     return True
 
-                # Always update socketId when reconnecting (before status check)
+
                 if is_connected and sid:
                     seat['socketId'] = sid
 
-                # Skip if status is already the same
+
                 if seat.get('connected') == is_connected:
                     return False
 
@@ -132,7 +131,7 @@ class Battleships(MultiplayerGame):
         return False
 
     def update_player_sid(self, user_token: str, new_sid: str):
-        """Update stored socketId for a given user token."""
+
         for seat in self.seats:
             if seat and seat.get('userId') == user_token:
                 seat['socketId'] = new_sid

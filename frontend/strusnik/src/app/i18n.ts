@@ -51,7 +51,7 @@ export const I18N = {
 			cancel: 'ANULUJ',
 			refresh: 'ODSWIEZ LISTE POKOI',
 
-			// używane na screenie: ROOMS.SEARCH_PLACEHOLDER
+
 			search_placeholder: 'WYSZUKAJ POKOJ...',
 		},
 
@@ -84,7 +84,7 @@ export const I18N = {
 			loading: 'LACZENIE Z SERWEREM...',
 			back: 'WROC DO POKOI',
 
-			// na screenie: CHESS.HINT.WAITING_OPPONENT
+
 			hint: {
 				waiting_opponent: 'CZEKAMY NA PRZECIWNIKA...',
 				active: 'GRA TRWA.',
@@ -137,7 +137,7 @@ export const I18N = {
 		},
 
 		blackjack: {
-			// żeby działały klucze typu: BLACKJACK.BALANCE oraz BLACKJACK.START
+
 			balance: 'SALDO',
 			start: 'ROZPOCZNIJ',
 
@@ -181,6 +181,18 @@ export const I18N = {
 				join: 'DOLACZ',
 				you: 'TY',
 			},
+			setup: {
+				waiting_opponent: 'CZEKAM NA PRZECIWNIKA...',
+			},
+			game_over_title: 'KONIEC GRY',
+			winner_label: 'WYGRAL',
+			back_to_lobby: 'WROC DO LOBBY',
+			combat_result_title: 'Wynik Walki',
+			draw_result: 'REMIS',
+			win_result: 'WYGRALES',
+			lose_result: 'PRZEGRALES',
+			your_turn: 'TWOJA TURA',
+			opponent_turn: 'TURA PRZECIWNIKA',
 			opponent_disconnected: 'PRZECIWNIK SIE ROZLACZYL',
 			waiting_reconnect: 'OCZEKIWANIE NA POLACZENIE',
 		},
@@ -226,6 +238,11 @@ export const I18N = {
 			opponent_left: 'PRZECIWNIK OPUSCIL GRE',
 			disconnected: 'ROZLACZYL SIE',
 			waiting_reconnect: 'OCZEKIWANIE NA PONOWNE POLACZENIE...',
+			waiting_room_title: 'POCZEKALNIA',
+			waiting_for_players: 'OCZEKIWANIE NA GRACZY...',
+			room_full_message: 'Pokoj pelny',
+			waiting_for_host: 'Oczekiwanie na hosta...',
+			waiting_for_others: 'Oczekiwnie na reszte graczy...',
 		},
 
 		common: {
@@ -250,8 +267,43 @@ export const I18N = {
 					socket_error: 'SOCKET ERROR:',
 				},
 			},
+			disconnected: 'Opponent disconnected',
 			opponent_disconnected: 'GRACZ SIE ROZLACZYL',
 			waiting_reconnect: 'OCZEKIWANIE NA POLACZENIE',
+			log: {
+				game_error: 'Game error:',
+				no_server_response_distribute: 'No server response for distribute',
+				no_server_response_move: 'No server response for move',
+			},
+			alert: {
+				game_ended_timeout: 'Game ended due to timeout',
+			},
+			empty: 'Waiting for game to start...',
+			you: 'You',
+			pausing: '(Pausing)',
+			points_short: 'pts',
+			in_round: 'in round',
+			game_over: 'GAME OVER',
+			winner_label: 'Winner',
+			score_label: 'Score',
+			back_to_lobby: 'BACK TO LOBBY',
+			flying_card_alt: 'Flying card',
+			trump: 'Trump',
+			dealer: 'Dealer',
+			your_preview: 'Your cards',
+			stock_hidden_alt: 'Hidden stock',
+			stake: 'Stake',
+			table_card_alt: 'Card on table',
+			status: 'Status',
+			observing: 'Observing',
+			your_turn: 'Your turn',
+			wait: 'Waiting...',
+			bid: 'Bid',
+			pass: 'Pass',
+			your_game: 'Your game',
+			confirm: 'Confirm',
+			player_setting_score: 'Player is setting score...',
+			fetching_stock: 'Fetching stock...',
 		},
 
 		set: {
@@ -474,6 +526,18 @@ export const I18N = {
 				join: 'JOIN',
 				you: 'YOU',
 			},
+			setup: {
+				waiting_opponent: 'WAITING FOR OPPONENT...',
+			},
+			game_over_title: 'GAME OVER',
+			winner_label: 'WINNER',
+			back_to_lobby: 'BACK TO LOBBY',
+			combat_result_title: 'COMBAT RESULT',
+			draw_result: 'DRAW',
+			win_result: 'YOU WON',
+			lose_result: 'YOU LOST',
+			your_turn: 'YOUR TURN',
+			opponent_turn: 'OPPONENT TURN',
 			opponent_disconnected: 'OPPONENT DISCONNECTED',
 			waiting_reconnect: 'WAITING FOR RECONNECTION',
 		},
@@ -519,6 +583,11 @@ export const I18N = {
 			opponent_left: 'OPPONENT LEFT THE GAME',
 			disconnected: 'DISCONNECTED',
 			waiting_reconnect: 'WAITING FOR RECONNECTION...',
+			waiting_room_title: 'WAITING ROOM',
+			waiting_for_players: 'WAITING FOR PLAYERS...',
+			room_full_message: 'Room full',
+			waiting_for_host: 'Waiting for host...',
+			waiting_for_others: 'Waiting for other players...',
 		},
 
 		common: {
@@ -543,8 +612,43 @@ export const I18N = {
 					socket_error: 'SOCKET ERROR:',
 				},
 			},
+			disconnected: 'Opponent disconnected',
 			opponent_disconnected: 'PLAYER DISCONNECTED',
 			waiting_reconnect: 'WAITING FOR RECONNECTION',
+			log: {
+				game_error: 'Game error:',
+				no_server_response_distribute: 'No server response for distribute',
+				no_server_response_move: 'No server response for move',
+			},
+			alert: {
+				game_ended_timeout: 'Game ended due to timeout',
+			},
+			empty: 'Waiting for game to start...',
+			you: 'You',
+			pausing: '(Observing)',
+			points_short: 'pts',
+			in_round: 'in round',
+			game_over: 'GAME OVER',
+			winner_label: 'Winner',
+			score_label: 'Score',
+			back_to_lobby: 'BACK TO LOBBY',
+			flying_card_alt: 'Flying card',
+			trump: 'Trump',
+			dealer: 'Dealer',
+			your_preview: 'Your cards',
+			stock_hidden_alt: 'Hidden stock',
+			stake: 'Stake',
+			table_card_alt: 'Card on table',
+			status: 'Status',
+			observing: 'Observing',
+			your_turn: 'Your turn',
+			wait: 'Waiting...',
+			bid: 'Bid',
+			pass: 'Pass',
+			your_game: 'Your game',
+			confirm: 'Confirm',
+			player_setting_score: 'Player is setting score...',
+			fetching_stock: 'Fetching stock...',
 		},
 
 		set: {

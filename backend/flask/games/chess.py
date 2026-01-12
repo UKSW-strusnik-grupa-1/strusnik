@@ -8,7 +8,7 @@ from .base import MultiplayerGame
 from models import db, User, GameStats
 
 
-Color = str  # "w" | "b"
+Color = str
 
 
 def _now() -> float:
@@ -57,7 +57,7 @@ class chess(MultiplayerGame):
             return
         self.time_control_min = m
 
-        # If clocks already exist, don't overwrite.
+
         if self.white_ms is None or self.black_ms is None:
             initial_ms = self.time_control_min * 60 * 1000
             if self.white_ms is None:
@@ -76,7 +76,7 @@ class chess(MultiplayerGame):
             "draw": {"offeredBy": None},
             "draw_offer_by": None,
             "ended": False,
-            "result": None,  # {"status": "...", "reason": "...", "winner": "w"/"b"/None}
+            "result": None,
             "lastClientMoveId": None,
             "msg": "",
         }
@@ -88,7 +88,7 @@ class chess(MultiplayerGame):
         if self.seats[0] is None or self.seats[1] is None:
             return {"success": False, "msg": "ZA MALO GRACZY."}
 
-        # (opcjonalnie) można wymagać connected=True
+
         if not self.seats[0].get("connected", True) or not self.seats[1].get("connected", True):
             return {"success": False, "msg": "OBAJ GRACZE MUSZA BYC POLACZENI."}
 
@@ -146,18 +146,18 @@ class chess(MultiplayerGame):
         for i, seat in enumerate(self.seats):
             if seat and seat.get("userId") == user_token:
 
-                # When disconnecting during waiting_for_players, remove the player entirely
+
                 if not is_connected and self.game_state.get("stage") == "waiting_for_players":
                     self.seats[i] = None
                     self.game_state["seats"] = self.seats
                     return True
 
-                # Always update socketId when reconnecting (before status check)
+
                 if is_connected and sid:
                     seat["socketId"] = sid
                     seat["disconnect_timestamp"] = None
 
-                # Skip if status is already the same
+
                 if seat.get("connected") == is_connected:
                     return False
 

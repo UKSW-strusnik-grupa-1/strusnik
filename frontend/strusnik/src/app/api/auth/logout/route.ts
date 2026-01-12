@@ -7,7 +7,7 @@ export async function POST() {
         const cookieStore = await cookies();
         const token = cookieStore.get("jwtToken")?.value;
 
-        // Call backend to clear cookie there too
+
         const response = await fetch(`${config.backendUrl}/api/auth/logout`, {
             method: "POST",
             headers: {
@@ -16,7 +16,7 @@ export async function POST() {
             },
         });
 
-        // Delete cookie on Next.js side
+
         const nextResponse = NextResponse.json(
             { message: "Logged out successfully." },
             { status: 200 }
@@ -27,7 +27,7 @@ export async function POST() {
         return nextResponse;
     } catch (error) {
         console.error("Logout error:", error);
-        // Even if backend fails, delete the cookie
+
         const nextResponse = NextResponse.json(
             { message: "Logged out." },
             { status: 200 }

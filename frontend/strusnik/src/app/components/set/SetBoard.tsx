@@ -121,9 +121,8 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             } else {
                 if (response.error_code === 'PASSWORD_REQUIRED') {
                     setShowPasswordModal(true);
-                    const msg = String(response.message || '');
-                    const lower = msg.toLowerCase();
-                    if (lower.includes('błędne hasło') || lower.includes('bledne haslo') || lower.includes('wrong password')) {
+                    const msg = String(response.message || '').toLowerCase();
+                    if (msg.includes('password') || msg.includes('haslo') || msg.includes('błędne') || msg.includes('bledne')) {
                         setErrorMessage(t(lang, "set.error.wrong_password"));
                     }
                 } else {
@@ -137,7 +136,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             if (state.stage) setGameStage(state.stage);
             if (state.seats) {
                 setSeats(state.seats);
-                
+
                 // Check opponent connection status and update disconnect banner
                 const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
                 if (mySeatIdx !== -1 && state.stage === 'playing') {
@@ -359,7 +358,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                   `}
                                 >
                                     <span className="font-semibold text-amber-100">{seat.name}</span>
-                                    <span className="ml-2 text-amber-400 font-bold">{seat.score} pkt</span>
+                                    <span className="ml-2 text-amber-400 font-bold">{seat.score} {t(lang, "set.points")}</span>
                                 </div>
                             ))}
                         </div>

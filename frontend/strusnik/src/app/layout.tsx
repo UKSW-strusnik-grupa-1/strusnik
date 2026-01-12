@@ -13,7 +13,7 @@ const Perciles = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "STRUŚNIK - GRY ONLINE",
+  title: "STRUSNIK - ONLINE GAMES",
   icons: { icon: "/favicon.ico" },
 };
 

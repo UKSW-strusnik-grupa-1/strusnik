@@ -43,17 +43,17 @@ class Stratego(MultiplayerGame):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-                # When disconnecting during waiting_for_players, remove the player entirely
+
                 if not is_connected and self.game_state['stage'] == 'waiting_for_players':
                     self.seats[i] = None
                     return True
 
-                # Always update socketId when reconnecting (even if connected status is same)
+
                 if is_connected and sid:
                     seat['socketId'] = sid
                     seat['disconnect_timestamp'] = None
 
-                # Skip broadcast if status is already the same
+
                 if seat.get('connected') == is_connected:
                     return False
 
@@ -239,13 +239,13 @@ class Stratego(MultiplayerGame):
 
     def get_player_view(self, player_sid, user_token=None):
         state = self.get_state()
-        # Preferuj identyfikację przez user_token (stabilna), fallback do socketId
+
         if user_token:
             pid = self._get_player_idx_by_token(user_token)
         else:
             pid = self._get_player_idx(player_sid)
         
-        # Jeśli nadal nie znaleziono, spróbuj znaleźć przez socketId w seats
+
         if pid == -1 and player_sid:
             pid = self._get_player_idx(player_sid)
         
