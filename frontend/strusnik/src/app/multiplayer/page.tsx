@@ -5,11 +5,12 @@ import CardContainer from "../components/menu/cardContainer";
 export default function MultiplayerGamesPage() {
     return (
         <div>
-            <ReturnArrow href="/"/>
+            <ReturnArrow href="/" />
             <CardContainer>
-                <Card imgSrc='/gameTiles/tile_tysiac.png' gameName='Tysiac'/>
-                <Card imgSrc='/gameTiles/tile_stratego.png' gameName='Stratego'/>
-                <Card imgSrc='/gameTiles/tile_chess.png' gameName='chess'/>
+                <Card imgSrc='/gameTiles/tile_tysiac.png' gameName='Tysiac' />
+                <Card imgSrc='/gameTiles/tile_stratego.png' gameName='Stratego' />
+                <Card imgSrc='/gameTiles/tile_chess.png' gameName='chess' />
+                <Card imgSrc='/gameTiles/tile_battleships.png' gameName='Battleships' />
             </CardContainer>
         </div>
     )
