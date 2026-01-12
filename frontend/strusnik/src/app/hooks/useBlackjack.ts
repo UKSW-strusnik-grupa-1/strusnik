@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useFetchWithNotify } from "./useFetchWithNotify"
 
 type GameStatus = "NOT-STARTED" | "STARTED" | "FINISHED"
 type Winner = "PLAYER" | "DEALER" | "DRAW" | null
@@ -21,6 +22,8 @@ export const useBlackjack = () => {
 
     const [tokens, setTokens] = useState<number[]>([])
     
+    const fetchWithNotify = useFetchWithNotify();
+
     const changeTokenValues = (newTokens: number[]) => {
         let allTokens = [...newTokens]
         
@@ -130,34 +133,30 @@ export const useBlackjack = () => {
     const startGame = async () => {
         if (gameStatus !== "NOT-STARTED") { return; }
 
-        const response = await fetch("/api/games/blackjack/start", {
+        const data = await fetchWithNotify("/api/games/blackjack/start", {
             method: "POST",
             body: JSON.stringify({ bet })
-        })
+        });
 
-        if (!response.ok) return;
-        const data = await response.json()
+        if (!data) return;
 
         setGameUUID(data.uuid)
         setPlayerDeck(data.playerDeck)
         setPlayerDeckValue(data.playerDeckValue)
-
         setDealerDeck(data.dealerDeck)
         setDealerDeckValue(data.dealerDeckValue)
-
         setGameStatus("STARTED")
     }
 
     const hit = async () => {
         if (gameStatus !== "STARTED") { return; }
 
-        const response = await fetch("/api/games/blackjack/hit", {
+        const data = await fetchWithNotify("/api/games/blackjack/hit", {
             method: "POST",
             body: JSON.stringify({ uuid: gameUUID })
-        })
+        });
 
-        if (!response.ok) return;
-        const data = await response.json()
+        if (!data) return;
 
         setPlayerDeck(data.playerDeck)
         setPlayerDeckValue(data.playerDeckValue)
@@ -170,13 +169,12 @@ export const useBlackjack = () => {
     const stand = async () => {
         if (gameStatus !== "STARTED") { return; }
 
-        const response = await fetch("/api/games/blackjack/stand", {
+        const data = await fetchWithNotify("/api/games/blackjack/stand", {
             method: "POST",
             body: JSON.stringify({ uuid: gameUUID })
-        })
+        });
 
-        if (!response.ok) return;
-        const data = await response.json()
+        if (!data) return;
 
         checkWinner(data)
     }

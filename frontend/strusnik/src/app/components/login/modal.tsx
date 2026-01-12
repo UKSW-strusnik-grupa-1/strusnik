@@ -5,10 +5,14 @@ import { useState } from "react";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
 
+import { useFetchWithNotify } from "@/app/hooks/useFetchWithNotify";
+
 export default function LoginModal() {
   const [error, setError] = useState<string>("");
   const router = useRouter();
   const { lang } = useLang();
+  
+  const fetchWithNotify = useFetchWithNotify();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -17,16 +21,13 @@ export default function LoginModal() {
     const username = formData.get("username");
     const password = formData.get("password");
 
-    const response = await fetch("/api/auth/login", {
+    const data = await fetchWithNotify("/api/auth/login", {
       body: JSON.stringify({ username, password }),
       method: "POST",
       credentials: "include",
     });
 
-    const data = await response.json();
-
-    if (response.status !== 200) {
-      setError(data.error || "Unknown error.");
+    if (!data) {
       return;
     }
 

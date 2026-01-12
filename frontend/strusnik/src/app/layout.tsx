@@ -6,6 +6,7 @@ import { UserProvider } from "./context/UserContext";
 import InvitationModal from "./components/lobby/invitationModal";
 import { LangProvider } from "./lang";
 import TopRightToggles from "./components/TopRightToggles";
+import { NotificationProvider } from "./context/NotificationsContext";
 
 const Perciles = localFont({
   src: "./fonts/Perciles.ttf",
@@ -26,7 +27,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
-        {/* ustawia motyw z localStorage ZANIM strona się wyrenderuje */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -44,13 +44,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       <body className="antialiased font-sans">
         <LangProvider>
-          <UserProvider>
-            <SocketProvider>
-              <TopRightToggles />
-              <InvitationModal />
-              {children}
-            </SocketProvider>
-          </UserProvider>
+          <NotificationProvider> 
+            <UserProvider>
+              <SocketProvider>
+                <TopRightToggles />
+                <InvitationModal />
+                {children}
+              </SocketProvider>
+            </UserProvider>
+          </NotificationProvider>
         </LangProvider>
       </body>
     </html>

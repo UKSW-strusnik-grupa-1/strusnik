@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useFetchWithNotify } from "./useFetchWithNotify";
 
 type Direction = "UP" | "DOWN" | "LEFT" | "RIGHT";
 
@@ -49,6 +50,8 @@ export const useSnake = () => {
   const [speed, setSpeed] = useState(INITIAL_SPEED);
   const [isSubmittingScore, setIsSubmittingScore] = useState(false);
 
+  const fetchWithNotify = useFetchWithNotify();
+
   const score = foodsEaten * 100;
 
   const directionRef = useRef<Direction>("RIGHT");
@@ -86,20 +89,12 @@ export const useSnake = () => {
 
   const startGame = async () => {
     try {
-      const res = await fetch("/api/games/snake/start", {
+      const data = await fetchWithNotify("/api/games/snake/start", {
         method: "POST",
         cache: "no-store",
       });
 
-      const data = await readJsonOrText(res);
-
-      if (!res.ok) {
-        throw new Error(
-          `Snake start failed (${res.status}): ${
-            typeof data === "object" ? JSON.stringify(data) : String(data)
-          }`
-        );
-      }
+      if (!data) return;
 
       const initialSnake = createInitialSnake();
 
@@ -141,22 +136,17 @@ export const useSnake = () => {
     try {
       setIsSubmittingScore(true);
 
-      const res = await fetch("/api/games/snake/finish", {
+      const data = await fetchWithNotify("/api/games/snake/finish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uuid, foodsEaten: finalFoodsEaten }),
         cache: "no-store",
       });
 
-      const data = await readJsonOrText(res);
-
-      if (!res.ok) {
-        throw new Error(
-          `Snake finish failed (${res.status}): ${
-            typeof data === "object" ? JSON.stringify(data) : String(data)
-          }`
-        );
+      if (!data) {
+          throw new Error("Failed to submit score");
       }
+
     } catch (err) {
       console.error(err);
     } finally {
