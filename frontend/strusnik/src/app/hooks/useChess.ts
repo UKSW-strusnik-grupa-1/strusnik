@@ -106,6 +106,8 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   const [endTitle, setEndTitle] = useState(t(lang, 'chess.end.game_over'));
   const [endSubtitle, setEndSubtitle] = useState('');
 
+  const [opponentDisconnected, setOpponentDisconnected] = useState<{ name: string; timeLeft: number } | null>(null);
+
   const pendingMoveRef = useRef<{ prevFen: string; clientMoveId: string } | null>(null);
 
   const lastTickRef = useRef<number>(0);
@@ -195,7 +197,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
         move: { type: 'move', from, to, promotion, clientMoveId },
       });
     } catch {
-      // ignore
+
     }
   };
 
@@ -217,6 +219,11 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   const resign = () => {
     if (!socket || !roomId) return;
     socket.emit('player_move', { roomId, move: { type: 'resign' } });
+  };
+
+  const leaveRoom = () => {
+    if (!socket || !roomId) return;
+    socket.emit('leave_room', { roomId });
   };
 
   useEffect(() => {
@@ -290,6 +297,24 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       else if (localMyColor && offeredBy === localMyColor) setDrawUiState('offered_by_me');
       else setDrawUiState('offered_to_me');
 
+
+      if (nextSeats && localMyColor && normalizeStage(state.stage) === 'active') {
+        const opponentSeatIdx = localMyColor === 'w' ? 1 : 0;
+        const opponentSeat = nextSeats[opponentSeatIdx];
+        if (opponentSeat) {
+          if (opponentSeat.connected === true) {
+
+            setOpponentDisconnected(null);
+          } else if (opponentSeat.connected === false) {
+
+            setOpponentDisconnected((prev) => {
+              if (prev !== null) return prev;
+              return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
+            });
+          }
+        }
+      }
+
       if (state.ended || state.stage === 'ended') {
         setGameEnded(true);
         const txt = deriveEndText(lang, localMyColor, state.result);
@@ -316,13 +341,41 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       console.error('chess socket error:', msg);
     };
 
+    const onOpponentDisconnected = (data: any) => {
+      if (data.playerName) {
+        setOpponentDisconnected({ name: data.playerName, timeLeft: data.waitTime || 90 });
+      }
+    };
+
+    const onOpponentReconnected = (_data: any) => {
+      setOpponentDisconnected(null);
+    };
+
+    const onOpponentReturned = (_data: any) => {
+
+      setOpponentDisconnected(null);
+    };
+
+    const onGameEndedTimeout = () => {
+      setOpponentDisconnected(null);
+      onKickedToLobby?.('Przeciwnik opuścił grę');
+    };
+
     socket.off('join_room_response', onJoinResponse);
     socket.off('game_state_update', onGameState);
     socket.off('error', onError);
+    socket.off('opponent_disconnected', onOpponentDisconnected);
+    socket.off('opponent_reconnected', onOpponentReconnected);
+    socket.off('opponent_returned', onOpponentReturned);
+    socket.off('game_ended_timeout', onGameEndedTimeout);
 
     socket.on('join_room_response', onJoinResponse);
     socket.on('game_state_update', onGameState);
     socket.on('error', onError);
+    socket.on('opponent_disconnected', onOpponentDisconnected);
+    socket.on('opponent_reconnected', onOpponentReconnected);
+    socket.on('opponent_returned', onOpponentReturned);
+    socket.on('game_ended_timeout', onGameEndedTimeout);
 
     emitJoin('');
     lastTickRef.current = Date.now();
@@ -331,6 +384,10 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       socket.off('join_room_response', onJoinResponse);
       socket.off('game_state_update', onGameState);
       socket.off('error', onError);
+      socket.off('opponent_disconnected', onOpponentDisconnected);
+      socket.off('opponent_reconnected', onOpponentReconnected);
+      socket.off('opponent_returned', onOpponentReturned);
+      socket.off('game_ended_timeout', onGameEndedTimeout);
     };
   }, [socket, roomId, userId, lang]);
 
@@ -345,6 +402,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   useEffect(() => {
     if (stage !== 'active') return;
     if (gameEnded) return;
+    if (opponentDisconnected) return;
     if (!roomTimeMin) return;
 
     const interval = window.setInterval(() => {
@@ -360,7 +418,21 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     }, 250);
 
     return () => window.clearInterval(interval);
-  }, [stage, gameEnded, roomTimeMin, turn, whiteTimeMs, blackTimeMs]);
+  }, [stage, gameEnded, opponentDisconnected, roomTimeMin, turn, whiteTimeMs, blackTimeMs]);
+
+
+  useEffect(() => {
+    if (!opponentDisconnected) return;
+
+    const interval = setInterval(() => {
+      setOpponentDisconnected((prev) => {
+        if (!prev || prev.timeLeft <= 1) return null;
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [opponentDisconnected?.name]);
 
   const waitingHint = useMemo(() => {
     if (stage === 'ended') return t(lang, 'chess.hint.ended');
@@ -395,6 +467,8 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     endTitle,
     endSubtitle,
 
+    opponentDisconnected,
+
     submitJoinPassword,
     closePasswordModal,
 
@@ -405,5 +479,6 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     declineDraw,
 
     resign,
+    leaveRoom,
   };
 }

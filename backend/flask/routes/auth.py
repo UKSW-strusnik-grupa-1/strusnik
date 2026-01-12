@@ -60,7 +60,7 @@ def login():
             value=token,
             max_age=current_app.config["TOKEN_MAX_AGE"],
             httponly=True,
-            secure=False, # True dla HTTPS
+            secure=False,
             samesite="Lax"
         )
         
@@ -112,4 +112,10 @@ def validate_token():
         return jsonify({"valid": valid}), 200 if valid else 400
     except Exception as e:
         return jsonify({"error": str(e), "valid": False}), 400
-        
+
+
+@authentication.route("/logout", methods=["POST"])
+def logout():
+    response = make_response(jsonify({"message": "Logged out successfully."}), 200)
+    response.delete_cookie("jwtToken")
+    return response

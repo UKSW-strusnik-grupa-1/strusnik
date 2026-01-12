@@ -119,18 +119,6 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
     setDeclarationAmount(currentBid);
   }, [currentBid]);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (socket) {
-        socket.emit('leave_room', { roomId });
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [socket, roomId]);
-
   const getMySeatIndex = () => {
     const idx = gameSeats.findIndex((s) => s && String(s.userId) === String(myId));
     return idx === -1 ? 0 : idx;
@@ -169,9 +157,6 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
   };
 
   const handleExit = () => {
-    if (socket) {
-      socket.emit('leave_room', { roomId });
-    }
     router.push(`/lobby/Tysiac`);
   };
 
@@ -334,16 +319,16 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
       setFlyingCard((prev) =>
         prev
           ? {
-              ...prev,
-              style: {
-                ...prev.style,
-                top: endRect.top + (endRect.height - TARGET_CARD_HEIGHT) / 2,
-                left: endRect.left + (endRect.width - TARGET_CARD_WIDTH) / 2,
-                width: TARGET_CARD_WIDTH,
-                height: TARGET_CARD_HEIGHT,
-                transform: 'rotate(0deg)',
-              },
-            }
+            ...prev,
+            style: {
+              ...prev.style,
+              top: endRect.top + (endRect.height - TARGET_CARD_HEIGHT) / 2,
+              left: endRect.left + (endRect.width - TARGET_CARD_WIDTH) / 2,
+              width: TARGET_CARD_WIDTH,
+              height: TARGET_CARD_HEIGHT,
+              transform: 'rotate(0deg)',
+            },
+          }
           : null
       );
     }, 50);
@@ -754,18 +739,16 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
                 <button
                   onClick={handleBid}
                   disabled={!isMyTurn}
-                  className={`h-12 w-full rounded bg-amber-700 text-white font-bold transition-all hover:bg-amber-600 ${
-                    !isMyTurn && 'opacity-50 cursor-not-allowed'
-                  }`}
+                  className={`h-12 w-full rounded bg-amber-700 text-white font-bold transition-all hover:bg-amber-600 ${!isMyTurn && 'opacity-50 cursor-not-allowed'
+                    }`}
                 >
                   {t(lang, 'thousand.bid')}
                 </button>
                 <button
                   onClick={handlePass}
                   disabled={!isMyTurn}
-                  className={`h-12 w-full rounded bg-gray-700 text-white font-bold transition-all hover:bg-gray-600 ${
-                    !isMyTurn && 'opacity-50 cursor-not-allowed'
-                  }`}
+                  className={`h-12 w-full rounded bg-gray-700 text-white font-bold transition-all hover:bg-gray-600 ${!isMyTurn && 'opacity-50 cursor-not-allowed'
+                    }`}
                 >
                   {t(lang, 'thousand.pass')}
                 </button>

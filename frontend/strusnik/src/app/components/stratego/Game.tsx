@@ -6,111 +6,90 @@ import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
 
 interface ActiveGameProps {
-  socket: any;
-  roomId: string;
-  gameState: any;
-  myId: string;
+    socket: any;
+    roomId: string;
+    gameState: any;
+    myId: string;
+    opponentDisconnected?: boolean;
 }
 
-const BigDisconnectOverlay = ({ timestamp, name }: { timestamp: number, name: string }) => {
-    const [timeLeft, setTimeLeft] = useState(60);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const now = Date.now() / 1000;
-            const validTimestamp = timestamp || now;
-            const diff = 60 - (now - validTimestamp);
-            setTimeLeft(diff > 0 ? Math.floor(diff) : 0);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [timestamp]);
-
-    return (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 border-2 border-red-600/80 rounded-lg backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.5)] p-1">
-            <p className="text-red-500 text-[8px] font-bold uppercase tracking-widest mb-0.5 animate-pulse">Rozlaczony</p>
-            <p className="text-white text-xl font-mono font-bold leading-none mb-0.5">{timeLeft}s</p>
-            <p className="text-gray-400 text-[9px] truncate max-w-full opacity-60">{name}</p>
-        </div>
-    );
-};
-
 const RANK_TO_IMG_SUFFIX: Record<string, string> = {
-  F: 'S',
-  B: 'B',
-  S: '1',
-  '10': '10',
-  '9': '9',
-  '8': '8',
-  '7': '7',
-  '6': '6',
-  '5': '5',
-  '4': '4',
-  '3': '3',
-  '2': '2',
+    F: 'S',
+    B: 'B',
+    S: '1',
+    '10': '10',
+    '9': '9',
+    '8': '8',
+    '7': '7',
+    '6': '6',
+    '5': '5',
+    '4': '4',
+    '3': '3',
+    '2': '2',
 };
 
 const PIECE_LABELS: Record<string, string> = {
-  F: '🚩',
-  B: '💣',
-  '10': '10',
-  '9': '9',
-  '8': '8',
-  '7': '7',
-  '6': '6',
-  '5': '5',
-  '4': '4',
-  '3': '3',
-  '2': '2',
-  S: '1',
+    F: '🚩',
+    B: '💣',
+    '10': '10',
+    '9': '9',
+    '8': '8',
+    '7': '7',
+    '6': '6',
+    '5': '5',
+    '4': '4',
+    '3': '3',
+    '2': '2',
+    S: '1',
 };
 
 const SETUP_CONFIG = {
-  F: 1,
-  B: 6,
-  '10': 1,
-  '9': 1,
-  '8': 2,
-  '7': 3,
-  '6': 4,
-  '5': 4,
-  '4': 4,
-  '3': 5,
-  '2': 8,
-  S: 1,
+    F: 1,
+    B: 6,
+    '10': 1,
+    '9': 1,
+    '8': 2,
+    '7': 3,
+    '6': 4,
+    '5': 4,
+    '4': 4,
+    '3': 5,
+    '2': 8,
+    S: 1,
 };
 
-export default function Game({ socket, roomId, gameState, myId }: ActiveGameProps) {
-  const { lang } = useLang();
+export default function Game({ socket, roomId, gameState, myId, opponentDisconnected }: ActiveGameProps) {
+    const { lang } = useLang();
 
-  const { board, seats, stage, setup_ready, current_player_idx, last_move, winner } = gameState;
+    const { board, seats, stage, setup_ready, current_player_idx, last_move, winner } = gameState;
 
     const calculatedIdx = seats.findIndex((s: any) => s && s.userId === myId);
-    
-    const my_idx = (gameState.my_idx !== undefined && gameState.my_idx !== -1) 
-        ? gameState.my_idx 
+
+    const my_idx = (gameState.my_idx !== undefined && gameState.my_idx !== -1)
+        ? gameState.my_idx
         : calculatedIdx;
-    
+
     const [setupBoard, setSetupBoard] = useState<(string | null)[][]>(
         Array(4).fill(null).map(() => Array(10).fill(null))
     );
-    const [availablePieces, setAvailablePieces] = useState<Record<string, number>>({...SETUP_CONFIG});
+    const [availablePieces, setAvailablePieces] = useState<Record<string, number>>({ ...SETUP_CONFIG });
     const [selectedPieceToPlace, setSelectedPieceToPlace] = useState<string | null>(null);
-    
-    const [dragOverSquare, setDragOverSquare] = useState<{r: number, c: number} | null>(null);
 
-    const [selectedSquare, setSelectedSquare] = useState<{r: number, c: number} | null>(null);
+    const [dragOverSquare, setDragOverSquare] = useState<{ r: number, c: number } | null>(null);
+
+    const [selectedSquare, setSelectedSquare] = useState<{ r: number, c: number } | null>(null);
 
     const isPlayer0 = my_idx === 0;
-    
+
     const getPieceImgSrc = (rank: string, playerIdx: number) => {
         const colorPrefix = playerIdx === 0 ? 'red' : 'blue';
         const suffix = RANK_TO_IMG_SUFFIX[rank] || rank;
         return `/stratego/${colorPrefix}${suffix}.webp`;
     };
 
-  const shouldShowRankLabel = (rank: string) => {
-    return rank !== 'F' && rank !== 'B';
-  };
+    const shouldShowRankLabel = (rank: string) => {
+        return rank !== 'F' && rank !== 'B';
+    };
 
     const viewToBackend = (r_view: number, c_view: number) => {
         if (isPlayer0) {
@@ -127,11 +106,11 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
 
     const handlePlacePiece = (r: number, c: number) => {
         if (stage !== 'setup') return;
-        
+
         const existing = setupBoard[r][c];
 
         if (existing) {
-            setAvailablePieces(prev => ({...prev, [existing]: prev[existing] + 1}));
+            setAvailablePieces(prev => ({ ...prev, [existing]: prev[existing] + 1 }));
             const newBoard = [...setupBoard.map(row => [...row])];
             newBoard[r][c] = null;
             setSetupBoard(newBoard);
@@ -143,7 +122,7 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
             newBoard[r][c] = selectedPieceToPlace;
             setSetupBoard(newBoard);
             setAvailablePieces(prev => {
-                const updated = {...prev};
+                const updated = { ...prev };
                 updated[selectedPieceToPlace]--;
                 if (updated[selectedPieceToPlace] === 0) setSelectedPieceToPlace(null);
                 return updated;
@@ -157,35 +136,35 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         e.dataTransfer.effectAllowed = "move";
     };
 
-  const handleDragOver = (e: React.DragEvent, r: number, c: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverSquare?.r !== r || dragOverSquare?.c !== c) {
-      setDragOverSquare({ r, c });
-    }
-  };
+    const handleDragOver = (e: React.DragEvent, r: number, c: number) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragOverSquare?.r !== r || dragOverSquare?.c !== c) {
+            setDragOverSquare({ r, c });
+        }
+    };
 
     const handleDragLeave = (e: React.DragEvent) => {
     };
 
-  const handleDrop = (e: React.DragEvent, targetR: number, targetC: number) => {
-    e.preventDefault();
-    setDragOverSquare(null);
+    const handleDrop = (e: React.DragEvent, targetR: number, targetC: number) => {
+        e.preventDefault();
+        setDragOverSquare(null);
 
-    const dataStr = e.dataTransfer.getData('piece_data');
-    if (!dataStr) return;
+        const dataStr = e.dataTransfer.getData('piece_data');
+        if (!dataStr) return;
 
-    const { rank, fromBoard, r: srcR, c: srcC } = JSON.parse(dataStr);
+        const { rank, fromBoard, r: srcR, c: srcC } = JSON.parse(dataStr);
 
-    if (fromBoard && srcR === targetR && srcC === targetC) return;
+        if (fromBoard && srcR === targetR && srcC === targetC) return;
 
-    const newBoard = setupBoard.map((row) => [...row]);
-    const newAvailable = { ...availablePieces };
-    const targetPiece = newBoard[targetR][targetC];
+        const newBoard = setupBoard.map((row) => [...row]);
+        const newAvailable = { ...availablePieces };
+        const targetPiece = newBoard[targetR][targetC];
 
         if (fromBoard) {
             newBoard[targetR][targetC] = rank;
-            newBoard[srcR][srcC] = targetPiece; 
+            newBoard[srcR][srcC] = targetPiece;
         } else {
             if (newAvailable[rank] <= 0) return;
             newAvailable[rank]--;
@@ -203,21 +182,21 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
 
     const handleAutoFill = () => {
         const newBoard = setupBoard.map(row => [...row]);
-        const newAvailable = {...availablePieces};
-        
-        const emptySlots: {r: number, c: number}[] = [];
-        for(let r=0; r<4; r++) for(let c=0; c<10; c++) if(!newBoard[r][c]) emptySlots.push({r,c});
-        
+        const newAvailable = { ...availablePieces };
+
+        const emptySlots: { r: number, c: number }[] = [];
+        for (let r = 0; r < 4; r++) for (let c = 0; c < 10; c++) if (!newBoard[r][c]) emptySlots.push({ r, c });
+
         for (let i = emptySlots.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [emptySlots[i], emptySlots[j]] = [emptySlots[j], emptySlots[i]];
         }
-        
+
         let slotIdx = 0;
         for (const [rank, count] of Object.entries(newAvailable)) {
-            for(let i=0; i<count; i++) {
-                if(slotIdx < emptySlots.length) {
-                    const {r, c} = emptySlots[slotIdx++];
+            for (let i = 0; i < count; i++) {
+                if (slotIdx < emptySlots.length) {
+                    const { r, c } = emptySlots[slotIdx++];
                     newBoard[r][c] = rank;
                     newAvailable[rank]--;
                 }
@@ -227,60 +206,61 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         setAvailablePieces(newAvailable);
     };
 
-  const submitSetup = () => {
-    if (my_idx === undefined || my_idx === null || my_idx === -1) {
-      alert(t(lang, 'stratego.setup.sync_error_refresh'));
-      return;
-    }
-
-    const pieces: any[] = [];
-    const isP0 = my_idx === 0;
-
-    for (let r = 0; r < 4; r++) {
-      for (let c = 0; c < 10; c++) {
-        const rank = setupBoard[r][c];
-        if (rank) {
-          let backendR, backendC;
-          if (isP0) {
-            backendR = 3 - r;
-            backendC = 9 - c;
-          } else {
-            backendR = 6 + r;
-            backendC = c;
-          }
-          pieces.push({ r: backendR, c: backendC, rank });
+    const submitSetup = () => {
+        if (my_idx === undefined || my_idx === null || my_idx === -1) {
+            alert(t(lang, 'stratego.setup.sync_error_refresh'));
+            return;
         }
-      }
-    }
 
-    socket.emit('player_move', {
-      roomId,
-      move: { type: 'submit_setup', pieces },
-    });
-  };
+        const pieces: any[] = [];
+        const isP0 = my_idx === 0;
+
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 10; c++) {
+                const rank = setupBoard[r][c];
+                if (rank) {
+                    let backendR, backendC;
+                    if (isP0) {
+                        backendR = 3 - r;
+                        backendC = 9 - c;
+                    } else {
+                        backendR = 6 + r;
+                        backendC = c;
+                    }
+                    pieces.push({ r: backendR, c: backendC, rank });
+                }
+            }
+        }
+
+        socket.emit('player_move', {
+            roomId,
+            move: { type: 'submit_setup', pieces },
+        });
+    };
 
     const handleSquareClick = (r_view: number, c_view: number) => {
         if (stage !== 'playing') return;
         if (current_player_idx !== my_idx) return;
+        if (opponentDisconnected) return; // Block moves when opponent disconnected
 
-    const { r: realR, c: realC } = viewToBackend(r_view, c_view);
-    const piece = board[realR][realC];
-    const isMyPiece = piece && piece.player === my_idx;
+        const { r: realR, c: realC } = viewToBackend(r_view, c_view);
+        const piece = board[realR][realC];
+        const isMyPiece = piece && piece.player === my_idx;
 
-    if (selectedSquare) {
-      const { r: fromRealR, c: fromRealC } = viewToBackend(selectedSquare.r, selectedSquare.c);
+        if (selectedSquare) {
+            const { r: fromRealR, c: fromRealC } = viewToBackend(selectedSquare.r, selectedSquare.c);
 
-      if (selectedSquare.r === r_view && selectedSquare.c === c_view) {
-        setSelectedSquare(null);
-        return;
-      }
+            if (selectedSquare.r === r_view && selectedSquare.c === c_view) {
+                setSelectedSquare(null);
+                return;
+            }
 
-      if (isMyPiece) {
-        if (piece.rank !== 'F' && piece.rank !== 'B') {
-          setSelectedSquare({ r: r_view, c: c_view });
-        }
-        return;
-      }
+            if (isMyPiece) {
+                if (piece.rank !== 'F' && piece.rank !== 'B') {
+                    setSelectedSquare({ r: r_view, c: c_view });
+                }
+                return;
+            }
 
             socket.emit('player_move', {
                 roomId,
@@ -295,7 +275,7 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
         } else {
             if (isMyPiece) {
                 if (piece.rank === 'F' || piece.rank === 'B') return;
-                setSelectedSquare({r: r_view, c: c_view});
+                setSelectedSquare({ r: r_view, c: c_view });
             }
         }
     };
@@ -303,29 +283,28 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
     const renderGameCell = (r_view: number, c_view: number) => {
         const { r: realR, c: realC } = viewToBackend(r_view, c_view);
 
-    const piece = board[realR][realC];
-    const isSelected = selectedSquare?.r === r_view && selectedSquare?.c === c_view;
-    const isLastMoveSrc = last_move?.from.r === realR && last_move?.from.c === realC;
-    const isLastMoveDst = last_move?.to.r === realR && last_move?.to.c === realC;
+        const piece = board[realR][realC];
+        const isSelected = selectedSquare?.r === r_view && selectedSquare?.c === c_view;
+        const isLastMoveSrc = last_move?.from.r === realR && last_move?.from.c === realC;
+        const isLastMoveDst = last_move?.to.r === realR && last_move?.to.c === realC;
 
-    if (!piece) {
-      return (
-        <div
-          className={`w-full h-full transition-colors ${
-            isSelected ? 'bg-amber-500/20' : 'hover:bg-white/5'
-          } ${isLastMoveSrc ? 'bg-yellow-500/10' : ''}`}
-          onClick={() => handleSquareClick(r_view, c_view)}
-        />
-      );
-    }
+        if (!piece) {
+            return (
+                <div
+                    className={`w-full h-full transition-colors ${isSelected ? 'bg-amber-500/20' : 'hover:bg-white/5'
+                        } ${isLastMoveSrc ? 'bg-yellow-500/10' : ''}`}
+                    onClick={() => handleSquareClick(r_view, c_view)}
+                />
+            );
+        }
 
-    const isMine = piece.player === my_idx;
-    const pieceColorClass = piece.player === 0 ? 'bg-red-900 border-red-500' : 'bg-blue-900 border-blue-500';
+        const isMine = piece.player === my_idx;
+        const pieceColorClass = piece.player === 0 ? 'bg-red-900 border-red-500' : 'bg-blue-900 border-blue-500';
 
         const showRank = isMine || piece.rank !== '?';
-        
+
         return (
-            <div 
+            <div
                 onClick={() => handleSquareClick(r_view, c_view)}
                 className={`
                     w-[90%] h-[90%] rounded shadow-lg flex items-center justify-center select-none cursor-pointer relative
@@ -336,8 +315,8 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
             >
                 {showRank ? (
                     <>
-                        <img 
-                            src={getPieceImgSrc(piece.rank, piece.player)} 
+                        <img
+                            src={getPieceImgSrc(piece.rank, piece.player)}
                             alt={piece.rank}
                             className="w-full h-full object-fit rounded-sm flex"
                             onError={(e) => {
@@ -353,7 +332,7 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                     </>
                 ) : (
                     <div className="w-full h-full flex items-center justify-center bg-black/20">
-                         <span className="opacity-60 sm:text-sm md:text-lg lg:text-2xl">❔</span>
+                        <span className="opacity-60 sm:text-sm md:text-lg lg:text-2xl">❔</span>
                     </div>
                 )}
             </div>
@@ -361,55 +340,55 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
     };
 
     if (stage === 'game_over') {
-         return (
+        return (
             <div className="flex flex-col items-center justify-center h-full gap-6 animate-in fade-in duration-700">
-                <h2 className="text-5xl text-amber-500 font-bold tracking-widest drop-shadow-lg">KONIEC GRY</h2>
+                <h2 className="text-5xl text-amber-500 font-bold tracking-widest drop-shadow-lg">{t(lang, 'stratego.game_over_title')}</h2>
                 <div className="text-2xl text-gray-200 bg-black/50 px-8 py-4 rounded-xl border border-amber-900/50">
-                    WYGRAL: <span className="text-white font-bold text-3xl ml-2">{winner?.name}</span>
+                    {t(lang, 'stratego.winner_label')}: <span className="text-white font-bold text-3xl ml-2">{winner?.name}</span>
                     <p className="text-sm text-gray-400 mt-2 text-center italic">{winner?.reason}</p>
                 </div>
                 <Link href={"/lobby/Stratego"}>
-                <button 
-                    className="px-8 py-3 bg-amber-800 hover:bg-amber-700 text-white font-bold rounded shadow-lg transition-all transform hover:scale-105 cursor-pointer"
-                >
-                    WROC DO LOBBY
-                </button>
+                    <button
+                        className="px-8 py-3 bg-amber-800 hover:bg-amber-700 text-white font-bold rounded shadow-lg transition-all transform hover:scale-105 cursor-pointer"
+                    >
+                        {t(lang, 'stratego.back_to_lobby')}
+                    </button>
                 </Link>
             </div>
-         );
+        );
     }
 
-  if (stage === 'setup') {
-    if (setup_ready?.[my_idx]) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full text-amber-100 gap-4">
-          <div className="text-4xl animate-bounce">⏳</div>
-          <h2 className="text-2xl font-light tracking-wide">{t(lang, 'stratego.setup.waiting_opponent')}</h2>
-        </div>
-      );
-    }
+    if (stage === 'setup') {
+        if (setup_ready?.[my_idx]) {
+            return (
+                <div className="flex flex-col items-center justify-center h-full text-amber-100 gap-4">
+                    <div className="text-4xl animate-bounce">⏳</div>
+                    <h2 className="text-2xl font-light tracking-wide">{t(lang, 'stratego.setup.waiting_opponent')}</h2>
+                </div>
+            );
+        }
 
-    const piecesLeft = Object.values(availablePieces).reduce((a, b) => a + b, 0);
+        const piecesLeft = Object.values(availablePieces).reduce((a, b) => a + b, 0);
 
         return (
             <div className="flex flex-col h-full w-full p-2 overflow-hidden">
                 <div className="flex-1 flex items-center justify-center min-h-0">
-                     <div 
+                    <div
                         className="grid grid-cols-10 gap-1 p-2 border-2 border-amber-900/50 rounded-lg shadow-2xl"
                         style={{
                             backgroundImage: "url('/board.png')",
                             backgroundSize: 'cover',
                             backgroundPosition: 'bottom'
                         }}
-                     >
+                    >
                         {setupBoard.map((row, r) => (
                             row.map((cell, c) => {
                                 const borderColor = my_idx === 0 ? 'border-red-600' : 'border-blue-600';
                                 const isDragOver = dragOverSquare?.r === r && dragOverSquare?.c === c;
-                                
+
                                 return (
-                                    <div 
-                                        key={`${r}-${c}`} 
+                                    <div
+                                        key={`${r}-${c}`}
                                         className={`
                                             w-20 h-20 md:w-25 md:h-25 lg:w-30 lg:h-30 
                                             border border-gray-800/30
@@ -423,7 +402,7 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                                         onDrop={(e) => handleDrop(e, r, c)}
                                     >
                                         {cell && (
-                                            <div 
+                                            <div
                                                 className={`
                                                     w-[95%] h-[95%] rounded border ${borderColor} flex items-center justify-center shadow-md animate-in zoom-in duration-200 overflow-hidden relative
                                                     cursor-grab active:cursor-grabbing bg-black/40 backdrop-blur-sm
@@ -431,10 +410,10 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                                                 draggable={true}
                                                 onDragStart={(e) => handleDragStart(e, cell, true, r, c)}
                                             >
-                                                 <img 
-                                                    src={getPieceImgSrc(cell, my_idx)} 
-                                                    alt={cell} 
-                                                    className="w-full h-full object-fit pointer-events-none" 
+                                                <img
+                                                    src={getPieceImgSrc(cell, my_idx)}
+                                                    alt={cell}
+                                                    className="w-full h-full object-fit pointer-events-none"
                                                 />
                                                 {shouldShowRankLabel(cell) && (
                                                     <div className="absolute top-0 right-0 bg-black/80 text-white text-[15px] font-bold px-1 rounded-bl shadow-sm pointer-events-none">
@@ -451,18 +430,18 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                 </div>
 
                 <div className="flex justify-center gap-4 my-3">
-                     <button onClick={handleAutoFill} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs uppercase font-bold tracking-wide transition-colors">Losowo</button>
-                     <button onClick={() => {setSetupBoard(Array(4).fill(null).map(() => Array(10).fill(null))); setAvailablePieces({...SETUP_CONFIG})}} className="px-3 py-1 bg-red-900/40 hover:bg-red-900 rounded text-xs uppercase font-bold tracking-wide transition-colors text-red-200">WYCZYSC</button>
-                     <button 
-                        onClick={submitSetup} 
+                    <button onClick={handleAutoFill} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs uppercase font-bold tracking-wide transition-colors">Losowo</button>
+                    <button onClick={() => { setSetupBoard(Array(4).fill(null).map(() => Array(10).fill(null))); setAvailablePieces({ ...SETUP_CONFIG }) }} className="px-3 py-1 bg-red-900/40 hover:bg-red-900 rounded text-xs uppercase font-bold tracking-wide transition-colors text-red-200">WYCZYSC</button>
+                    <button
+                        onClick={submitSetup}
                         disabled={piecesLeft > 0}
                         className={`px-6 py-1 rounded text-sm font-bold uppercase transition-all shadow-lg
-                            ${piecesLeft > 0 
-                                ? 'bg-gray-800 text-gray-600 cursor-not-allowed' 
+                            ${piecesLeft > 0
+                                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
                                 : 'bg-green-700 hover:bg-green-600 text-white shadow-green-900/50 scale-105'}`}
-                     >
+                    >
                         ZATWIERDZ
-                     </button>
+                    </button>
                 </div>
 
                 <div className="h-35 overflow-y-auto bg-black/40 rounded-t-xl border-t border-amber-900/30 p-2 custom-scrollbar">
@@ -470,9 +449,9 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                         {Object.entries(SETUP_CONFIG).map(([rank, total]) => {
                             const left = availablePieces[rank];
                             const isSelected = selectedPieceToPlace === rank;
-                            
+
                             return (
-                                <div 
+                                <div
                                     key={rank}
                                     draggable={left > 0}
                                     onDragStart={(e) => handleDragStart(e, rank, false)}
@@ -484,9 +463,9 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                                     `}
                                 >
                                     <div className="w-15 h-15 md:w-20 md:h-20 flex items-center justify-center relative pointer-events-none">
-                                        <img 
-                                            src={getPieceImgSrc(rank, my_idx)} 
-                                            alt={rank} 
+                                        <img
+                                            src={getPieceImgSrc(rank, my_idx)}
+                                            alt={rank}
                                             className="w-full h-full object-fit drop-shadow-md"
                                         />
                                         {shouldShowRankLabel(rank) && (
@@ -511,84 +490,82 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
 
     let combatResultText = "";
     let combatResultColor = "";
-    
+
     if (last_move?.combat) {
         const combat = last_move.combat;
         const amIAttacker = combat.attacker.player === my_idx;
         const result = combat.result;
 
         if (result === 'draw') {
-            combatResultText = "Remis!";
+            combatResultText = t(lang, 'stratego.draw_result');
             combatResultColor = "text-gray-400";
         } else if (amIAttacker) {
             if (result === 'win') {
-                combatResultText = "WYGRALES";
+                combatResultText = t(lang, 'stratego.win_result');
                 combatResultColor = "text-green-400";
             } else {
-                combatResultText = "PRZEGRALES";
+                combatResultText = t(lang, 'stratego.lose_result');
                 combatResultColor = "text-red-400";
             }
         } else {
             if (result === 'win') {
-                combatResultText = "PRZEGRALES";
+                combatResultText = t(lang, 'stratego.lose_result');
                 combatResultColor = "text-red-400";
             } else {
-                combatResultText = "WYGRALES";
+                combatResultText = t(lang, 'stratego.win_result');
                 combatResultColor = "text-green-400";
             }
         }
     }
 
-    const isOpponentDisconnected = opponentSeat && opponentSeat.connected === false && opponentSeat.disconnect_timestamp;
-    
     return (
         <div className="relative flex flex-col items-center h-full w-full justify-center">
-            
+
             <div className="mb-4 flex flex-col items-center gap-2 z-10">
                 <div className={`
                     px-6 py-2 rounded-full text-sm uppercase font-bold border shadow-xl transition-all duration-500
-                    ${isMyTurn 
-                        ? 'bg-linear-to-r from-green-900 to-green-800 text-green-100 border-green-500 scale-105' 
+                    ${isMyTurn
+                        ? 'bg-linear-to-r from-green-900 to-green-800 text-green-100 border-green-500 scale-105'
                         : 'bg-gray-900 text-gray-500 border-gray-700'}
                 `}>
-                    {isMyTurn ? "Twoja Tura" : "Tura Przeciwnika"}
+                    {isMyTurn ? t(lang, 'stratego.your_turn') : t(lang, 'stratego.opponent_turn')}
                 </div>
             </div>
 
             {last_move?.combat && (
                 <div className="absolute right-4 top-24 z-50 flex flex-col items-end gap-2 animate-in slide-in-from-right fade-in duration-500">
-                     <div className="bg-black/80 backdrop-blur-md px-4 py-3 rounded-xl border border-amber-900/50 shadow-2xl flex flex-col items-center gap-2 max-w-[200px]">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest border-b border-gray-700 w-full text-center pb-1 mb-1">Wynik Walki</span>
-                        
+                    <div className="bg-black/80 backdrop-blur-md px-4 py-3 rounded-xl border border-amber-900/50 shadow-2xl flex flex-col items-center gap-2 max-w-[200px]">
+                        <span className="text-xs text-gray-400 uppercase tracking-widest border-b border-gray-700 w-full text-center pb-1 mb-1">{t(lang, 'stratego.combat_result_title')}</span>
+
                         <div className="flex items-center gap-2">
                             <div className="flex flex-col items-center">
-                                <img src={getPieceImgSrc(last_move.combat.attacker.rank, last_move.combat.attacker.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(255,0,0,0.5)]"/>
+                                <img src={getPieceImgSrc(last_move.combat.attacker.rank, last_move.combat.attacker.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(255,0,0,0.5)]" />
                                 <span className="text-[10px] text-gray-500 mt-1">ATAK</span>
                             </div>
                             <span className="text-gray-400 font-bold">vs</span>
                             <div className="flex flex-col items-center">
-                                <img src={getPieceImgSrc(last_move.combat.defender.rank, last_move.combat.defender.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(0,0,255,0.5)]"/>
+                                <img src={getPieceImgSrc(last_move.combat.defender.rank, last_move.combat.defender.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(0,0,255,0.5)]" />
                                 <span className="text-[10px] text-gray-500 mt-1">OBRONA</span>
                             </div>
                         </div>
 
-            <div className={`text-sm font-bold uppercase tracking-wide mt-1 ${combatResultColor}`}>{combatResultText}</div>
-          </div>
-        </div>
-      )}
+                        <div className={`text-sm font-bold uppercase tracking-wide mt-1 ${combatResultColor}`}>{combatResultText}</div>
+                    </div>
+                </div>
+            )}
 
             <div className="relative p-3 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-[#4a3525]">
-                <div 
+                <div
                     className="grid grid-cols-10 grid-rows-10 gap-0 border-2 border-[#1a120b]"
-                    style={{ 
-                        width: 'min(100vw, 80vh)', 
+                    style={{
+                        width: 'min(100vw, 80vh)',
                         height: 'min(100vw, 80vh)',
                         backgroundImage: "url('/stratego/board.webp')",
                         backgroundSize: '100% 100%'
                     }}
                 >
-                    {Array.from({length: 10}).map((_, r) => (
-                        Array.from({length: 10}).map((_, c) => (
+                    {Array.from({ length: 10 }).map((_, r) => (
+                        Array.from({ length: 10 }).map((_, c) => (
                             <div key={`${r}-${c}`} className="relative border border-white/5 flex items-center justify-center">
                                 {renderGameCell(r, c)}
                             </div>
@@ -604,17 +581,8 @@ export default function Game({ socket, roomId, gameState, myId }: ActiveGameProp
                 </div>
 
                 <div className="relative flex items-center gap-2 min-w-[140px] h-full justify-center">
-                    {isOpponentDisconnected ? (
-                        <BigDisconnectOverlay 
-                            timestamp={opponentSeat.disconnect_timestamp}
-                            name={opponentSeat.name}
-                        />
-                    ) : (
-                        <>
-                            <div className={`w-3 h-3 rounded-full ${my_idx === 0 ? 'bg-blue-600' : 'bg-red-600'}`}></div>
-                            WRÓG ({opponentSeat?.name})
-                        </>
-                    )}
+                    <div className={`w-3 h-3 rounded-full ${my_idx === 0 ? 'bg-blue-600' : 'bg-red-600'}`}></div>
+                    WRÓG ({opponentSeat?.name})
                 </div>
             </div>
         </div>

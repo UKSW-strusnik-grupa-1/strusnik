@@ -22,13 +22,13 @@ class Room:
     game_instance: Optional[MultiplayerGame] = None
     player_tokens: Set[str] = field(default_factory=set)
 
-    # --- chess / game settings ---
+
     time_control_min: Optional[int] = None
 
-    # chess-specific host settings (ignored by other games)
-    host_user_token: Optional[str] = None  # stable host identity (token)
-    host_color_pref: Optional[str] = None  # 'white'|'black'|'random'
-    host_seat_index: Optional[int] = None  # 0=white, 1=black
+
+    host_user_token: Optional[str] = None
+    host_color_pref: Optional[str] = None
+    host_seat_index: Optional[int] = None
 
     def to_dict(self):
         real_players_count = 0
@@ -46,11 +46,11 @@ class Room:
             "host_id": self.host_id,
             "has_password": self.password is not None,
 
-            # time control (used by chess UI)
+
             "time_control_min": self.time_control_min,
             "time_min": self.time_control_min,
 
-            # chess host fields (safe to include for other games)
+
             "host_user_token": self.host_user_token,
             "host_color_pref": self.host_color_pref,
             "host_seat_index": self.host_seat_index,
@@ -98,13 +98,13 @@ class Lobby:
         if not room:
             return None
 
-        # allow re-join by the same token even if full
+
         if user_token in room.player_tokens:
             if player_id not in room.players:
                 room.players.append(player_id)
             return room
 
-        # basic capacity check (socket_manager has additional chess logic)
+
         if len(room.player_tokens) >= int(room.maxPlayers or 0):
             return None
 

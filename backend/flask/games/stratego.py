@@ -43,24 +43,25 @@ class Stratego(MultiplayerGame):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-                if not is_connected and sid and seat.get('socketId') != sid:
-                    return False
 
                 if not is_connected and self.game_state['stage'] == 'waiting_for_players':
                     self.seats[i] = None
                     return True
 
-                if seat.get('connected') == is_connected and (not sid or seat.get('socketId') == sid):
+
+                if is_connected and sid:
+                    seat['socketId'] = sid
+                    seat['disconnect_timestamp'] = None
+
+
+                if seat.get('connected') == is_connected:
                     return False
 
                 seat['connected'] = is_connected
 
                 if not is_connected:
                     seat['disconnect_timestamp'] = time.time()
-                else:
-                    seat['disconnect_timestamp'] = None
-                    if sid:
-                        seat['socketId'] = sid
+                    
                 return True
         return False
 
@@ -219,6 +220,11 @@ class Stratego(MultiplayerGame):
         for i, s in enumerate(self.seats):
             if s and s['socketId'] == sid: return i
         return -1
+    
+    def _get_player_idx_by_token(self, user_token):
+        for i, s in enumerate(self.seats):
+            if s and s.get('userId') == user_token: return i
+        return -1
 
     def get_state(self):
         return {
@@ -231,9 +237,18 @@ class Stratego(MultiplayerGame):
             "winner": self.game_state.get('winner')
         }
 
-    def get_player_view(self, player_sid):
+    def get_player_view(self, player_sid, user_token=None):
         state = self.get_state()
-        pid = self._get_player_idx(player_sid)
+
+        if user_token:
+            pid = self._get_player_idx_by_token(user_token)
+        else:
+            pid = self._get_player_idx(player_sid)
+        
+
+        if pid == -1 and player_sid:
+            pid = self._get_player_idx(player_sid)
+        
         masked = [[None for _ in range(10)] for _ in range(10)]
         for r in range(10):
             for c in range(10):

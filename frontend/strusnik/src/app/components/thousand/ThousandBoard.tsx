@@ -10,6 +10,7 @@ import PasswordModal from '../lobby/passwordModal';
 import { GameChat } from '@/app/components/chat/GameChat';
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import OpponentDisconnectedBanner from '@/app/components/common/OpponentDisconnectedBanner';
 
 interface ThousandBoardProps {
   gameName: string;
@@ -34,14 +35,9 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [opponentDisconnected, setOpponentDisconnected] = useState<{ name: string; timeLeft: number } | null>(null);
 
   const { lang } = useLang();
-
-  const handleExitSignal = () => {
-    if (socket) {
-      socket.emit('leave_room', { roomId });
-    }
-  };
 
   const joinRoom = (pwd: string = "") => {
     if (!socket) return;
@@ -52,6 +48,11 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
       room_id: roomId,
       password: pwd
     });
+  };
+
+  const leaveRoom = () => {
+    if (!socket || !roomId) return;
+    socket.emit('leave_room', { roomId });
   };
 
   useEffect(() => {
@@ -101,7 +102,27 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
     const handleGameState = (state: any) => {
       if (state.stage) setGameStage(state.stage);
-      if (state.seats) setSeats(state.seats);
+      if (state.seats) {
+        setSeats(state.seats);
+        
+        // Check opponent connection status and update disconnect banner
+        const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
+        if (mySeatIdx !== -1 && state.stage === 'playing') {
+          const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
+          const opponentSeat = state.seats[opponentSeatIdx];
+          if (opponentSeat) {
+            if (opponentSeat.connected === true) {
+              setOpponentDisconnected(null);
+            } else if (opponentSeat.connected === false) {
+              // Set disconnect banner if not already showing
+              setOpponentDisconnected((prev) => {
+                if (prev !== null) return prev; // Keep existing countdown
+                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
+              });
+            }
+          }
+        }
+      }
       if (state.my_hand) setMyHand(state.my_hand);
     };
 
@@ -109,13 +130,41 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
       console.error(t(lang, "thousand.board.log.socket_error"), err);
     };
 
+    const handleOpponentDisconnected = (data: any) => {
+      if (data.playerName) {
+        setOpponentDisconnected({ name: data.playerName, timeLeft: data.waitTime || 90 });
+      }
+    };
+
+    const handleOpponentReconnected = () => {
+      setOpponentDisconnected(null);
+    };
+
+    const handleOpponentReturned = () => {
+      // Player is returning after leaving - clear banner and resume game
+      setOpponentDisconnected(null);
+    };
+
+    const handleGameEndedTimeout = () => {
+      setOpponentDisconnected(null);
+      router.push(`/lobby/${gameName}`);
+    };
+
     socket.off('join_room_response');
     socket.off('game_state_update');
     socket.off('error');
+    socket.off('opponent_disconnected');
+    socket.off('opponent_reconnected');
+    socket.off('opponent_returned');
+    socket.off('game_ended_timeout');
 
     socket.on('join_room_response', handleJoinResponse);
     socket.on('game_state_update', handleGameState);
     socket.on('error', handleError);
+    socket.on('opponent_disconnected', handleOpponentDisconnected);
+    socket.on('opponent_reconnected', handleOpponentReconnected);
+    socket.on('opponent_returned', handleOpponentReturned);
+    socket.on('game_ended_timeout', handleGameEndedTimeout);
 
     joinRoom("");
     socket.emit('get_game_state', { roomId });
@@ -124,8 +173,26 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
       socket.off('join_room_response', handleJoinResponse);
       socket.off('game_state_update', handleGameState);
       socket.off('error', handleError);
+      socket.off('opponent_disconnected', handleOpponentDisconnected);
+      socket.off('opponent_reconnected', handleOpponentReconnected);
+      socket.off('opponent_returned', handleOpponentReturned);
+      socket.off('game_ended_timeout', handleGameEndedTimeout);
     };
-  }, [socket, roomId, gameName, myName, searchParams, router, lang]);
+  }, [socket, roomId, gameName, myName, myId, searchParams, router, lang]);
+
+  // Opponent disconnected countdown
+  useEffect(() => {
+    if (!opponentDisconnected) return;
+
+    const interval = setInterval(() => {
+      setOpponentDisconnected((prev) => {
+        if (!prev || prev.timeLeft <= 1) return null;
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [opponentDisconnected?.name]);
 
   const handlePasswordSubmit = (password: string) => {
     setErrorMessage("");
@@ -163,8 +230,8 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
   return (
     <div className="relative w-full h-screen flex flex-col p-1 overflow-hidden">
-      <div className="shrink-0 mb-1 pl-2" onClickCapture={handleExitSignal}>
-        <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, "arrow")} />
+      <div className="shrink-0 mb-1 pl-2">
+        <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, "arrow")} onClick={leaveRoom} />
       </div>
 
       <PasswordModal
@@ -215,6 +282,13 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
             "
           />
         </>
+      )}
+
+      {opponentDisconnected && gameStage !== "waiting_for_players" && (
+        <OpponentDisconnectedBanner
+          name={opponentDisconnected.name}
+          timeLeft={opponentDisconnected.timeLeft}
+        />
       )}
     </div>
   );

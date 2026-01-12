@@ -8,7 +8,7 @@ from .base import MultiplayerGame
 from models import db, User, GameStats
 
 
-Color = str  # "w" | "b"
+Color = str
 
 
 def _now() -> float:
@@ -57,7 +57,7 @@ class chess(MultiplayerGame):
             return
         self.time_control_min = m
 
-        # If clocks already exist, don't overwrite.
+
         if self.white_ms is None or self.black_ms is None:
             initial_ms = self.time_control_min * 60 * 1000
             if self.white_ms is None:
@@ -76,7 +76,7 @@ class chess(MultiplayerGame):
             "draw": {"offeredBy": None},
             "draw_offer_by": None,
             "ended": False,
-            "result": None,  # {"status": "...", "reason": "...", "winner": "w"/"b"/None}
+            "result": None,
             "lastClientMoveId": None,
             "msg": "",
         }
@@ -88,7 +88,7 @@ class chess(MultiplayerGame):
         if self.seats[0] is None or self.seats[1] is None:
             return {"success": False, "msg": "ZA MALO GRACZY."}
 
-        # (opcjonalnie) można wymagać connected=True
+
         if not self.seats[0].get("connected", True) or not self.seats[1].get("connected", True):
             return {"success": False, "msg": "OBAJ GRACZE MUSZA BYC POLACZENI."}
 
@@ -145,25 +145,26 @@ class chess(MultiplayerGame):
 
         for i, seat in enumerate(self.seats):
             if seat and seat.get("userId") == user_token:
-                
-                if not is_connected and sid and seat.get("socketId") != sid:
-                    return False
+
 
                 if not is_connected and self.game_state.get("stage") == "waiting_for_players":
                     self.seats[i] = None
                     self.game_state["seats"] = self.seats
                     return True
 
-                if seat.get("connected") == is_connected and (not sid or seat.get("socketId") == sid):
+
+                if is_connected and sid:
+                    seat["socketId"] = sid
+                    seat["disconnect_timestamp"] = None
+
+
+                if seat.get("connected") == is_connected:
                     return False
 
                 seat["connected"] = is_connected
                 if not is_connected:
                     seat["disconnect_timestamp"] = _now()
-                else:
-                    seat["disconnect_timestamp"] = None
-                    if sid:
-                        seat["socketId"] = sid
+                    
                 return True
         return False
     
