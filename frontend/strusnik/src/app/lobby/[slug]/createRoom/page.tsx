@@ -112,9 +112,8 @@ export default function CreateRoomPage() {
         if (game.toLowerCase() !== String(slug).toLowerCase()) return;
 
         setCreating(false);
-        router.push(`/games/${slug}/${payload.room_id}`);
+        router.push(`/games/${slug}/${payload.room_id}?autojoin=true`);
       } catch {
-        // ignore
       }
     };
 

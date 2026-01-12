@@ -352,7 +352,7 @@ def handle_create_room(data):
     host_seat_index = None
 
     if str(game_name).lower() == "chess":
-        
+
         t = data.get("time_control_min")
         try:
             t = int(t)
@@ -417,7 +417,6 @@ def handle_create_room(data):
     except Exception:
         import traceback
         traceback.print_exc()
-
 
 @socket.on("join_room")
 def handle_join_game_room(data):
@@ -487,7 +486,7 @@ def handle_join_game_room(data):
     room.player_tokens.add(user_token)
 
     if str(game_name).lower() == "chess":
-        
+
         if room.game_instance is None:
             room.game_instance = lobby.game_class(room.players)
 
@@ -505,7 +504,7 @@ def handle_join_game_room(data):
             _chess = None
 
         if _chess is not None and isinstance(game, _chess):
-            
+
             player_name = active_sessions.get(user_token, {}).get("username") or "Player"
 
             already_idx = None
@@ -515,7 +514,7 @@ def handle_join_game_room(data):
                     break
 
             if already_idx is None:
-                
+
                 host_token = getattr(room, "host_user_token", None)
                 host_idx = getattr(room, "host_seat_index", None)
                 if host_idx not in (0, 1):
@@ -542,10 +541,16 @@ def handle_join_game_room(data):
 
     if room.game_instance:
         game = room.game_instance
-        state = get_game_state_safe(game, current_sid)
-        
-        emit('game_state_update', state, to=current_sid)
-        emit('game_state_update', game.get_state(), to=room_id)
+
+        if hasattr(game, 'set_player_connection_status'):
+            game.set_player_connection_status(user_token, True, current_sid)
+
+        if isinstance(game, Stratego):
+            broadcast_stratego_state(game, room_id)
+        else:
+            state = get_game_state_safe(game, current_sid)
+            emit('game_state_update', state, to=current_sid)
+            emit('game_state_update', game.get_state(), to=room_id)
 
     broadcast_player_list()
 
