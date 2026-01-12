@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
+import OpponentDisconnectedBanner from '@/app/components/common/OpponentDisconnectedBanner';
 
 interface Ship {
     id: string;
@@ -555,19 +556,10 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
             )}
 
             {opponentDisconnected && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="bg-gradient-to-br from-red-900/90 to-red-950/90 p-8 border-2 border-red-500 rounded-2xl shadow-2xl text-center max-w-md">
-                        <div className="text-5xl mb-4">⚠️</div>
-                        <h2 className="text-2xl font-bold text-red-400 mb-2">{t(lang, 'battleships.opponent_left')}</h2>
-                        <p className="text-lg text-white mb-4">
-                            {opponentDisconnected.name} {t(lang, 'battleships.disconnected')}
-                        </p>
-                        <div className="text-4xl font-bold text-amber-400 mb-4">
-                            {opponentDisconnected.timeLeft}s
-                        </div>
-                        <p className="text-sm text-gray-400">{t(lang, 'battleships.waiting_reconnect')}</p>
-                    </div>
-                </div>
+                <OpponentDisconnectedBanner
+                    name={opponentDisconnected.name}
+                    timeLeft={opponentDisconnected.timeLeft}
+                />
             )}
 
             {winner && (
@@ -720,8 +712,8 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
                             <div className="mt-6 flex flex-col items-center gap-4 w-full">
                                 <div className="flex gap-6">
                                     <div className={`px-4 py-2 rounded-lg border-2 transition-all ${readyPlayers.includes(myIdx)
-                                            ? 'bg-green-900/40 border-green-500 text-green-400'
-                                            : 'bg-slate-800/50 border-amber-600/50 text-amber-400'
+                                        ? 'bg-green-900/40 border-green-500 text-green-400'
+                                        : 'bg-slate-800/50 border-amber-600/50 text-amber-400'
                                         }`}>
                                         <div className="flex items-center gap-2">
                                             <span>{readyPlayers.includes(myIdx) ? '✅' : '⏳'}</span>
@@ -732,8 +724,8 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
                                     </div>
 
                                     <div className={`px-4 py-2 rounded-lg border-2 transition-all ${readyPlayers.includes(opponentIdx)
-                                            ? 'bg-green-900/40 border-green-500 text-green-400'
-                                            : 'bg-slate-800/50 border-red-600/50 text-red-400'
+                                        ? 'bg-green-900/40 border-green-500 text-green-400'
+                                        : 'bg-slate-800/50 border-red-600/50 text-red-400'
                                         }`}>
                                         <div className="flex items-center gap-2">
                                             <span>{readyPlayers.includes(opponentIdx) ? '✅' : '⏳'}</span>
@@ -771,8 +763,8 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
             {gameStage === 'playing' && (
                 <div className="flex flex-col items-center w-full">
                     <div className={`mb-6 px-8 py-3 rounded-xl font-bold text-xl uppercase tracking-wider transition-all duration-300 ${isMyTurn
-                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white animate-pulse shadow-lg shadow-green-500/30'
-                            : 'bg-gradient-to-r from-red-900/60 to-red-800/60 text-red-300 border border-red-500/50'
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white animate-pulse shadow-lg shadow-green-500/30'
+                        : 'bg-gradient-to-r from-red-900/60 to-red-800/60 text-red-300 border border-red-500/50'
                         }`}>
                         {isMyTurn ? `🎯 ${t(lang, 'battleships.your_turn')}` : `⏳ ${t(lang, 'battleships.enemy_turn')}`}
                     </div>

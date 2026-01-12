@@ -5,6 +5,8 @@ import ReturnArrow from "../components/lobby/returnArrow";
 import { Games } from "../constants/games";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import ActiveGameBanner from "../components/lobby/ActiveGameBanner";
+import { useSocket } from "../hooks/useSocket";
 
 interface RankingEntry {
   username: string;
@@ -15,6 +17,7 @@ interface RankingEntry {
 
 export default function RankingsPage() {
   const { lang } = useLang();
+  const { activeGame: activeMultiplayerGame, setActiveGame: setActiveMultiplayerGame } = useSocket();
 
   const allGames = [...Games.multiplayer];
   const [activeGame, setActiveGame] = useState<string>(allGames[0]);
@@ -53,6 +56,18 @@ export default function RankingsPage() {
         <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} />
       </div>
 
+      {/* Banner powrotu do aktywnej gry multiplayer */}
+      {activeMultiplayerGame && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+          <ActiveGameBanner
+            gameName={activeMultiplayerGame.gameName}
+            roomId={activeMultiplayerGame.roomId}
+            roomName={activeMultiplayerGame.roomName}
+            onDismiss={() => setActiveMultiplayerGame(null)}
+          />
+        </div>
+      )}
+
       <div className="z-10 w-[95%] md:w-full md:max-w-4xl lg:max-w-5xl p-2 md:p-6 flex flex-col gap-3 md:gap-6 h-[85vh] md:h-[80vh]">
         <h1 className="text-2xl md:text-4xl font-bold text-center drop-shadow-lg tracking-wider text-gray-300 mt-12 md:mt-0">
           {t(lang, "rankings.title")}
@@ -64,10 +79,9 @@ export default function RankingsPage() {
               key={game}
               onClick={() => setActiveGame(game)}
               className={`cursor-pointer px-3 py-1 md:px-6 md:py-2 text-sm md:text-base rounded-lg font-bold transition-all duration-300 border-b
-                ${
-                  activeGame === game
-                    ? "bg-[#36271e] border-[#6F5C50] text-white scale-105 shadow-[0_0_15px_rgba(111,92,80,0.5)]"
-                    : "bg-black/50 border-transparent text-gray-400 hover:text-white hover:bg-black/70"
+                ${activeGame === game
+                  ? "bg-[#36271e] border-[#6F5C50] text-white scale-105 shadow-[0_0_15px_rgba(111,92,80,0.5)]"
+                  : "bg-black/50 border-transparent text-gray-400 hover:text-white hover:bg-black/70"
                 }`}
             >
               {game}

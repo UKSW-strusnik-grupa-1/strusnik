@@ -10,6 +10,7 @@ import ChessBoard from '@/app/components/chess/ChessBoard';
 import { useChess } from '@/app/hooks/useChess';
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import OpponentDisconnectedBanner from '@/app/components/common/OpponentDisconnectedBanner';
 
 function formatClock(ms: number | null | undefined) {
   if (ms === null || ms === undefined) return '00:00';
@@ -80,11 +81,11 @@ export default function ChessRoomPage() {
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden flex items-center justify-center">
-      
+
       <div className="absolute inset-0 bg-black/35" />
 
       <div className="absolute w-full h-screen flex flex-col overflow-visible">
-        <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} />
+        <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} onClick={() => chess.leaveRoom()} />
       </div>
 
       <PasswordModal
@@ -167,19 +168,25 @@ export default function ChessRoomPage() {
               </div>
             </div>
           )}
+
+          {chess.opponentDisconnected && !chess.gameEnded && (
+            <OpponentDisconnectedBanner
+              name={chess.opponentDisconnected.name}
+              timeLeft={chess.opponentDisconnected.timeLeft}
+            />
+          )}
         </div>
 
         <div className="w-[640px] flex items-center justify-between">
           <button
             onClick={handleBottomLeft}
             disabled={!chess.isGameStarted || chess.bottomButtonsLocked || chess.drawUiState === 'offered_by_me'}
-            className={`relative w-[310px] h-[64px] group ${
-              !chess.isGameStarted || chess.bottomButtonsLocked
-                ? 'opacity-60 cursor-not-allowed'
-                : chess.drawUiState === 'offered_by_me'
+            className={`relative w-[310px] h-[64px] group ${!chess.isGameStarted || chess.bottomButtonsLocked
+              ? 'opacity-60 cursor-not-allowed'
+              : chess.drawUiState === 'offered_by_me'
                 ? 'opacity-80 cursor-default'
                 : 'cursor-pointer'
-            }`}
+              }`}
           >
             <img
               src="/main/button.png"
@@ -197,9 +204,8 @@ export default function ChessRoomPage() {
           <button
             onClick={handleBottomRight}
             disabled={!chess.isGameStarted || chess.bottomButtonsLocked}
-            className={`relative w-[310px] h-[64px] group ${
-              !chess.isGameStarted || chess.bottomButtonsLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-            }`}
+            className={`relative w-[310px] h-[64px] group ${!chess.isGameStarted || chess.bottomButtonsLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+              }`}
           >
             <img
               src="/main/button.png"

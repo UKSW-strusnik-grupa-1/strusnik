@@ -2,13 +2,22 @@ export type Lang = 'pl' | 'en';
 
 export const I18N = {
 	pl: {
+		common: {
+			opponent_disconnected: 'PRZECIWNIK SIE ROZLACZYL',
+			waiting_reconnect: 'OCZEKIWANIE NA POLACZENIE',
+		},
 		logging_in: {
 			greeting: 'WITAJ NA STRUSNIKU!',
+			register_title: 'REJESTRACJA',
 			name: 'LOGIN',
 			password: 'HASLO',
+			confirm_password: 'POTWIERDZ HASLO',
 			login: 'ZALOGUJ SIE',
 			register: 'ZAREJESTRUJ SIE',
 			guest: 'KONTYNUUJ JAKO GOSC',
+			back_to_login: 'POWROT DO LOGOWANIA',
+			passwords_dont_match: 'HASLA NIE SA TAKIE SAME',
+			register_success: 'REJESTRACJA UDANA! MOZESZ SIE ZALOGOWAC.',
 		},
 
 		arrow: 'WROC',
@@ -113,10 +122,18 @@ export const I18N = {
 				connection: 'BLAD POLACZENIA',
 				generic: 'WYSTAPIL BLAD',
 			},
+
+			opponent_disconnected: 'PRZECIWNIK SIE ROZLACZYL',
+			waiting_for_reconnect: 'OCZEKIWANIE NA POLACZENIE',
 		},
 
 		lobby: {
 			create_room_button_bg_alt: 'Przycisk stworzenia pokoju',
+			active_game: 'MASZ AKTYWNA GRE',
+			rejoin: 'DOLACZ',
+			dismiss: 'ODRZUC',
+			leave_game: 'OPUSC GRE',
+			leave_game_confirm: 'CZY NA PEWNO OPUSCIC GRE? NIE BEDZIESZ MOGL WROCIC PRZEZ BANER.',
 		},
 
 		blackjack: {
@@ -164,6 +181,8 @@ export const I18N = {
 				join: 'DOLACZ',
 				you: 'TY',
 			},
+			opponent_disconnected: 'PRZECIWNIK SIE ROZLACZYL',
+			waiting_reconnect: 'OCZEKIWANIE NA POLACZENIE',
 		},
 
 		tictactoe: {
@@ -217,6 +236,60 @@ export const I18N = {
 			back: 'WROC',
 		},
 
+		thousand: {
+			board: {
+				error: {
+					title: 'BLAD POLACZENIA',
+					no_room_id: 'BLAD: BRAK ID POKOJU.',
+					wrong_password: 'BLEDNE HASLO, SPROBUJ PONOWNIE.',
+					could_not_join: 'NIE UDALO SIE DOLACZYC DO POKOJU.',
+				},
+				back_to_lobby: 'WROC DO LOBBY',
+				room_id_label: 'ID POKOJU',
+				log: {
+					socket_error: 'SOCKET ERROR:',
+				},
+			},
+			opponent_disconnected: 'GRACZ SIE ROZLACZYL',
+			waiting_reconnect: 'OCZEKIWANIE NA POLACZENIE',
+		},
+
+		set: {
+			error: {
+				title: 'BLAD POLACZENIA',
+				no_room_id: 'BLAD: BRAK ID POKOJU.',
+				wrong_password: 'BLEDNE HASLO, SPROBUJ PONOWNIE.',
+				could_not_join: 'NIE UDALO SIE DOLACZYC DO POKOJU.',
+			},
+			back_to_lobby: 'WROC DO LOBBY',
+			room_id_label: 'ID POKOJU',
+			waiting_for_players: 'OCZEKIWANIE NA GRACZY',
+			seats: 'MIEJSCA',
+			connected: 'POLACZONY',
+			disconnected: 'ROZLACZONY',
+			sit_here: 'USIADZ TUTAJ',
+			auto_start_info: 'GRA ROZPOCZNIE SIE AUTOMATYCZNIE GDY DOLACZY {count} GRACZY',
+			start_game: 'ROZPOCZNIJ GRE',
+			cards_remaining: 'KART W TALII',
+			claim_set: 'ZGLOS SET',
+			no_set: 'NIE MA SETA',
+			game_over: 'KONIEC GRY!',
+			winner: 'ZWYCIEZCA',
+			draw: 'REMIS',
+			final_scores: 'WYNIKI KONCOWE',
+			points: 'PKT',
+			opponent_disconnected: '{name} ROZLACZYL SIE. OCZEKIWANIE: {time}S',
+			opponent_disconnected_short: 'GRACZ SIE ROZLACZYL',
+			waiting_reconnect: 'OCZEKIWANIE NA POLACZENIE',
+			you: 'TY',
+			ready: 'GOTOWY',
+			join: 'DOLACZ',
+			room_full: 'POKOJ PELNY - ROZPOCZYNANIE...',
+			min_required: 'MIN. 2 GRACZY',
+			waiting_host: 'OCZEKIWANIE NA HOSTA...',
+			waiting_players: 'OCZEKIWANIE NA GRACZY...',
+		},
+
 		rankings: {
 			title: 'RANKINGI',
 			columns: {
@@ -234,13 +307,22 @@ export const I18N = {
 	},
 
 	en: {
+		common: {
+			opponent_disconnected: 'OPPONENT DISCONNECTED',
+			waiting_reconnect: 'WAITING FOR RECONNECTION',
+		},
 		logging_in: {
 			greeting: 'WELCOME TO STRUSNIK!',
+			register_title: 'REGISTRATION',
 			name: 'LOGIN',
 			password: 'PASSWORD',
+			confirm_password: 'CONFIRM PASSWORD',
 			login: 'LOG IN',
 			register: 'REGISTER',
 			guest: 'CONTINUE AS GUEST',
+			back_to_login: 'BACK TO LOGIN',
+			passwords_dont_match: 'PASSWORDS DO NOT MATCH',
+			register_success: 'REGISTRATION SUCCESSFUL! YOU CAN NOW LOG IN.',
 		},
 
 		arrow: 'BACK',
@@ -329,10 +411,23 @@ export const I18N = {
 				you_resigned: 'YOU RESIGNED',
 				checkmate: 'CHECKMATE',
 			},
+
+			opponent_disconnected: 'OPPONENT DISCONNECTED',
+			waiting_for_reconnect: 'WAITING FOR RECONNECTION',
+
+			error: {
+				connection: 'CONNECTION ERROR',
+				generic: 'AN ERROR OCCURRED',
+			},
 		},
 
 		lobby: {
 			create_room_button_bg_alt: 'Create room button background',
+			active_game: 'YOU HAVE AN ACTIVE GAME',
+			rejoin: 'REJOIN',
+			dismiss: 'DISMISS',
+			leave_game: 'LEAVE GAME',
+			leave_game_confirm: 'Leave the game permanently? You will not be able to return via the banner.',
 		},
 
 		blackjack: {
@@ -379,6 +474,8 @@ export const I18N = {
 				join: 'JOIN',
 				you: 'YOU',
 			},
+			opponent_disconnected: 'OPPONENT DISCONNECTED',
+			waiting_reconnect: 'WAITING FOR RECONNECTION',
 		},
 
 		tictactoe: {
@@ -430,6 +527,60 @@ export const I18N = {
 			cancel: 'CANCEL',
 			confirm: 'CONFIRM',
 			back: 'BACK',
+		},
+
+		thousand: {
+			board: {
+				error: {
+					title: 'CONNECTION ERROR',
+					no_room_id: 'ERROR: MISSING ROOM ID.',
+					wrong_password: 'WRONG PASSWORD, TRY AGAIN.',
+					could_not_join: "COULDN'T JOIN THE ROOM.",
+				},
+				back_to_lobby: 'BACK TO LOBBY',
+				room_id_label: 'ROOM ID',
+				log: {
+					socket_error: 'SOCKET ERROR:',
+				},
+			},
+			opponent_disconnected: 'PLAYER DISCONNECTED',
+			waiting_reconnect: 'WAITING FOR RECONNECTION',
+		},
+
+		set: {
+			error: {
+				title: 'CONNECTION ERROR',
+				no_room_id: 'ERROR: MISSING ROOM ID.',
+				wrong_password: 'WRONG PASSWORD, TRY AGAIN.',
+				could_not_join: "COULDN'T JOIN THE ROOM.",
+			},
+			back_to_lobby: 'BACK TO LOBBY',
+			room_id_label: 'ROOM ID',
+			waiting_for_players: 'WAITING FOR PLAYERS',
+			seats: 'SEATS',
+			connected: 'CONNECTED',
+			disconnected: 'DISCONNECTED',
+			sit_here: 'SIT HERE',
+			auto_start_info: 'GAME WILL START AUTOMATICALLY WHEN {count} PLAYERS JOIN',
+			start_game: 'START GAME',
+			cards_remaining: 'CARDS IN DECK',
+			claim_set: 'CLAIM SET',
+			no_set: 'NO SET',
+			game_over: 'GAME OVER!',
+			winner: 'WINNER',
+			draw: 'DRAW',
+			final_scores: 'FINAL SCORES',
+			points: 'PTS',
+			opponent_disconnected: '{name} DISCONNECTED. WAITING: {time}S',
+			opponent_disconnected_short: 'PLAYER DISCONNECTED',
+			waiting_reconnect: 'WAITING FOR RECONNECTION',
+			you: 'YOU',
+			ready: 'READY',
+			join: 'JOIN',
+			room_full: 'ROOM FULL - STARTING...',
+			min_required: 'MIN. 2 PLAYERS',
+			waiting_host: 'WAITING FOR HOST...',
+			waiting_players: 'WAITING FOR PLAYERS...',
 		},
 
 		rankings: {

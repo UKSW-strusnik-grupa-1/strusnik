@@ -7,11 +7,14 @@ import Link from "next/link";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
 import { useParams } from "next/navigation";
+import { useSocket } from "@/app/hooks/useSocket";
+import ActiveGameBanner from "@/app/components/lobby/ActiveGameBanner";
 
 export default function LobbyPage() {
   const { lang } = useLang();
   const params = useParams<{ slug: string }>();
   const slug = params?.slug ?? "chess";
+  const { activeGame, setActiveGame } = useSocket();
 
   return (
     <div>
@@ -20,6 +23,16 @@ export default function LobbyPage() {
       <ReturnArrow href="/multiplayer" />
 
       <div className="relative w-full h-screen flex items-center justify-center flex-col">
+        {/* Show banner if user has an active game */}
+        {activeGame && (
+          <ActiveGameBanner
+            gameName={activeGame.gameName}
+            roomId={activeGame.roomId}
+            roomName={activeGame.roomName}
+            onDismiss={() => setActiveGame(null)}
+          />
+        )}
+
         <div className="relative">
           <div className="w-[650px] h-[430px] rounded-lg flex flex-col items-center justify-start">
             <ListOfRooms gameName={slug} />

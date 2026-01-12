@@ -8,6 +8,19 @@ import { useSocket } from '@/app/hooks/useSocket';
 import { useUser } from '@/app/hooks/useUser';
 import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
+import ActiveGameBanner from '@/app/components/lobby/ActiveGameBanner';
+
+// Normalizuje nazwę gry do prawidłowej formy (zgodnej z folderami w /games/)
+function normalizeGameName(name: string): string {
+  const normalized: Record<string, string> = {
+    'chess': 'Chess',
+    'stratego': 'Stratego',
+    'tysiac': 'Tysiac',
+    'battleships': 'Battleships',
+    'set': 'Set',
+  };
+  return normalized[name.toLowerCase()] || name;
+}
 
 type ChessColorPref = 'WHITE' | 'RANDOM' | 'BLACK';
 type TimeChoice = 5 | 10 | 15;
@@ -71,16 +84,22 @@ export default function CreateRoomPage() {
     if (gameSlug === 'tysiac') {
       return [3, 4];
     }
-    if (gameSlug === 'stratego') {
+    if (gameSlug === 'stratego' || gameSlug === 'battleships') {
       return [2];
+    }
+    if (gameSlug === 'set') {
+      return [2, 3, 4];
     }
     // Domyślnie dla reszty gier (poza szachami, które mają osobne UI)
     return [2, 3, 4];
   }, [gameSlug]);
 
+  // Sprawdź czy gra wymaga tylko 2 graczy (nie pokazuj wyboru)
+  const hidePlayersChoice = gameSlug === 'battleships' || gameSlug === 'stratego';
+
   const [timeChoice, setTimeChoice] = useState<TimeChoice>(10);
   const [colorPref, setColorPref] = useState<ChessColorPref>('RANDOM');
-  
+
   // Inicjalizacja stanu z poprawną wartością dla danej gry
   const [playersChoice, setPlayersChoice] = useState<PlayersChoice>(() => {
     const validDefault = availablePlayerCounts[0];
@@ -112,7 +131,8 @@ export default function CreateRoomPage() {
         if (game.toLowerCase() !== String(slug).toLowerCase()) return;
 
         setCreating(false);
-        router.push(`/games/${slug}/${payload.room_id}`);
+        const normalizedSlug = normalizeGameName(slug);
+        router.push(`/games/${normalizedSlug}/${payload.room_id}`);
       } catch {
         // ignore
       }
@@ -161,9 +181,21 @@ export default function CreateRoomPage() {
     socket.emit('create_room', payload);
   };
 
+  const { activeGame } = useSocket();
+
   return (
     <div className="relative w-screen h-screen overflow-hidden">
       <div className="absolute inset-0 bg-black/35" />
+
+      {activeGame && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+          <ActiveGameBanner
+            gameName={activeGame.gameName}
+            roomId={activeGame.roomId}
+            roomName={activeGame.roomName}
+          />
+        </div>
+      )}
 
       <div className="absolute w-full h-screen flex flex-col overflow-visible">
         <ReturnArrow href={`/lobby/${slug}`} text={t(lang, 'arrow')} />
@@ -222,7 +254,7 @@ export default function CreateRoomPage() {
                   </div>
                 </div>
               </>
-            ) : (
+            ) : !hidePlayersChoice ? (
               <div className="space-y-2">
                 <div className="text-amber-50 font-extrabold uppercase tracking-wide text-sm">
                   {t(lang, 'rooms.players')}
@@ -238,7 +270,7 @@ export default function CreateRoomPage() {
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">

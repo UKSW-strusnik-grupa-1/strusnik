@@ -70,26 +70,27 @@ class Thousand(MultiplayerGame):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-                if not is_connected and sid and seat.get('socketId') != sid:
-                    return False
-
+                # When disconnecting during waiting_for_players, remove the player entirely
                 if not is_connected and self.game_state['stage'] == 'waiting_for_players':
                     self.seats[i] = None
                     return True
 
-                if seat.get('connected') == is_connected and (not sid or seat.get('socketId') == sid):
+                # Always update socketId when reconnecting (before status check)
+                if is_connected and sid:
+                    seat['socketId'] = sid
+                    seat['disconnect_timestamp'] = None
+                    if i == self.game_state['current_player_idx']:
+                        self.game_state['current_player'] = sid
+
+                # Skip if status is already the same
+                if seat.get('connected') == is_connected:
                     return False
 
                 seat['connected'] = is_connected
 
                 if not is_connected:
                     seat['disconnect_timestamp'] = time.time()
-                else:
-                    seat['disconnect_timestamp'] = None
-                    if sid:
-                        seat['socketId'] = sid
-                        if i == self.game_state['current_player_idx']:
-                            self.game_state['current_player'] = sid
+                    
                 return True
         return False
 
