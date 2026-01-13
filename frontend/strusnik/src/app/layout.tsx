@@ -7,7 +7,6 @@ import InvitationModal from "./components/lobby/invitationModal";
 import { LangProvider } from "./lang";
 import TopRightToggles from "./components/TopRightToggles";
 import { NotificationProvider } from "./context/NotificationsContext";
-import OnlinePlayersList from "./components/lobby/onlinePlayersList";
 
 const Perciles = localFont({
   src: "./fonts/Perciles.ttf",
@@ -48,7 +47,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <NotificationProvider> 
             <UserProvider>
               <SocketProvider>
-                <OnlinePlayersList collapsible />
                 <TopRightToggles />
                 <InvitationModal />
                 {children}
