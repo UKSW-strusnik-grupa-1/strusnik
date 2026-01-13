@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:5000";
+const BACKEND_URL = process.env.API_URL ?? "http://localhost:5000";
 
 async function safeJson(res: Response) {
   const text = await res.text();

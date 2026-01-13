@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const BACKEND = process.env.API_URL || "http://localhost:5000";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ game: string }> }
@@ -7,7 +9,7 @@ export async function GET(
   const { game } = await params;
 
   try {
-    const backendUrl = `http://localhost:5000/api/rankings/${game}`;
+    const backendUrl = `${BACKEND}/api/rankings/${game}`;
 
     const res = await fetch(backendUrl, {
       cache: 'no-store',

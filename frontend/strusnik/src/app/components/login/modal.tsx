@@ -71,6 +71,9 @@ export default function LoginModal() {
       body: JSON.stringify({ username, password }),
       method: "POST",
       credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
     if (!data) {

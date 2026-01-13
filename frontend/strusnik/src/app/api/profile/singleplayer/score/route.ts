@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const BACKEND = process.env.API_URL || "http://localhost:5000";
+
 export async function POST(request: NextRequest) {
     try {
         const jwtToken = request.cookies.get("jwtToken")?.value;
@@ -9,7 +11,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const backendUrl = "http://localhost:5000/api/profile/singleplayer/score";
+        const backendUrl = `${BACKEND}/api/profile/singleplayer/score`;
 
         const res = await fetch(backendUrl, {
             method: "POST",

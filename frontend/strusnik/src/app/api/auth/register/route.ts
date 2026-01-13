@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const BACKEND = process.env.API_URL || "http://localhost:5000";
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
@@ -26,7 +28,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const response = await fetch("http://localhost:5000/api/auth/register", {
+        const response = await fetch(`${BACKEND}/api/auth/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",

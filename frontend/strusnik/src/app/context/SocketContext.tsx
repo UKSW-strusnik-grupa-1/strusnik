@@ -5,7 +5,7 @@ import { io, Socket } from "socket.io-client"
 import { UserContext } from "../context/UserContext";
 import { useNotification } from "./NotificationsContext";
 
-const SOCKET_URL = "http://localhost:5000"
+const SOCKET_URL = process.env.SOCKET_URL || "http://localhost:5000";
 
 interface ActiveGameInfo {
     gameName: string;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND = process.env.API_URL || "http://localhost:5000";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     const { path } = await params;
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const queryString = url.search;
 
     try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/${pathStr}${queryString}`, {
+        const response = await fetch(`${BACKEND}/api/admin/${pathStr}${queryString}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     try {
         const body = await request.json();
 
-        const response = await fetch(`${BACKEND_URL}/api/admin/${pathStr}`, {
+        const response = await fetch(`${BACKEND}/api/admin/${pathStr}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

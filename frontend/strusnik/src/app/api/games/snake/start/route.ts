@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:5000";
+const BACKEND_URL = process.env.API_URL ?? "http://localhost:5000";
 
 const PREFIXES = (process.env.SNAKE_BACKEND_PREFIXES ??
   "/api/games/snake,/api/snake,/snake").split(",");

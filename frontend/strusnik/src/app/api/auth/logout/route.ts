@@ -2,13 +2,15 @@ import { cookies } from "next/headers";
 import { config } from "@/proxy";
 import { NextResponse } from "next/server";
 
+const BACKEND = process.env.API_URL || "http://localhost:5000";
+
 export async function POST() {
     try {
         const cookieStore = await cookies();
         const token = cookieStore.get("jwtToken")?.value;
 
 
-        const response = await fetch(`${config.backendUrl}/api/auth/logout`, {
+        const response = await fetch(`${BACKEND}/api/auth/logout`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

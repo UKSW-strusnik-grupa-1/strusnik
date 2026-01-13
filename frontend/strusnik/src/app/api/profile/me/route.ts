@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const BACKEND = process.env.API_URL || "http://localhost:5000";
+
 export async function GET(request: NextRequest) {
     try {
         const jwtToken = request.cookies.get("jwtToken")?.value;
@@ -8,7 +10,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const backendUrl = "http://localhost:5000/api/profile/me";
+        const backendUrl = `${BACKEND}/api/profile/me`;
 
         const res = await fetch(backendUrl, {
             cache: "no-store",
