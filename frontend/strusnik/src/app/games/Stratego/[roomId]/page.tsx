@@ -23,7 +23,7 @@ export default function RoomPage() {
 
   return (
     <StrategoBoard
-      gameName={t(lang, "games.stratego")}
+      gameName={"Stratego"}
       roomId={params.roomId}
       myId={(userInfo?.userId)?.toString() || ""}
       myName={userInfo?.nickname || t(lang, "user.guest")}

@@ -70,8 +70,8 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="absolute top-4 right-40 z-50 w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer"
-                title="Show online players"
+                className="absolute top-4 right-4 md:right-20 lg:right-40 z-50 w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer"
+                title="pokaz graczy online"
             >
                 <Users className="text-white" size={24} />
                 <span className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-black">
@@ -81,14 +81,19 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         );
     }
 
-    const positionClasses = collapsible
-        ? "top-4 right-40 h-[60vh]"
-        : "top-1/2 -translate-y-1/2 left-4 xl:left-10 h-[50vh] xl:h-[65vh]";
+    const positionClasses = collapsible 
+        ? "top-4 right-4 md:right-20 lg:right-40 h-[60vh]" 
+        : "top-4 left-4 xl:left-10 h-[50vh] xl:h-[65vh]";
 
     return (
         <div className={`
             absolute z-50 flex flex-col 
-            w-64 xl:w-72 
+            
+            // ZMIANA: Szerokość
+            // Mobile: prawie cała szerokość (z marginesem 1rem z każdej strony)
+            // Desktop: stała szerokość 64/72
+            w-[calc(100vw-2rem)] sm:w-64 xl:w-72 
+            
             bg-black/80 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl p-4
             transition-all duration-300 animate-in fade-in zoom-in-95
             ${positionClasses}

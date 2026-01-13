@@ -83,7 +83,6 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
         if (response.error_code === 'PASSWORD_REQUIRED') {
           setShowPasswordModal(true);
 
-          // backend może zwracać różne warianty tej wiadomości
           const msg = String(response.message || '');
           const lower = msg.toLowerCase();
 
@@ -102,7 +101,6 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
       if (state.seats) {
         setSeats(state.seats);
 
-        // Check opponent connection status and update disconnect banner
         const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
         if (mySeatIdx !== -1 && (state.stage === 'playing' || state.stage === 'setup')) {
           const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
@@ -111,9 +109,8 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
             if (opponentSeat.connected === true) {
               setOpponentDisconnected(null);
             } else if (opponentSeat.connected === false) {
-              // Set disconnect banner if not already showing
               setOpponentDisconnected((prev) => {
-                if (prev !== null) return prev; // Keep existing countdown
+                if (prev !== null) return prev;
                 return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
               });
             }
@@ -141,7 +138,6 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
 
     const handleOpponentReturned = () => {
       console.log('[STRATEGO] opponent_returned received');
-      // Player is returning after leaving - clear banner and resume game
       setOpponentDisconnected(null);
     };
 
@@ -152,7 +148,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
 
     socket.off('join_room_response');
     socket.off('game_state_update');
-    socket.off('error');
+    // socket.off('error');
     socket.off('opponent_disconnected');
     socket.off('opponent_reconnected');
     socket.off('opponent_returned');
@@ -180,7 +176,6 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
     };
   }, [socket, roomId, gameName, myName, myId, searchParams, router, lang]);
 
-  // Opponent disconnected countdown
   useEffect(() => {
     if (!opponentDisconnected) return;
 

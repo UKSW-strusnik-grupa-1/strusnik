@@ -152,7 +152,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
     socket.off('join_room_response');
     socket.off('game_state_update');
-    socket.off('error');
+    // socket.off('error');
     socket.off('opponent_disconnected');
     socket.off('opponent_reconnected');
     socket.off('opponent_returned');

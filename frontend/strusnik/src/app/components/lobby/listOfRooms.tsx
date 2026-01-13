@@ -17,6 +17,7 @@ export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
     const { socket } = useSocket();
     const [rooms, setRooms] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [searchQuery, setSearchQuery] = useState<string>("");
     const { lang } = useLang();
 
     const handleRefresh = () => {
@@ -48,13 +49,21 @@ export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
         };
     }, [socket, gameName]);
 
+    const filteredRooms = rooms.filter((room) => 
+        room.room_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     if (isLoading && rooms.length === 0) { 
         return (
             <div className="relative w-full h-full flex flex-col gap-4">
                 <RefreshButton onClick={handleRefresh} isLoading={isLoading} />
 
                 <div className="shrink-0 pt-2 px-4">
-                    <SearchInput placeholder={t(lang, "rooms.search_placeholder")}/>
+                    <SearchInput 
+                        placeholder={t(lang, "rooms.search_placeholder")}
+                        text={searchQuery}
+                        setText={setSearchQuery}
+                    />
                 </div>
                 <p className="text-center text-gray-400 font-bold">{t(lang, "loading")}</p>
              </div>
@@ -67,15 +76,19 @@ export default function ListOfRooms({ gameName } : ListOfRoomsProps) {
             <RefreshButton onClick={handleRefresh} isLoading={isLoading} />
 
             <div className="shrink-0 pt-2 px-4">
-                <SearchInput placeholder={t(lang, "rooms.search_placeholder")}/>
+                <SearchInput 
+                    placeholder={t(lang, "rooms.search_placeholder")}
+                    text={searchQuery}
+                    setText={setSearchQuery}
+                />
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1 pb-2 pl-4 pr-2">
-                {rooms.length === 0 && !isLoading && (
+                {filteredRooms.length === 0 && !isLoading && (
                     <h1 className='font-bold text-center mt-4 text-gray-400'>{t(lang, "rooms.lack")}</h1>
                 )}
                 
-                {rooms.map(room => (
+                {filteredRooms.map(room => (
                     <div key={room.id}>
                         <RoomTile
                             uuid={room.id} 

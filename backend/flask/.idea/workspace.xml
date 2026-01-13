@@ -5,14 +5,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1023b583-6fe1-42ba-a4ef-9c72f2ddc121" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../docker-compose.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/context/NotificationsContext.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/hooks/useFetchWithNotify.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/games/handling_multiplayer.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/handling_multiplayer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/games/stratego.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/stratego.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sockets/events_stratego.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/events_stratego.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sockets/events_thousand.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/events_thousand.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sockets/socket_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/socket_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/stratego/Game.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/stratego/Game.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/listOfRooms.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/listOfRooms.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/onlinePlayersList.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/lobby/onlinePlayersList.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/login/modal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/login/modal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/stratego/StrategoBoard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/stratego/StrategoBoard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/Game.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/Game.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/ThousandBoard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/components/thousand/ThousandBoard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/context/SocketContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/context/SocketContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/games/Stratego/[roomId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/games/Stratego/[roomId]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/hooks/useBlackjack.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/hooks/useBlackjack.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/hooks/useSnake.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/hooks/useSnake.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/layout.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -49,21 +56,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "Merging main",
-    "last_opened_file_path": "C:/Users/mrigo/Desktop/strusnik-repo/backend/flask",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;Merging main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/mrigo/Desktop/strusnik-repo/backend/flask&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\Program Files\\JetBrains\\PyCharm 2024.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\mrigo\Desktop\strusnik-repo\backend\flask\socket" />

@@ -132,9 +132,8 @@ export default function CreateRoomPage() {
 
         setCreating(false);
         const normalizedSlug = normalizeGameName(slug);
-        router.push(`/games/${normalizedSlug}/${payload.room_id}`);
+        router.push(`/games/${normalizedSlug}/${payload.room_id}?autojoin=true`);
       } catch {
-        // ignore
       }
     };
 

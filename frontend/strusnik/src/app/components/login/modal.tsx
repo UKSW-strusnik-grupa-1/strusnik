@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
 
+import { useFetchWithNotify } from "@/app/hooks/useFetchWithNotify";
+
 export default function LoginModal() {
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
@@ -12,6 +14,8 @@ export default function LoginModal() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { lang } = useLang();
+  
+  const fetchWithNotify = useFetchWithNotify();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,23 +28,32 @@ export default function LoginModal() {
     const password = formData.get("password");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        body: JSON.stringify({ username, password }),
+      const response = await fetchWithNotify("/api/auth/login", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
         credentials: "include",
       });
 
-      const data = await response.json();
-
-      if (response.status !== 200) {
-        setError(data.error || "Unknown error.");
+      if (!response.ok) {
+        let errorMessage = "Unknown error.";
+        try {
+            const data = await response.json();
+            errorMessage = data.error || errorMessage;
+        } catch (e) {}
+        
+        setError(errorMessage);
         setIsLoading(false);
         return;
       }
 
       window.location.href = "/";
+
     } catch (err) {
-      setError("Connection error.");
+      console.error(err);
+      setError(t(lang, "logging_in.connection_error") || "Connection error.");
       setIsLoading(false);
     }
   };
@@ -63,16 +76,20 @@ export default function LoginModal() {
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetchWithNotify("/api/auth/register", {
         body: JSON.stringify({ username, password }),
         method: "POST",
         credentials: "include",
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        setError(data.error || "Registration error.");
+         let errorMessage = "Registration error.";
+         try {
+             const data = await response.json();
+             errorMessage = data.error || errorMessage;
+         } catch (e) {}
+
+        setError(errorMessage);
         setIsLoading(false);
         return;
       }
@@ -80,18 +97,18 @@ export default function LoginModal() {
       setSuccess(t(lang, "logging_in.register_success"));
       setIsRegisterMode(false);
       setIsLoading(false);
+
     } catch (err) {
-      setError("Connection error.");
+      console.error("Register error:", err);
+      setError(t(lang, "logging_in.connection_error") || "Connection error.");
       setIsLoading(false);
     }
   };
 
   const handleGuestLogin = () => {
-    // Generate random guest ID
     const guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const guestName = `Gość${Math.floor(Math.random() * 9999)}`;
 
-    // Store guest info in localStorage
     localStorage.setItem('guestUser', JSON.stringify({ id: guestId, name: guestName }));
 
     window.location.href = "/";
@@ -188,10 +205,10 @@ export default function LoginModal() {
               )}
 
               {error.length > 0 && (
-                <p className="text-red-500 -mt-2 text-sm">{error}</p>
+                <p className="text-red-500 -mt-2 text-sm text-center">{error}</p>
               )}
               {success.length > 0 && (
-                <p className="text-green-500 -mt-2 text-sm">{success}</p>
+                <p className="text-green-500 -mt-2 text-sm text-center">{success}</p>
               )}
             </div>
           </div>

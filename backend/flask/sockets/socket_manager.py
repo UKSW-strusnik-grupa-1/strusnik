@@ -367,6 +367,7 @@ def handle_explicit_leave_room(data):
                     t = eventlet.spawn_after(5, delete_room, roomId)
                     room_deletion_timers[roomId] = t
 
+        remaining_players_count = len(found_room.player_tokens)
 
         if remaining_players_count == 0:
             if roomId in room_deletion_timers:

@@ -3,6 +3,7 @@
 import { createContext, useEffect, useState, useContext } from "react";
 import { io, Socket } from "socket.io-client"
 import { UserContext } from "../context/UserContext";
+import { useNotification } from "./NotificationsContext";
 
 const SOCKET_URL = "http://localhost:5000"
 
@@ -27,6 +28,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const [activeGame, setActiveGame] = useState<ActiveGameInfo | null>(null)
 
     const userContext = useContext(UserContext);
+    const { notify } = useNotification();
 
     useEffect(() => {
         if (!userContext?.userInfo) return;
@@ -41,14 +43,64 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         })
 
         newSocket.on("connect", () => {
+            console.log("connected")
             setIsConnected(true)
         })
 
-        newSocket.on("disconnect", () => {
+        newSocket.on("connect_error", (err) => {
+            setIsConnected(false);
+            const msg = err instanceof Error ? err.message : "Błąd połączenia z serwerem";
+            notify(msg, "error");
+        });
+
+        newSocket.on("error", (err: any) => {
+             console.log("Socket error received:", err);
+             
+             let message = "Wystąpił błąd gniazda";
+
+             if (err && typeof err === "object" && "msg" in err) {
+                 message = String(err.msg);
+             }
+             else if (err && typeof err === "object" && "message" in err) {
+                 message = String(err.message);
+             }
+             else if (typeof err === "string") {
+                 message = err;
+             }
+             else {
+                 try {
+                    message = JSON.stringify(err);
+                 } catch (e) {
+                    message = "Nieznany błąd krytyczny";
+                 }
+             }
+
+             notify(message, "error");
+        });
+
+        newSocket.on("disconnect", (reason) => {
             setIsConnected(false)
+            if (reason !== "io client disconnect") {
+                 notify("Utracono połączenie z serwerem", "error");
+            }
         })
 
-        // Handle active game info from server on reconnect
+        newSocket.on("error_message", (data: { message: string }) => {
+            notify(data.message, "error");
+        });
+
+        newSocket.on("notification", (data: { message: string, type?: "info" | "success" }) => {
+            notify(data.message, data.type || "info");
+        });
+
+        newSocket.on("game_invite", (data: { from: string }) => {
+            notify(`Gracz ${data.from} zaprasza Cię do gry!`, "info");
+        });
+        
+        newSocket.on("player_joined", (data: { username: string }) => {
+            notify(`${data.username} dołączył do pokoju`, "success");
+        });
+
         newSocket.on("your_active_game", (data: any) => {
             if (data && data.roomId && data.gameName) {
                 setActiveGame({
@@ -61,7 +113,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             }
         })
 
-        // Handle game ended - clear active game
         newSocket.on("game_ended_timeout", () => {
             setActiveGame(null);
         })
@@ -71,7 +122,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         return () => {
             newSocket.disconnect()
         }
-    }, [userContext?.userInfo])
+    }, [userContext?.userInfo, notify]) 
 
     return (
         <SocketContext.Provider value={{ socket, isConnected, activeGame, setActiveGame }}>
