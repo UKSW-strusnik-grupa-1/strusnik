@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "./components/main/button";
 import { useLang } from "./lang";
@@ -14,6 +14,20 @@ export default function HomePage() {
   const router = useRouter();
   const userContext = useContext(UserContext);
   const { activeGame, setActiveGame } = useSocket();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch('/api/admin/check', { credentials: 'include' });
+        const data = await res.json();
+        setIsAdmin(data.is_admin || false);
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -44,6 +58,9 @@ export default function HomePage() {
         <Button alt="gry jednoosobowe" text={t(lang, "home.single")} href="/singleplayer" />
         <Button alt="gry wieloosobowe" text={t(lang, "home.multi")} href="/multiplayer" />
         <Button alt="rankingi" text={t(lang, "home.rankings")} href="/rankings" />
+        {isAdmin && (
+          <Button alt="panel administratora" text="ADMIN PANEL" href="/admin" />
+        )}
         <button type="button" className="menu-logout touch-target" onClick={handleLogout}>
           {t(lang, "home.logout")}
         </button>

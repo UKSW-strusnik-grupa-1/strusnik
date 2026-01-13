@@ -27,7 +27,7 @@ const FILES = 'abcdefgh';
 
 function squareToCoords(square: string) {
   const fileIdx = FILES.indexOf(square[0]);
-  const rankIdx = Number(square[1]) - 1; // 0..7
+  const rankIdx = Number(square[1]) - 1;
   return { fileIdx, rankIdx };
 }
 
@@ -294,7 +294,7 @@ export default function ChessBoard({
             />
           );
         })}
-      
+
       {pieces.map(({ square, piece }) => {
         const sprite = getPieceSprite(piece);
         const { x, y } = squareToPixel(square);

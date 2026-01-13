@@ -25,6 +25,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
   const router = useRouter();
 
   const autoJoinAttempted = useRef(false);
+  const hasJoinedRoomRef = useRef(false);
 
   const [gameStage, setGameStage] = useState<string>("waiting_for_players");
   const [seats, setSeats] = useState<any[]>([null, null, null, null]);
@@ -73,6 +74,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
         setShowPasswordModal(false);
         setConnectionError(null);
         setErrorMessage("");
+        hasJoinedRoomRef.current = true;
 
         const shouldAutoJoin = searchParams.get('autojoin');
 
@@ -110,12 +112,12 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
           const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
           const opponentSeat = state.seats[opponentSeatIdx];
           if (opponentSeat) {
-            if (opponentSeat.connected === true) {
+            if (opponentSeat.connected === true || opponentSeat.connected === undefined) {
               setOpponentDisconnected(null);
             } else if (opponentSeat.connected === false) {
               setOpponentDisconnected((prev) => {
                 if (prev !== null) return prev;
-                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
+                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
               });
             }
           }
@@ -125,7 +127,9 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     };
 
     const handleError = (err: any) => {
-      console.error(t(lang, "thousand.board.log.socket_error"), err);
+      if (err && typeof err === 'object' && Object.keys(err).length > 0 && JSON.stringify(err) !== '{}') {
+        console.error(t(lang, "thousand.board.log.socket_error"), err);
+      }
     };
 
     const handleOpponentDisconnected = (data: any) => {
@@ -149,6 +153,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
     socket.off('join_room_response');
     socket.off('game_state_update');
+    socket.off('error');
     socket.off('opponent_disconnected');
     socket.off('opponent_reconnected');
     socket.off('opponent_returned');
@@ -188,6 +193,34 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
     return () => clearInterval(interval);
   }, [opponentDisconnected?.name]);
+
+  useEffect(() => {
+    if (!socket || !roomId) return;
+
+    const handleBeforeUnload = () => {
+      if (hasJoinedRoomRef.current) {
+        socket.emit('leave_room', { roomId });
+      }
+    };
+
+    const handlePopState = () => {
+      if (hasJoinedRoomRef.current) {
+        socket.emit('leave_room', { roomId });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+      if (hasJoinedRoomRef.current) {
+        socket.emit('leave_room', { roomId });
+        hasJoinedRoomRef.current = false;
+      }
+    };
+  }, [socket, roomId]);
 
   const handlePasswordSubmit = (password: string) => {
     setErrorMessage("");

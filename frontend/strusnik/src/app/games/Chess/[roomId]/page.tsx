@@ -85,7 +85,7 @@ export default function ChessRoomPage() {
       <div className="absolute inset-0 bg-black/35" />
 
       <div className="absolute w-full h-screen flex flex-col overflow-visible">
-        <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} onClick={() => chess.leaveRoom()} />
+        <ReturnArrow href="/lobby/chess" text={t(lang, "arrow")} onClick={() => chess.leaveRoom()} />
       </div>
 
       <PasswordModal

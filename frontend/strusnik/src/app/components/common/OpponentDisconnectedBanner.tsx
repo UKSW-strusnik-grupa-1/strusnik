@@ -6,16 +6,10 @@ import { t } from '@/app/i18n';
 interface OpponentDisconnectedBannerProps {
     name: string;
     timeLeft: number;
-    /** Optional: key for the "opponent disconnected" text, defaults to generic */
     disconnectedKey?: string;
-    /** Optional: key for the "waiting for reconnect" text, defaults to generic */
     waitingKey?: string;
 }
 
-/**
- * Ujednolicony komponent wyświetlający informację o rozłączeniu przeciwnika.
- * Używany we wszystkich grach multiplayer.
- */
 export default function OpponentDisconnectedBanner({
     name,
     timeLeft,

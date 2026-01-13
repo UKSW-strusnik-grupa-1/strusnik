@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import React from 'react'
+import { useRouter } from 'next/navigation'
 
 interface returnArrowProps {
   href: string;
@@ -8,13 +9,15 @@ interface returnArrowProps {
 }
 
 export default function ReturnArrow({ href = "", text = "MENU", onClick }: returnArrowProps) {
+  const router = useRouter();
+
   const handleClick = (e: React.MouseEvent) => {
     if (onClick) {
       e.preventDefault();
       onClick();
       setTimeout(() => {
-        window.location.href = href;
-      }, 100);
+        router.push(href);
+      }, 150);
     }
   };
 

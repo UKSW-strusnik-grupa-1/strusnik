@@ -26,6 +26,7 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
     const router = useRouter();
 
     const autoJoinAttempted = useRef(false);
+    const hasJoinedRoomRef = useRef(false);
 
     const [gameStage, setGameStage] = useState<string>("waiting_for_players");
     const [seats, setSeats] = useState<any[]>([null, null]);
@@ -72,6 +73,7 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
                 setShowPasswordModal(false);
                 setConnectionError(null);
                 setErrorMessage("");
+                hasJoinedRoomRef.current = true;
 
                 const shouldAutoJoin = searchParams.get('autojoin');
 
@@ -109,12 +111,12 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
                     const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
                     const opponentSeat = state.seats[opponentSeatIdx];
                     if (opponentSeat) {
-                        if (opponentSeat.connected === true) {
+                        if (opponentSeat.connected === true || opponentSeat.connected === undefined) {
                             setOpponentDisconnected(null);
                         } else if (opponentSeat.connected === false) {
                             setOpponentDisconnected((prev) => {
                                 if (prev !== null) return prev;
-                                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
+                                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
                             });
                         }
                     }
@@ -123,7 +125,9 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
         };
 
         const handleError = (err: any) => {
-            console.error("Socket error:", err);
+            if (err && typeof err === 'object' && Object.keys(err).length > 0 && JSON.stringify(err) !== '{}') {
+                console.error("Socket error:", err);
+            }
         };
 
         const handleOpponentDisconnected = (data: any) => {
@@ -192,6 +196,34 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
         return () => clearInterval(interval);
     }, [opponentDisconnected?.name]);
 
+    useEffect(() => {
+        if (!socket || !roomId) return;
+
+        const handleBeforeUnload = () => {
+            if (hasJoinedRoomRef.current) {
+                socket.emit('leave_room', { roomId });
+            }
+        };
+
+        const handlePopState = () => {
+            if (hasJoinedRoomRef.current) {
+                socket.emit('leave_room', { roomId });
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('popstate', handlePopState);
+            if (hasJoinedRoomRef.current) {
+                socket.emit('leave_room', { roomId });
+                hasJoinedRoomRef.current = false;
+            }
+        };
+    }, [socket, roomId]);
+
     const handlePasswordSubmit = (password: string) => {
         setErrorMessage("");
         joinRoom(password);
@@ -219,7 +251,7 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
     }
 
     return (
-        <div className='relative w-full h-screen flex flex-col p-1 overflow-hidden '>
+        <div className='relative w-full h-screen flex flex-col p-1 overflow-hidden bg-[#1a120b]'>
             <div className="shrink-0 mb-1 pl-2">
                 <ReturnArrow href={`/lobby/${gameName}`} text="WYJDZ" onClick={leaveRoom} />
             </div>

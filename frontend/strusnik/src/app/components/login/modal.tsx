@@ -235,9 +235,8 @@ export default function LoginModal() {
             </div>
 
           </div>
+        </form>
       </div>
-    </form>
-      </div >
-    </div >
+    </div>
   );
 }

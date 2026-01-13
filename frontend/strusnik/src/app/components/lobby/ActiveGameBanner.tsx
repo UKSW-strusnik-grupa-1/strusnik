@@ -39,7 +39,7 @@ export default function ActiveGameBanner({ gameName, roomId, roomName, onDismiss
 
     return (
         <div className="w-[calc(100vw-32px)] max-w-[650px] mb-4 px-2 sm:px-0">
-            <div className="relative bg-linear-to-r from-amber-900/80 to-amber-700/80 border border-amber-500/50 rounded-xl p-3 sm:p-4 shadow-lg backdrop-blur-sm">
+            <div className="relative bg-gradient-to-r from-amber-900/80 to-amber-700/80 border border-amber-500/50 rounded-xl p-3 sm:p-4 shadow-lg backdrop-blur-sm">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                     <div className="flex-1">
                         <p className="text-amber-200 font-bold uppercase tracking-wide text-xs sm:text-sm mb-0.5 sm:mb-1">

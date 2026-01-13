@@ -109,6 +109,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   const [opponentDisconnected, setOpponentDisconnected] = useState<{ name: string; timeLeft: number } | null>(null);
 
   const pendingMoveRef = useRef<{ prevFen: string; clientMoveId: string } | null>(null);
+  const hasJoinedRoomRef = useRef<boolean>(false);
 
   const lastTickRef = useRef<number>(0);
 
@@ -234,6 +235,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       if (payload.success) {
         const rd = payload.room_data || {};
         setHostId(rd.host_id ?? null);
+        hasJoinedRoomRef.current = true;
 
         const tMin = rd.time_control_min ?? rd.time_min;
         if (tMin !== undefined && tMin !== null) {
@@ -302,11 +304,9 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
         const opponentSeatIdx = localMyColor === 'w' ? 1 : 0;
         const opponentSeat = nextSeats[opponentSeatIdx];
         if (opponentSeat) {
-          if (opponentSeat.connected === true) {
-
+          if (opponentSeat.connected === true || opponentSeat.connected === undefined) {
             setOpponentDisconnected(null);
           } else if (opponentSeat.connected === false) {
-
             setOpponentDisconnected((prev) => {
               if (prev !== null) return prev;
               return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
@@ -433,6 +433,34 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
 
     return () => clearInterval(interval);
   }, [opponentDisconnected?.name]);
+
+  useEffect(() => {
+    if (!socket || !roomId) return;
+
+    const handleBeforeUnload = () => {
+      if (hasJoinedRoomRef.current) {
+        socket.emit('leave_room', { roomId });
+      }
+    };
+
+    const handlePopState = () => {
+      if (hasJoinedRoomRef.current) {
+        socket.emit('leave_room', { roomId });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+      if (hasJoinedRoomRef.current) {
+        socket.emit('leave_room', { roomId });
+        hasJoinedRoomRef.current = false;
+      }
+    };
+  }, [socket, roomId]);
 
   const waitingHint = useMemo(() => {
     if (stage === 'ended') return t(lang, 'chess.hint.ended');

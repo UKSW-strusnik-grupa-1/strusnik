@@ -1,7 +1,8 @@
 from flask import Blueprint, current_app, request, Response, jsonify, make_response
-from models import db, User
+from models import db, User, Ban
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils import create_jwt_token, parse_jwt_token, is_token_valid
+from datetime import datetime
 
 authentication = Blueprint("authentication", __name__)
 
@@ -47,11 +48,30 @@ def login():
         if not check_password_hash(user.password, password):
             return jsonify({"error": "Invalid credentials."}), 401
         
+        if user.is_banned:
+            active_ban = Ban.query.filter_by(user_id=user.id, is_active=True).first()
+            if active_ban:
+                if active_ban.expires_at and active_ban.expires_at < datetime.now():
+                    active_ban.is_active = False
+                    user.is_banned = False
+                    db.session.commit()
+                else:
+                    ban_msg = f"Konto zbanowane. Powód: {active_ban.reason or 'Brak podanego powodu'}."
+                    if active_ban.expires_at:
+                        ban_msg += f" Wygasa: {active_ban.expires_at.strftime('%Y-%m-%d %H:%M')}"
+                    else:
+                        ban_msg += " Ban permanentny."
+                    return jsonify({"error": ban_msg}), 403
+        
+        user.last_login = datetime.now()
+        db.session.commit()
+        
         token = create_jwt_token(user.id, username)
         
         response = make_response(
             jsonify({
-                "message": "Login successful."
+                "message": "Login successful.",
+                "is_admin": user.is_admin
             }), 200
         )
         
