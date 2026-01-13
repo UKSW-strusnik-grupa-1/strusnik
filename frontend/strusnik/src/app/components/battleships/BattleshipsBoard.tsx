@@ -223,7 +223,7 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
     }
 
     return (
-        <div className='relative w-full h-screen flex flex-col p-1 overflow-hidden bg-[#1a120b]'>
+        <div className='relative w-full h-screen flex flex-col p-1 overflow-hidden '>
             <div className="shrink-0 mb-1 pl-2">
                 <ReturnArrow href={`/lobby/${gameName}`} text="WYJDZ" onClick={leaveRoom} />
             </div>
