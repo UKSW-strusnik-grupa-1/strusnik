@@ -148,7 +148,8 @@ export const useBlackjack = () => {
 
         const data = await fetchWithNotify("/api/games/blackjack/start", {
             method: "POST",
-            body: JSON.stringify({ bet })
+            body: JSON.stringify({ bet }),
+            headers: { "Content-Type": "application/json" },
         });
 
         if (!data) return;
@@ -166,7 +167,8 @@ export const useBlackjack = () => {
 
         const data = await fetchWithNotify("/api/games/blackjack/hit", {
             method: "POST",
-            body: JSON.stringify({ uuid: gameUUID })
+            body: JSON.stringify({ uuid: gameUUID }),
+            headers: { "Content-Type": "application/json" },
         });
 
         if (!data) return;
@@ -184,7 +186,8 @@ export const useBlackjack = () => {
 
         const data = await fetchWithNotify("/api/games/blackjack/stand", {
             method: "POST",
-            body: JSON.stringify({ uuid: gameUUID })
+            body: JSON.stringify({ uuid: gameUUID }),
+            headers: { "Content-Type": "application/json" },
         });
 
         if (!data) return;

@@ -34,6 +34,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         if (!userContext?.userInfo) return;
 
         const newSocket = io(SOCKET_URL, {
+            path: "/socket.io",
             transports: ["websocket"],
             autoConnect: true,
             auth: {

@@ -2,6 +2,9 @@ import random
 from typing import List, Dict, Any, Optional
 from .base import MultiplayerGame
 
+from models import db, User, GameStats
+from flask import current_app
+
 class Battleships(MultiplayerGame):
     player_range = [2]
 
@@ -15,7 +18,7 @@ class Battleships(MultiplayerGame):
             "stage": "waiting_for_players",
             "current_player_idx": 0,
             "winner": None,
-            "boards": [self._create_empty_board() for _ in range(2)], 
+            "boards": [self._create_empty_board() for _ in range(2)],
             "ready_players": []
         }
 
@@ -41,7 +44,7 @@ class Battleships(MultiplayerGame):
         seated_count = len([s for s in self.seats if s is not None])
         if seated_count < 2:
             return {"success": False, "msg": "Za mało graczy (wymagani 2)."}
-        
+
         self.game_state['stage'] = 'placement'
         self.game_state['boards'] = [self._create_empty_board() for _ in range(2)]
         self.game_state['ready_players'] = []
@@ -52,24 +55,25 @@ class Battleships(MultiplayerGame):
         if player_idx == -1: return {"success": False, "msg": "Nie grasz."}
 
         move_type = move_data.get('type')
-        
+
         if self.game_state['stage'] == 'placement':
             if move_type == 'confirm_placement':
                 board = move_data.get('board')
-                
+
                 if not isinstance(board, list) or len(board) != 10:
-                     return {"success": False, "msg": "Błędna wielkość planszy."}
+                    return {"success": False, "msg": "Błędna wielkość planszy."}
                 for row in board:
                     if not isinstance(row, list) or len(row) != 10:
                         return {"success": False, "msg": "Błędny wiersz planszy."}
 
                 self.game_state['boards'][player_idx] = board
-                
+
                 if player_idx not in self.game_state['ready_players']:
                     self.game_state['ready_players'].append(player_idx)
-                
-                print(f"DEBUG Battleships: Player {player_idx} confirmed. Ready players: {self.game_state['ready_players']}, Stage: {self.game_state['stage']}")
-                
+
+                print(
+                    f"DEBUG Battleships: Player {player_idx} confirmed. Ready players: {self.game_state['ready_players']}, Stage: {self.game_state['stage']}")
+
                 if len(self.game_state['ready_players']) == 2:
                     self.game_state['stage'] = 'playing'
                     self.game_state['current_player_idx'] = 0
@@ -80,7 +84,7 @@ class Battleships(MultiplayerGame):
             if move_type == 'shoot':
                 if self.game_state['current_player_idx'] != player_idx:
                     return {"success": False, "msg": "Nie Twoja kolej."}
-                
+
                 x, y = move_data.get('x'), move_data.get('y')
                 opponent_idx = (player_idx + 1) % 2
                 opponent_board = self.game_state['boards'][opponent_idx]
@@ -95,6 +99,8 @@ class Battleships(MultiplayerGame):
                     if self._check_win(opponent_idx):
                         self.game_state['stage'] = 'game_over'
                         self.game_state['winner'] = self.seats[player_idx]
+                        # Zapis statystyk po wygranej
+                        self._record_win(player_idx)
                 else:
                     opponent_board[y][x] = 2
                     self.game_state['current_player_idx'] = opponent_idx
@@ -113,15 +119,12 @@ class Battleships(MultiplayerGame):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-
                 if not is_connected and self.game_state['stage'] == 'waiting_for_players':
                     self.seats[i] = None
                     return True
 
-
                 if is_connected and sid:
                     seat['socketId'] = sid
-
 
                 if seat.get('connected') == is_connected:
                     return False
@@ -143,6 +146,27 @@ class Battleships(MultiplayerGame):
         for row in self.game_state['boards'][victim_idx]:
             if 1 in row: return False
         return True
+
+    def _record_win(self, winner_idx: int) -> None:
+        try:
+            winner_seat = self.seats[winner_idx]
+            if not winner_seat: return
+            winner_name = winner_seat.get('name')
+            if not winner_name: return
+
+            if current_app:
+                with current_app.app_context():
+                    user = User.query.filter_by(username=winner_name).first()
+                    if user:
+                        stat = GameStats.query.filter_by(user_id=user.id, game_name='Battleships').first()
+                        if not stat:
+                            stat = GameStats(user_id=user.id, game_name='Battleships', wins=1)
+                            db.session.add(stat)
+                        else:
+                            stat.wins += 1
+                        db.session.commit()
+        except Exception as e:
+            print(f"Error saving Battleships stats: {e}")
 
     def get_state(self) -> Dict[str, Any]:
         return {

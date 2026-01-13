@@ -112,7 +112,7 @@ export default function CardList({
                   className="w-full transition-all group-hover:scale-105 group-hover:brightness-110 drop-shadow-xl"
                   alt={t(lang, 'blackjack.actions.hit')}
                 />
-                <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105">
+                <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105 text-white">
                   {t(lang, 'blackjack.actions.hit')}
                 </p>
               </div>
@@ -126,7 +126,7 @@ export default function CardList({
                   className="w-full transition-all group-hover:scale-105 group-hover:brightness-110 drop-shadow-xl hue-rotate-15"
                   alt={t(lang, 'blackjack.actions.stand')}
                 />
-                <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105">
+                <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105 text-white">
                   {t(lang, 'blackjack.actions.stand')}
                 </p>
               </div>

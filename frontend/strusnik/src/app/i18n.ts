@@ -152,6 +152,14 @@ export const I18N = {
 				'CZY NA PEWNO OPUSCIC GRE? NIE BEDZIESZ MOGL WROCIC PRZEZ BANER.',
 		},
 
+		snake: {
+			score: 'WYNIK',
+			play: 'GRAJ',
+			play_again: 'ZAGRAJ PONOWNIE',
+			submitting: '...',
+			in_progress: 'W TRAKCIE GRY',
+		},
+
 		blackjack: {
 			balance: 'SALDO',
 			start: 'ROZPOCZNIJ',
@@ -542,6 +550,14 @@ export const I18N = {
 			leave_game: 'LEAVE GAME',
 			leave_game_confirm:
 				'LEAVE THE GAME PERMANENTLY? YOU WILL NOT BE ABLE TO RETURN VIA THE BANNER.',
+		},
+
+		snake: {
+			score: 'SCORE',
+			play: 'PLAY',
+			play_again: 'PLAY AGAIN',
+			submitting: '...',
+			in_progress: 'IN GAME',
 		},
 
 		blackjack: {

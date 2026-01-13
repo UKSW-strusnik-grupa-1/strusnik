@@ -3,6 +3,10 @@ import time
 from typing import List, Dict, Any, Optional
 from .base import MultiplayerGame
 
+# Importy potrzebne do obsługi bazy danych
+from models import db, User, GameStats
+from flask import current_app
+
 
 class Stratego(MultiplayerGame):
     player_range = [2]
@@ -43,16 +47,13 @@ class Stratego(MultiplayerGame):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-
                 if not is_connected and self.game_state['stage'] == 'waiting_for_players':
                     self.seats[i] = None
                     return True
 
-
                 if is_connected and sid:
                     seat['socketId'] = sid
                     seat['disconnect_timestamp'] = None
-
 
                 if seat.get('connected') == is_connected:
                     return False
@@ -61,7 +62,7 @@ class Stratego(MultiplayerGame):
 
                 if not is_connected:
                     seat['disconnect_timestamp'] = time.time()
-                    
+
                 return True
         return False
 
@@ -215,12 +216,34 @@ class Stratego(MultiplayerGame):
     def _end_game(self, winner_idx, reason):
         self.game_state['stage'] = 'game_over'
         self.game_state['winner'] = {'name': self.seats[winner_idx]['name'], 'reason': reason}
+        self._record_win(winner_idx)
+
+    def _record_win(self, winner_idx: int) -> None:
+        try:
+            winner_seat = self.seats[winner_idx]
+            if not winner_seat: return
+            winner_name = winner_seat.get('name')
+            if not winner_name: return
+
+            if current_app:
+                with current_app.app_context():
+                    user = User.query.filter_by(username=winner_name).first()
+                    if user:
+                        stat = GameStats.query.filter_by(user_id=user.id, game_name='Stratego').first()
+                        if not stat:
+                            stat = GameStats(user_id=user.id, game_name='Stratego', wins=1)
+                            db.session.add(stat)
+                        else:
+                            stat.wins += 1
+                        db.session.commit()
+        except Exception as e:
+            print(f"Error saving Stratego stats: {e}")
 
     def _get_player_idx(self, sid):
         for i, s in enumerate(self.seats):
             if s and s['socketId'] == sid: return i
         return -1
-    
+
     def _get_player_idx_by_token(self, user_token):
         for i, s in enumerate(self.seats):
             if s and s.get('userId') == user_token: return i
@@ -244,11 +267,10 @@ class Stratego(MultiplayerGame):
             pid = self._get_player_idx_by_token(user_token)
         else:
             pid = self._get_player_idx(player_sid)
-        
 
         if pid == -1 and player_sid:
             pid = self._get_player_idx(player_sid)
-        
+
         masked = [[None for _ in range(10)] for _ in range(10)]
         for r in range(10):
             for c in range(10):
