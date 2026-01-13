@@ -10,7 +10,6 @@ import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
 import ActiveGameBanner from '@/app/components/lobby/ActiveGameBanner';
 
-// Normalizuje nazwę gry do prawidłowej formy (zgodnej z folderami w /games/)
 function normalizeGameName(name: string): string {
   const normalized: Record<string, string> = {
     'chess': 'Chess',
@@ -79,7 +78,6 @@ export default function CreateRoomPage() {
   const isChess = String(slug).toLowerCase() === 'chess';
   const gameSlug = String(slug).toLowerCase();
 
-  // Określenie dostępnych opcji liczby graczy na podstawie gry
   const availablePlayerCounts = useMemo(() => {
     if (gameSlug === 'tysiac') {
       return [3, 4];
@@ -90,23 +88,19 @@ export default function CreateRoomPage() {
     if (gameSlug === 'set') {
       return [2, 3, 4];
     }
-    // Domyślnie dla reszty gier (poza szachami, które mają osobne UI)
     return [2, 3, 4];
   }, [gameSlug]);
 
-  // Sprawdź czy gra wymaga tylko 2 graczy (nie pokazuj wyboru)
   const hidePlayersChoice = gameSlug === 'battleships' || gameSlug === 'stratego';
 
   const [timeChoice, setTimeChoice] = useState<TimeChoice>(10);
   const [colorPref, setColorPref] = useState<ChessColorPref>('RANDOM');
 
-  // Inicjalizacja stanu z poprawną wartością dla danej gry
   const [playersChoice, setPlayersChoice] = useState<PlayersChoice>(() => {
     const validDefault = availablePlayerCounts[0];
     return (validDefault === 2 || validDefault === 3 || validDefault === 4) ? validDefault : 2;
   });
 
-  // Korekta liczby graczy, jeśli obecny wybór jest nieprawidłowy dla nowej gry (np. przy zmianie URL)
   useEffect(() => {
     if (!availablePlayerCounts.includes(playersChoice as number)) {
       setPlayersChoice(availablePlayerCounts[0] as PlayersChoice);

@@ -21,7 +21,6 @@ const gameDisplayNames: Record<string, string> = {
     Set: 'Set',
 };
 
-// Normalizes game name to proper format (matching /games/ folders)
 function normalizeGameName(name: string): string {
     const normalized: Record<string, string> = {
         'chess': 'Chess',
@@ -40,7 +39,7 @@ export default function ActiveGameBanner({ gameName, roomId, roomName, onDismiss
 
     return (
         <div className="w-[650px] mb-4">
-            <div className="relative bg-gradient-to-r from-amber-900/80 to-amber-700/80 border border-amber-500/50 rounded-xl p-4 shadow-lg backdrop-blur-sm">
+            <div className="relative bg-linear-to-r from-amber-900/80 to-amber-700/80 border border-amber-500/50 rounded-xl p-4 shadow-lg backdrop-blur-sm">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">
                         <p className="text-amber-200 font-bold uppercase tracking-wide text-sm mb-1">
@@ -59,7 +58,7 @@ export default function ActiveGameBanner({ gameName, roomId, roomName, onDismiss
                             <img
                                 src="/main/button.png"
                                 alt=""
-                                className="w-[140px] h-[48px] object-cover transition-all group-hover:brightness-110"
+                                className="w-[140px] h-12 object-cover transition-all group-hover:brightness-110"
                                 draggable={false}
                             />
                             <span className="absolute inset-0 flex items-center justify-center text-amber-50 font-bold uppercase tracking-wide text-sm group-hover:scale-105 transition-transform">

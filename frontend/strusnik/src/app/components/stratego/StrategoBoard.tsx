@@ -111,7 +111,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
             } else if (opponentSeat.connected === false) {
               setOpponentDisconnected((prev) => {
                 if (prev !== null) return prev;
-                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
+                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
               });
             }
           }

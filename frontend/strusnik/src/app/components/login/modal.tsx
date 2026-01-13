@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import { useNotification } from "@/app/context/NotificationsContext";
 
 import { useFetchWithNotify } from "@/app/hooks/useFetchWithNotify";
 
@@ -14,6 +15,7 @@ export default function LoginModal() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { lang } = useLang();
+  const { notify } = useNotification();
   
   const fetchWithNotify = useFetchWithNotify();
 
@@ -27,35 +29,23 @@ export default function LoginModal() {
     const username = formData.get("username");
     const password = formData.get("password");
 
-    try {
-      const response = await fetchWithNotify("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-        credentials: "include",
-      });
+    const data = await fetchWithNotify("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+      credentials: "include",
+    });
 
-      if (!response.ok) {
-        let errorMessage = "Unknown error.";
-        try {
-            const data = await response.json();
-            errorMessage = data.error || errorMessage;
-        } catch (e) {}
-        
-        setError(errorMessage);
-        setIsLoading(false);
-        return;
-      }
-
-      window.location.href = "/";
-
-    } catch (err) {
-      console.error(err);
-      setError(t(lang, "logging_in.connection_error") || "Connection error.");
+    if (!data) {
       setIsLoading(false);
+      return;
     }
+
+    notify(t(lang, "logging_in.success") || "Zalogowano pomyślnie", "success");
+    
+    window.location.href = "/"; 
   };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -70,39 +60,29 @@ export default function LoginModal() {
     const confirmPassword = formData.get("confirmPassword");
 
     if (password !== confirmPassword) {
-      setError(t(lang, "logging_in.passwords_dont_match"));
+      const msg = t(lang, "logging_in.passwords_dont_match");
+      setError(msg);
+      notify(msg, "warning");
       setIsLoading(false);
       return;
     }
 
-    try {
-      const response = await fetchWithNotify("/api/auth/register", {
-        body: JSON.stringify({ username, password }),
-        method: "POST",
-        credentials: "include",
-      });
+    const data = await fetchWithNotify("/api/auth/register", {
+      body: JSON.stringify({ username, password }),
+      method: "POST",
+      credentials: "include",
+    });
 
-      if (!response.ok) {
-         let errorMessage = "Registration error.";
-         try {
-             const data = await response.json();
-             errorMessage = data.error || errorMessage;
-         } catch (e) {}
-
-        setError(errorMessage);
-        setIsLoading(false);
-        return;
-      }
-
-      setSuccess(t(lang, "logging_in.register_success"));
-      setIsRegisterMode(false);
-      setIsLoading(false);
-
-    } catch (err) {
-      console.error("Register error:", err);
-      setError(t(lang, "logging_in.connection_error") || "Connection error.");
-      setIsLoading(false);
+    if (!data) {
+       setIsLoading(false);
+       return;
     }
+
+    const successMsg = t(lang, "logging_in.register_success");
+    setSuccess(successMsg);
+    notify(successMsg, "success");
+    setIsRegisterMode(false);
+    setIsLoading(false);
   };
 
   const handleGuestLogin = () => {
@@ -110,7 +90,8 @@ export default function LoginModal() {
     const guestName = `Gość${Math.floor(Math.random() * 9999)}`;
 
     localStorage.setItem('guestUser', JSON.stringify({ id: guestId, name: guestName }));
-
+    
+    notify("Zalogowano jako gość", "info");
     window.location.href = "/";
   };
 
@@ -204,6 +185,7 @@ export default function LoginModal() {
                 </div>
               )}
 
+              {/* Wyświetlanie błędów inline (oprócz powiadomień) */}
               {error.length > 0 && (
                 <p className="text-red-500 -mt-2 text-sm text-center">{error}</p>
               )}
@@ -251,7 +233,7 @@ export default function LoginModal() {
               </button>
             </div>
 
-            {!isRegisterMode && (
+            {/* {!isRegisterMode && (
               <button
                 type="button"
                 onClick={handleGuestLogin}
@@ -269,7 +251,7 @@ export default function LoginModal() {
                 style={{ backgroundImage: "url('/main/button.png')" }}>
                 {t(lang, "logging_in.guest")}
               </button>
-            )}
+            )} */}
           </div>
         </form>
       </div>

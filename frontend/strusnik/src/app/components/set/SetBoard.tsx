@@ -149,7 +149,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                             // Set disconnect banner if not already showing
                             setOpponentDisconnected((prev) => {
                                 if (prev !== null) return prev; // Keep existing countdown
-                                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
+                                return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
                             });
                         }
                     }

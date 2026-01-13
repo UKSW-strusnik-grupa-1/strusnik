@@ -309,7 +309,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
 
             setOpponentDisconnected((prev) => {
               if (prev !== null) return prev;
-              return { name: opponentSeat.name || 'OPPONENT', timeLeft: 90 };
+              return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
             });
           }
         }

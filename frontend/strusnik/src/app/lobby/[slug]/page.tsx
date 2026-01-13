@@ -23,7 +23,6 @@ export default function LobbyPage() {
       <ReturnArrow href="/multiplayer" />
 
       <div className="relative w-full h-screen flex items-center justify-center flex-col">
-        {/* Show banner if user has an active game */}
         {activeGame && (
           <ActiveGameBanner
             gameName={activeGame.gameName}
