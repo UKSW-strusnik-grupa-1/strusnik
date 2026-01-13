@@ -241,7 +241,7 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
     const handleSquareClick = (r_view: number, c_view: number) => {
         if (stage !== 'playing') return;
         if (current_player_idx !== my_idx) return;
-        if (opponentDisconnected) return; // Block moves when opponent disconnected
+        if (opponentDisconnected) return;
 
         const { r: realR, c: realC } = viewToBackend(r_view, c_view);
         const piece = board[realR][realC];

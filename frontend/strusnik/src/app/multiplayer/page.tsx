@@ -13,9 +13,8 @@ export default function MultiplayerGamesPage() {
         <div>
             <ReturnArrow href="/" />
 
-            {/* Banner powrotu do aktywnej gry */}
             {activeGame && (
-                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+                <div className="fixed top-12 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-full px-2 sm:px-0 sm:w-auto">
                     <ActiveGameBanner
                         gameName={activeGame.gameName}
                         roomId={activeGame.roomId}

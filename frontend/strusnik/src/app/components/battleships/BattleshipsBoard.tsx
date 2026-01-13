@@ -104,7 +104,6 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
             if (state.seats) {
                 setSeats(state.seats);
 
-                // Check opponent connection status and update disconnect banner
                 const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
                 if (mySeatIdx !== -1 && state.stage === 'playing') {
                     const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
@@ -113,9 +112,8 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
                         if (opponentSeat.connected === true) {
                             setOpponentDisconnected(null);
                         } else if (opponentSeat.connected === false) {
-                            // Set disconnect banner if not already showing
                             setOpponentDisconnected((prev) => {
-                                if (prev !== null) return prev; // Keep existing countdown
+                                if (prev !== null) return prev;
                                 return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
                             });
                         }
@@ -139,7 +137,6 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
         };
 
         const handleOpponentReturned = () => {
-            // Player is returning after leaving - clear banner and resume game
             setOpponentDisconnected(null);
         };
 
@@ -182,7 +179,6 @@ export default function BattleshipsBoard({ gameName, roomId, myId, myName }: Bat
         };
     }, [socket, roomId, gameName, myName, myId, searchParams, router]);
 
-    // Opponent disconnected countdown
     useEffect(() => {
         if (!opponentDisconnected) return;
 

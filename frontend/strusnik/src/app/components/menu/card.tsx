@@ -9,7 +9,7 @@ interface CardProps {
   imgSrc: string;
 }
 
-export default function Card({gameName, imgSrc} : CardProps) {
+export default function Card({ gameName, imgSrc }: CardProps) {
   const getGameLink = () => {
     if (Games["singleplayer"].includes(gameName)) {
       return `/singleplayer/${gameName}`;
@@ -17,14 +17,14 @@ export default function Card({gameName, imgSrc} : CardProps) {
     return `/lobby/${gameName}`;
   }
 
-return (
+  return (
     <Link href={getGameLink()}>
-      <div className="flex flex-col gap-1 cursor-pointer transition-all hover:scale-[1.03]">
+      <div className="flex flex-col gap-1 cursor-pointer transition-all hover:scale-[1.03] active:scale-[0.98]">
 
         <img
           alt={gameName}
           src={imgSrc}
-          className="w-[300px] h-auto object-cover"
+          className="w-[calc(50vw-16px)] min-w-[140px] max-w-[300px] sm:w-[200px] md:w-[250px] lg:w-[300px] h-auto object-cover rounded-lg"
         />
 
       </div>

@@ -70,38 +70,33 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="absolute top-4 right-4 md:right-20 lg:right-40 z-50 w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer"
+                className="fixed sm:absolute top-14 sm:top-4 right-3 sm:right-4 md:right-20 lg:right-40 z-50 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer touch-target"
                 title="pokaz graczy online"
             >
-                <Users className="text-white" size={24} />
-                <span className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-black">
+                <Users className="text-white" size={20} />
+                <span className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full border border-black">
                     {players.length}
                 </span>
             </button>
         );
     }
 
-    const positionClasses = collapsible 
-        ? "top-4 right-4 md:right-20 lg:right-40 h-[60vh]" 
-        : "top-4 left-4 xl:left-10 h-[50vh] xl:h-[65vh]";
+    const positionClasses = collapsible
+        ? "fixed sm:absolute top-14 sm:top-4 right-3 sm:right-4 md:right-20 lg:right-40 h-[50vh] sm:h-[60vh]"
+        : "fixed sm:absolute top-14 sm:top-4 left-3 sm:left-4 xl:left-10 h-[45vh] sm:h-[50vh] xl:h-[65vh]";
 
     return (
         <div className={`
-            absolute z-50 flex flex-col 
-            
-            // ZMIANA: Szerokość
-            // Mobile: prawie cała szerokość (z marginesem 1rem z każdej strony)
-            // Desktop: stała szerokość 64/72
-            w-[calc(100vw-2rem)] sm:w-64 xl:w-72 
-            
-            bg-black/80 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl p-4
+            z-50 flex flex-col 
+            w-[calc(100vw-1.5rem)] sm:w-64 xl:w-72 
+            bg-black/80 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl p-3 sm:p-4
             transition-all duration-300 animate-in fade-in zoom-in-95
             ${positionClasses}
         `}>
             <div className="flex items-center justify-between border-b border-white/20 pb-2 mb-2">
-                <h3 className="text-lg font-bold text-white flex gap-2 items-center">
+                <h3 className="text-base sm:text-lg font-bold text-white flex gap-2 items-center">
                     {inviteMode ? "Invite players" : "Online"}
-                    <span className="text-sm font-normal text-gray-400">({players.length})</span>
+                    <span className="text-xs sm:text-sm font-normal text-gray-400">({players.length})</span>
                 </h3>
 
                 {collapsible && (
@@ -127,8 +122,8 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
                             <div
                                 key={player.userId}
                                 className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${isMe
-                                        ? "bg-blue-600/30 border border-blue-400/30"
-                                        : "hover:bg-white/10"
+                                    ? "bg-blue-600/30 border border-blue-400/30"
+                                    : "hover:bg-white/10"
                                     }`}
                             >
                                 <div
@@ -150,8 +145,8 @@ export default function OnlinePlayersList({ inviteMode = false, currentRoomId, c
                                         onClick={() => handleInvite(player.userId)}
                                         disabled={wasInvited}
                                         className={`ml-auto p-1.5 rounded-full transition-all cursor-pointer ${wasInvited
-                                                ? "bg-green-500/20 text-green-400 cursor-default"
-                                                : "bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-white"
+                                            ? "bg-green-500/20 text-green-400 cursor-default"
+                                            : "bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-white"
                                             }`}
                                         title="Invite"
                                     >

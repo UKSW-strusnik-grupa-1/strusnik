@@ -28,10 +28,9 @@ export default function HomePage() {
   };
 
   return (
-    <main className="center">
-      {/* Banner powrotu do aktywnej gry */}
+    <main className="center safe-area-inset">
       {activeGame && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed top-12 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-full px-2 sm:px-0 sm:w-auto">
           <ActiveGameBanner
             gameName={activeGame.gameName}
             roomId={activeGame.roomId}
@@ -45,7 +44,7 @@ export default function HomePage() {
         <Button alt="gry jednoosobowe" text={t(lang, "home.single")} href="/singleplayer" />
         <Button alt="gry wieloosobowe" text={t(lang, "home.multi")} href="/multiplayer" />
         <Button alt="rankingi" text={t(lang, "home.rankings")} href="/rankings" />
-        <button type="button" className="menu-logout" onClick={handleLogout}>
+        <button type="button" className="menu-logout touch-target" onClick={handleLogout}>
           {t(lang, "home.logout")}
         </button>
       </nav>

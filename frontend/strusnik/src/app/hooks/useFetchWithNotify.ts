@@ -11,7 +11,7 @@ export const useFetchWithNotify = () => {
 
             if (!response.ok) {
                 let errorMessage = "Wystąpił błąd";
-                
+
                 try {
                     const data = await response.json();
                     errorMessage = data.message || data.error || errorMessage;
@@ -25,7 +25,6 @@ export const useFetchWithNotify = () => {
                         break;
                     case 401:
                         notify(errorMessage || "Sesja wygasła. Zaloguj się ponownie.", "error");
-                        // router.push("/auth");
                         break;
                     case 403:
                         notify(errorMessage || "Brak uprawnień do wykonania tej akcji.", "error");

@@ -137,7 +137,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             if (state.seats) {
                 setSeats(state.seats);
 
-                // Check opponent connection status and update disconnect banner
                 const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
                 if (mySeatIdx !== -1 && state.stage === 'playing') {
                     const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
@@ -146,9 +145,8 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                         if (opponentSeat.connected === true) {
                             setOpponentDisconnected(null);
                         } else if (opponentSeat.connected === false) {
-                            // Set disconnect banner if not already showing
                             setOpponentDisconnected((prev) => {
-                                if (prev !== null) return prev; // Keep existing countdown
+                                if (prev !== null) return prev;
                                 return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
                             });
                         }
@@ -157,7 +155,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             }
             setGameState(state);
 
-            // Wyczyść zaznaczenie po otrzymaniu nowego stanu (np. po zaakceptowanym SET)
             if (state.last_set_cards && state.last_set_cards.length > 0) {
                 setSelectedCards([]);
             }
@@ -183,7 +180,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
         };
 
         const handleOpponentReturned = () => {
-            // Player is returning after leaving - clear banner and resume game
             setOpponentDisconnected(null);
         };
 
@@ -217,7 +213,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
         };
     }, [socket, roomId, gameName, myName, myId, searchParams, router, lang]);
 
-    // Opponent disconnected countdown
     useEffect(() => {
         if (!opponentDisconnected) return;
 
@@ -243,7 +238,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
     const handleCardClick = (cardIndex: number) => {
         if (!gameState || gameStage !== 'playing') return;
 
-        // Sprawdź czy gracz siedzi przy stole
         const mySeatedIndex = seats.findIndex(s => s && String(s.userId) === String(myId));
         if (mySeatedIndex === -1) return;
 
@@ -282,7 +276,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
         });
     };
 
-    // Znajdź moją pozycję przy stole
     const mySeatedIndex = seats.findIndex(s => s && String(s.userId) === String(myId));
     const isSeated = mySeatedIndex !== -1;
 
@@ -342,9 +335,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                 </>
             ) : gameStage === 'playing' ? (
                 <>
-                    {/* Playing stage */}
                     <div className="flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto">
-                        {/* Scoreboard */}
                         <div className="flex justify-center gap-3 mb-4 flex-wrap">
                             {seats.filter(s => s).map((seat, idx) => seat && (
                                 <div
@@ -363,19 +354,16 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                             ))}
                         </div>
 
-                        {/* Game message */}
                         {gameState?.msg && (
                             <div className="text-center mb-3 text-lg text-amber-300 font-bold animate-pulse">
                                 {gameState.msg}
                             </div>
                         )}
 
-                        {/* Deck remaining */}
                         <div className="text-center mb-3 text-sm text-amber-200/70">
                             {t(lang, "set.cards_remaining")}: {gameState?.deck_remaining || 0}
                         </div>
 
-                        {/* Table cards */}
                         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-3 mb-4 justify-items-center max-w-4xl">
                             {gameState?.table_cards.map((card, idx) => (
                                 <SetCard
@@ -388,7 +376,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                             ))}
                         </div>
 
-                        {/* Action buttons */}
                         {isSeated && (
                             <div className="flex justify-center gap-4 flex-wrap mt-2">
                                 <button
@@ -434,7 +421,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                 </>
             ) : gameStage === 'finished' ? (
                 <>
-                    {/* Game over */}
                     <div className="flex-1 flex flex-col items-center justify-center p-4">
                         <div className="max-w-lg w-full text-center">
                             <h1 className="text-4xl font-bold mb-6 text-amber-200">
@@ -455,7 +441,6 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                                 </div>
                             )}
 
-                            {/* Final scores */}
                             <div className="bg-[#1a120b]/80 rounded-xl p-6 mb-6 border border-amber-900/50">
                                 <h2 className="text-xl font-semibold mb-4 text-amber-200">{t(lang, "set.final_scores")}</h2>
                                 <div className="space-y-2">

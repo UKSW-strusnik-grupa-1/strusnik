@@ -22,7 +22,7 @@ export default function LobbyPage() {
 
       <ReturnArrow href="/multiplayer" />
 
-      <div className="relative w-full h-screen flex items-center justify-center flex-col">
+      <div className="relative w-full min-h-screen flex items-center justify-center flex-col px-3 sm:px-4 py-16 sm:py-20">
         {activeGame && (
           <ActiveGameBanner
             gameName={activeGame.gameName}
@@ -32,21 +32,21 @@ export default function LobbyPage() {
           />
         )}
 
-        <div className="relative">
-          <div className="w-[650px] h-[430px] rounded-lg flex flex-col items-center justify-start">
+        <div className="relative w-full max-w-[650px]">
+          <div className="w-full h-[350px] sm:h-[400px] md:h-[430px] rounded-lg flex flex-col items-center justify-start">
             <ListOfRooms gameName={slug} />
           </div>
         </div>
 
-        <div className="relative mt-5 group">
+        <div className="relative mt-4 sm:mt-5 group">
           <Link href={`/lobby/${slug}/createRoom`}>
             <img
               alt={t(lang, "lobby.create_room_button_bg_alt")}
               src="/main/button.png"
-              className="object-cover -z-10 w-[175px] items-center transition-all group-hover:brightness-110"
+              className="object-cover -z-10 w-[150px] sm:w-[175px] items-center transition-all group-hover:brightness-110"
             />
 
-            <p className="absolute inset-0 flex items-center justify-center text-white font-bold cursor-pointer transition-all group-hover:scale-105 text-center">
+            <p className="absolute inset-0 flex items-center justify-center text-white font-bold cursor-pointer transition-all group-hover:scale-105 text-center text-sm sm:text-base">
               {t(lang, "rooms.create")}
             </p>
           </Link>

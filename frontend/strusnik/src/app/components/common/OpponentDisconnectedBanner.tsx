@@ -26,7 +26,6 @@ export default function OpponentDisconnectedBanner({
 
     return (
         <>
-            {/* Overlay blokujący wszystkie interakcje */}
             <div className="fixed inset-0 z-[9998] bg-black/55 backdrop-blur-[2px]" />
 
             <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999]">

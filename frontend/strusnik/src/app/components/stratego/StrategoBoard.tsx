@@ -148,7 +148,6 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
 
     socket.off('join_room_response');
     socket.off('game_state_update');
-    // socket.off('error');
     socket.off('opponent_disconnected');
     socket.off('opponent_reconnected');
     socket.off('opponent_returned');

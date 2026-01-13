@@ -3,25 +3,22 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 
-// Karta Set ma 4 właściwości: shape, color, fill, count
-// Każda ma wartość 0, 1 lub 2
-
 interface SetCardProps {
     card: {
-        shape: number;   // 0=diament, 1=owal, 2=fala
-        color: number;   // 0=czerwony, 1=zielony, 2=fioletowy
-        fill: number;    // 0=pełne, 1=paski, 2=puste
-        count: number;   // 0=1, 1=2, 2=3 symbole
+        shape: number;
+        color: number;
+        fill: number;
+        count: number;
         id: string;
     } | null;
     selected?: boolean;
     onClick?: () => void;
     disabled?: boolean;
     small?: boolean;
-    usePng?: boolean;  // Flaga do użycia obrazów PNG zamiast SVG
+    usePng?: boolean;
 }
 
-const COLORS = ['#e74c3c', '#27ae60', '#8e44ad']; // czerwony, zielony, fioletowy
+const COLORS = ['#e74c3c', '#27ae60', '#8e44ad'];
 const SHAPES = ['diamond', 'oval', 'wave'];
 const FILLS = ['solid', 'striped', 'empty'];
 
@@ -42,12 +39,8 @@ export default function SetCard({ card, selected, onClick, disabled, small, useP
     const color = COLORS[card.color];
     const shape = SHAPES[card.shape];
     const fill = FILLS[card.fill];
-    const symbolCount = card.count + 1; // 0->1, 1->2, 2->3
+    const symbolCount = card.count + 1;
 
-    // Jeśli włączone są PNG i nie było błędu, użyj obrazu PNG
-    // Nazewnictwo pliku: {shape}_{color}_{fill}_{count}.png
-    // np. diamond_0_0_0.png = diament, czerwony, pełny, 1 symbol
-    // lub można użyć ID karty: {card.id}.png
     if (usePng && !imgError) {
         return (
             <button
@@ -76,13 +69,11 @@ export default function SetCard({ card, selected, onClick, disabled, small, useP
         );
     }
 
-    // Fallback do SVG
     const renderSymbol = (index: number) => {
         const strokeWidth = small ? 1.5 : 2;
         const symbolWidth = small ? 16 : 24;
         const symbolHeight = small ? 10 : 14;
 
-        // Definicja wzoru pasków
         const patternId = `stripes-${card.id}-${index}`;
         const stripedPattern = (
             <pattern id={patternId} patternUnits="userSpaceOnUse" width="4" height="4">
@@ -120,7 +111,6 @@ export default function SetCard({ card, selected, onClick, disabled, small, useP
                     />
                 );
             }
-            // wave/fala
             return (
                 <path
                     d={`M 2 ${symbolHeight / 2} Q ${symbolWidth / 4} 0, ${symbolWidth / 2} ${symbolHeight / 2} T ${symbolWidth - 2} ${symbolHeight / 2}`}

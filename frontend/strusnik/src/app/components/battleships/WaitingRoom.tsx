@@ -23,8 +23,6 @@ interface WaitingRoomProps {
 
 export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostId, maxPlayers }: WaitingRoomProps) {
     const { lang } = useLang();
-    
-    // if (socket) socket.emit('sit_down', { roomId, seatIndex, playerName: myName });
 
     const handleSit = (seatIndex: number) => {
         if (socket) {
@@ -152,8 +150,8 @@ export default function WaitingRoom({ socket, roomId, seats, myId, myName, hostI
                         className={`
                             font-bold py-2 px-6 rounded-full shadow-lg transition-all transform 
                             ${canStart
-                            ? 'bg-green-700 hover:bg-green-600 text-white hover:scale-105 cursor-pointer'
-                            : 'bg-gray-700 text-gray-400 cursor-not-allowed opacity-50'}
+                                ? 'bg-green-700 hover:bg-green-600 text-white hover:scale-105 cursor-pointer'
+                                : 'bg-gray-700 text-gray-400 cursor-not-allowed opacity-50'}
                         `}
                     >
                         {t(lang, 'stratego.waiting_room.start_game')}

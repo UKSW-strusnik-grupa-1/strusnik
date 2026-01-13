@@ -214,10 +214,7 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
         const isRevealPhase = incomingStage === 'stock_reveal';
         const isBiddingPhase = incomingStage === 'bidding';
 
-        if (isRevealPhase) {
-          // keep
-        } else if (amIPausingNow && isBiddingPhase) {
-          // keep
+        if (isRevealPhase || (amIPausingNow && isBiddingPhase)) {
         } else {
           setStockCards([]);
         }
@@ -253,7 +250,6 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
 
     return () => {
       socket.off('game_state_update');
-    //   socket.off('error');
       socket.off('game_ended_timeout');
     };
   }, [socket, roomId, router, lang]);

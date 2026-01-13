@@ -104,8 +104,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
       if (state.stage) setGameStage(state.stage);
       if (state.seats) {
         setSeats(state.seats);
-        
-        // Check opponent connection status and update disconnect banner
+
         const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
         if (mySeatIdx !== -1 && state.stage === 'playing') {
           const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
@@ -114,9 +113,8 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
             if (opponentSeat.connected === true) {
               setOpponentDisconnected(null);
             } else if (opponentSeat.connected === false) {
-              // Set disconnect banner if not already showing
               setOpponentDisconnected((prev) => {
-                if (prev !== null) return prev; // Keep existing countdown
+                if (prev !== null) return prev;
                 return { name: opponentSeat.name || 'OPPONENT', timeLeft: 60 };
               });
             }
@@ -141,7 +139,6 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     };
 
     const handleOpponentReturned = () => {
-      // Player is returning after leaving - clear banner and resume game
       setOpponentDisconnected(null);
     };
 
@@ -152,7 +149,6 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
     socket.off('join_room_response');
     socket.off('game_state_update');
-    // socket.off('error');
     socket.off('opponent_disconnected');
     socket.off('opponent_reconnected');
     socket.off('opponent_returned');
@@ -180,7 +176,6 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     };
   }, [socket, roomId, gameName, myName, myId, searchParams, router, lang]);
 
-  // Opponent disconnected countdown
   useEffect(() => {
     if (!opponentDisconnected) return;
 

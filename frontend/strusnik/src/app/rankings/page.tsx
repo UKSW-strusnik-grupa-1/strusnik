@@ -51,14 +51,13 @@ export default function RankingsPage() {
   }, [activeGame, lang]);
 
   return (
-    <div className="relative w-full h-screen flex flex-col items-center justify-center text-white overflow-hidden">
+    <div className="relative w-full min-h-screen flex flex-col items-center justify-center text-white overflow-hidden px-2 sm:px-4 py-16 sm:py-4">
       <div className="absolute w-full h-screen flex flex-col overflow-visible">
         <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} />
       </div>
 
-      {/* Banner powrotu do aktywnej gry multiplayer */}
       {activeMultiplayerGame && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed top-12 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-full px-2 sm:px-0 sm:w-auto">
           <ActiveGameBanner
             gameName={activeMultiplayerGame.gameName}
             roomId={activeMultiplayerGame.roomId}
@@ -68,17 +67,17 @@ export default function RankingsPage() {
         </div>
       )}
 
-      <div className="z-10 w-[95%] md:w-full md:max-w-4xl lg:max-w-5xl p-2 md:p-6 flex flex-col gap-3 md:gap-6 h-[85vh] md:h-[80vh]">
-        <h1 className="text-2xl md:text-4xl font-bold text-center drop-shadow-lg tracking-wider text-gray-300 mt-12 md:mt-0">
+      <div className="z-10 w-full max-w-4xl lg:max-w-5xl p-2 md:p-6 flex flex-col gap-3 md:gap-6 h-auto sm:h-[85vh] md:h-[80vh]">
+        <h1 className="text-xl sm:text-2xl md:text-4xl font-bold text-center drop-shadow-lg tracking-wider text-gray-300 mt-8 sm:mt-12 md:mt-0">
           {t(lang, "rankings.title")}
         </h1>
 
-        <div className="flex flex-wrap justify-center gap-2 md:gap-4 bg-black/40 p-2 md:p-4 rounded-xl backdrop-blur-sm border border-[#6F5C50]">
+        <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 md:gap-4 bg-black/40 p-2 md:p-4 rounded-xl backdrop-blur-sm border border-[#6F5C50]">
           {allGames.map((game) => (
             <button
               key={game}
               onClick={() => setActiveGame(game)}
-              className={`cursor-pointer px-3 py-1 md:px-6 md:py-2 text-sm md:text-base rounded-lg font-bold transition-all duration-300 border-b
+              className={`cursor-pointer px-2 py-1 sm:px-3 md:px-6 md:py-2 text-xs sm:text-sm md:text-base rounded-lg font-bold transition-all duration-300 border-b touch-target
                 ${activeGame === game
                   ? "bg-[#36271e] border-[#6F5C50] text-white scale-105 shadow-[0_0_15px_rgba(111,92,80,0.5)]"
                   : "bg-black/50 border-transparent text-gray-400 hover:text-white hover:bg-black/70"
@@ -89,10 +88,10 @@ export default function RankingsPage() {
           ))}
         </div>
 
-        <div className="flex-1 overflow-hidden bg-black/60 rounded-xl backdrop-blur-md border border-[#403832] flex flex-col shadow-2xl">
-          <div className="grid grid-cols-4 p-2 md:p-4 font-bold text-gray-300 border-b border-[#6F5C50] text-xs md:text-lg uppercase bg-black/20">
+        <div className="flex-1 min-h-[300px] sm:min-h-0 overflow-hidden bg-black/60 rounded-xl backdrop-blur-md border border-[#403832] flex flex-col shadow-2xl">
+          <div className="grid grid-cols-4 p-2 md:p-4 font-bold text-gray-300 border-b border-[#6F5C50] text-[10px] sm:text-xs md:text-lg uppercase bg-black/20">
             <div className="text-center">{t(lang, "rankings.columns.position")}</div>
-            <div className="text-left pl-2 md:pl-4">{t(lang, "rankings.columns.player")}</div>
+            <div className="text-left pl-1 sm:pl-2 md:pl-4">{t(lang, "rankings.columns.player")}</div>
             <div className="text-center">{t(lang, "rankings.columns.wins")}</div>
             <div className="text-center">{t(lang, "rankings.columns.points")}</div>
           </div>
@@ -100,27 +99,27 @@ export default function RankingsPage() {
           <div className="overflow-y-auto custom-scrollbar flex-1 p-1 md:p-2">
             {loading ? (
               <div className="flex items-center justify-center h-full">
-                <p className="text-lg md:text-xl">{t(lang, "loading")}</p>
+                <p className="text-base sm:text-lg md:text-xl">{t(lang, "loading")}</p>
               </div>
             ) : (
               <div className="flex flex-col gap-1 md:gap-2">
                 {rankingData.map((entry, index) => (
                   <div
                     key={entry.username}
-                    className={`grid grid-cols-4 p-2 md:p-3 items-center rounded-lg transition-colors hover:bg-white/5 text-xs md:text-base
+                    className={`grid grid-cols-4 p-1.5 sm:p-2 md:p-3 items-center rounded-lg transition-colors hover:bg-white/5 text-[10px] sm:text-xs md:text-base
                       ${index === 0 ? "bg-yellow-500/20 border border-yellow-500/30" : ""}
                       ${index === 1 ? "bg-gray-400/20 border border-gray-400/30" : ""}
                       ${index === 2 ? "bg-amber-700/20 border border-amber-700/30" : ""}
                     `}
                   >
-                    <div className="text-center font-bold text-base md:text-xl flex justify-center items-center">
+                    <div className="text-center font-bold text-sm sm:text-base md:text-xl flex justify-center items-center">
                       {index === 0 && "🥇"}
                       {index === 1 && "🥈"}
                       {index === 2 && "🥉"}
                       {index > 2 && `${index + 1}.`}
                     </div>
 
-                    <div className="text-left pl-2 md:pl-4 font-medium truncate">{entry.username}</div>
+                    <div className="text-left pl-1 sm:pl-2 md:pl-4 font-medium truncate">{entry.username}</div>
 
                     <div className="text-center text-gray-300">{entry.wins}</div>
 

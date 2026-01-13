@@ -18,9 +18,7 @@ export default function TopRightToggles() {
 
       setTheme(initial);
       document.documentElement.dataset.theme = initial;
-    } catch (e) {
-      // nic
-    }
+    } catch (e) { }
   }, []);
 
   const toggleLang = () => setLang(lang === "pl" ? "en" : "pl");
@@ -32,19 +30,18 @@ export default function TopRightToggles() {
 
     try {
       localStorage.setItem("theme", next);
-    } catch (e) {
-      // nic
-    }
+    } catch (e) { }
   };
 
   return (
     <div className="top-right-controls" role="group">
-      <button type="button" className="top-right-btn" onClick={toggleLang}>
+      <button type="button" className="top-right-btn touch-target" onClick={toggleLang}>
         {lang === "pl" ? "PL" : "EN"}
       </button>
 
-      <button type="button" className="top-right-btn" onClick={toggleTheme}>
-        {theme === "dark" ? t(lang, "theme.dark") : t(lang, "theme.light")}
+      <button type="button" className="top-right-btn touch-target" onClick={toggleTheme}>
+        <span className="hidden sm:inline">{theme === "dark" ? t(lang, "theme.dark") : t(lang, "theme.light")}</span>
+        <span className="sm:hidden">{theme === "dark" ? "🌙" : "☀️"}</span>
       </button>
     </div>
   );

@@ -27,6 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -44,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
       <body className="antialiased font-sans">
         <LangProvider>
-          <NotificationProvider> 
+          <NotificationProvider>
             <UserProvider>
               <SocketProvider>
                 <TopRightToggles />
