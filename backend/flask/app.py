@@ -8,6 +8,7 @@ from routes.snake import snake
 from routes.rankings import rankings
 from routes.tictactoe import tictactoe
 from routes.admin import admin
+from routes.profile import profile
 from models import db
 
 from sockets.socket_manager import socket
@@ -69,6 +70,7 @@ app.register_blueprint(rankings, url_prefix="/api/rankings")
 app.register_blueprint(snake, url_prefix="/api/snake")
 app.register_blueprint(tictactoe, url_prefix="/api/games/tictactoe")
 app.register_blueprint(admin, url_prefix="/api/admin")
+app.register_blueprint(profile, url_prefix="/api/profile")
 
 with app.app_context():
     for i in range(5):

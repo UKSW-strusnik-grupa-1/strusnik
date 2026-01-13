@@ -1,5 +1,20 @@
 import { useState } from "react"
 
+const saveScore = async (won: boolean) => {
+    if (won) {
+        try {
+            await fetch("/api/profile/singleplayer/score", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ game_name: "tictactoe", score: 1 }),
+            });
+        } catch (err) {
+            console.error("Failed to save tictactoe score:", err);
+        }
+    }
+};
+
 export const useTicTacToe = () => {
     const [board, setBoard] = useState<string[]>(Array(9).fill(""))
     const [currentPlayer, setCurrentPlayer] = useState<"X" | "O">("X")
@@ -17,7 +32,7 @@ export const useTicTacToe = () => {
             [0, 4, 8],
             [2, 4, 6],
         ]
-        
+
         for (let line of lines) {
             if (squares[line[0]] && squares[line[0]] === squares[line[1]] && squares[line[1]] === squares[line[2]]) {
                 return squares[line[0]]
@@ -37,6 +52,7 @@ export const useTicTacToe = () => {
         if (gameWinner) {
             setWinner(gameWinner)
             setGameActive(false)
+            saveScore(gameWinner === "X");
         } else if (newBoard.every(sq => sq !== "")) {
             setGameActive(false)
         } else {

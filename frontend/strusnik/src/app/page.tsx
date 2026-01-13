@@ -58,6 +58,7 @@ export default function HomePage() {
         <Button alt="gry jednoosobowe" text={t(lang, "home.single")} href="/singleplayer" />
         <Button alt="gry wieloosobowe" text={t(lang, "home.multi")} href="/multiplayer" />
         <Button alt="rankingi" text={t(lang, "home.rankings")} href="/rankings" />
+        <Button alt="profil" text={t(lang, "home.profile")} href="/profile" />
         {isAdmin && (
           <Button alt="panel administratora" text="ADMIN PANEL" href="/admin" />
         )}

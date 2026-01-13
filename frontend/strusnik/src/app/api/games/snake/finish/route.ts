@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/games/snake/finish`, {
+    const res = await fetch(`${BACKEND_URL}/api/snake/finish`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: bodyText,

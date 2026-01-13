@@ -33,6 +33,7 @@ export const I18N = {
 			single: 'ZAGRAJ SAMEMU',
 			multi: 'ZAGRAJ Z INNYMI',
 			rankings: 'RANKINGI',
+			profile: 'PROFIL',
 			logout: 'WYLOGUJ SIE',
 		},
 
@@ -371,6 +372,23 @@ export const I18N = {
 			dark: 'CIEMNY',
 			light: 'JASNY',
 		},
+
+		profile: {
+			title: 'PROFIL',
+			member_since: 'CZLONEK OD',
+			last_login: 'OSTATNIE LOGOWANIE',
+			multiplayer_stats: 'STATYSTYKI MULTIPLAYER',
+			singleplayer_stats: 'STATYSTYKI SINGLEPLAYER',
+			total_wins: 'WSZYSTKIE WYGRANE',
+			wins: 'WYGRANYCH',
+			best_score: 'NAJLEPSZY WYNIK',
+			games_played: 'ROZEGRANYCH GIER',
+			error: {
+				not_logged_in: 'MUSISZ BYC ZALOGOWANY',
+				fetch_failed: 'NIE UDALO SIE POBRAC DANYCH',
+				network: 'BLAD SIECI',
+			},
+		},
 	},
 
 	en: {
@@ -405,6 +423,7 @@ export const I18N = {
 			single: 'SINGLEPLAYER',
 			multi: 'MULTIPLAYER',
 			rankings: 'RANKINGS',
+			profile: 'PROFILE',
 			logout: 'LOG OUT',
 		},
 
@@ -733,6 +752,23 @@ export const I18N = {
 		theme: {
 			dark: 'DARK',
 			light: 'LIGHT',
+		},
+
+		profile: {
+			title: 'PROFILE',
+			member_since: 'MEMBER SINCE',
+			last_login: 'LAST LOGIN',
+			multiplayer_stats: 'MULTIPLAYER STATS',
+			singleplayer_stats: 'SINGLEPLAYER STATS',
+			total_wins: 'TOTAL WINS',
+			wins: 'WINS',
+			best_score: 'BEST SCORE',
+			games_played: 'GAMES PLAYED',
+			error: {
+				not_logged_in: 'YOU MUST BE LOGGED IN',
+				fetch_failed: 'FAILED TO FETCH DATA',
+				network: 'NETWORK ERROR',
+			},
 		},
 	},
 } as const;

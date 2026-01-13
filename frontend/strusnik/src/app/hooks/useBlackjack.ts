@@ -21,26 +21,26 @@ export const useBlackjack = () => {
     const [cashout, setCashout] = useState<number>(0)
 
     const [tokens, setTokens] = useState<number[]>([])
-    
+
     const fetchWithNotify = useFetchWithNotify();
 
     const changeTokenValues = (newTokens: number[]) => {
         let allTokens = [...newTokens]
-        
+
         var tokensFor5 = allTokens.filter(token => token === 5).length
         var tokensFor20 = allTokens.filter(token => token === 20).length
         var tokensFor100 = allTokens.filter(token => token === 100).length
         var tokensFor500 = allTokens.filter(token => token === 500).length
 
-        const tokensFor5Into20 = Math.floor(tokensFor5/4)
+        const tokensFor5Into20 = Math.floor(tokensFor5 / 4)
         const remainingTokensFor5Into20 = Math.floor(tokensFor5 % 4)
         tokensFor20 += tokensFor5Into20;
 
-        const tokensFor20Into100 = Math.floor(tokensFor20/5)
+        const tokensFor20Into100 = Math.floor(tokensFor20 / 5)
         const remainingTokensFor20Into100 = Math.floor(tokensFor20 % 5)
         tokensFor100 += tokensFor20Into100;
 
-        const tokensFor100Into500 = Math.floor(tokensFor100/5)
+        const tokensFor100Into500 = Math.floor(tokensFor100 / 5)
         const remainingTokensFor100Into500 = Math.floor(tokensFor100 % 5)
         tokensFor500 += tokensFor100Into500;
 
@@ -53,7 +53,7 @@ export const useBlackjack = () => {
 
         return result;
     }
-    
+
     const removeToken = (index: number) => {
         setBalance(prevBalance => prevBalance + tokens[index])
         setTokens(prevTokens => changeTokenValues(prevTokens.filter((_, i) => i !== index)))
@@ -85,7 +85,7 @@ export const useBlackjack = () => {
 
         return value;
     }
-    
+
     const getCardValue = (card: string) => {
         if (card === "cardBack") return 0;
 
@@ -103,12 +103,12 @@ export const useBlackjack = () => {
     }
 
     const checkWinner = (data: any) => {
-        setDealerDeck(prevDealerDeck => { 
+        setDealerDeck(prevDealerDeck => {
             const newDeck = [...prevDealerDeck]
             newDeck[1] = data.dealerDeck[1]
             return newDeck;
         });
-        
+
         setDealerDeckValue(getDeckValue(data.dealerDeck.slice(0, 2)));
 
         for (let i = 2; i < data.dealerDeck.length; i++) {
@@ -118,17 +118,30 @@ export const useBlackjack = () => {
             }, (i - 1) * 1000);
         }
 
-        setTimeout(() => {
+        setTimeout(async () => {
             setWinner(data.winner)
             setCashout(data.cashout)
             setGameStatus(data.gameStatus)
             setBalance(balance + data.cashout)
+
+            if (data.winner === "PLAYER") {
+                try {
+                    await fetch("/api/profile/singleplayer/score", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ game_name: "blackjack", score: data.cashout }),
+                    });
+                } catch (err) {
+                    console.error("Failed to save blackjack score:", err);
+                }
+            }
         }, data.dealerDeck.length * 1000)
     }
 
     useEffect(() => {
         setDealerDeckValue(getDeckValue(dealerDeck))
-    }, [dealerDeck]) 
+    }, [dealerDeck])
 
     const startGame = async () => {
         if (gameStatus !== "NOT-STARTED") { return; }

@@ -18,14 +18,14 @@ def parse_jwt_token(token: str):
 def is_token_valid(token: str):
     if not token: return False
     
-    payload = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
-    
-    if not payload:
-        return False
-    
     try:
+        payload = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
+        
+        if not payload:
+            return False
+        
         return datetime.now(timezone.utc) < datetime.fromisoformat(payload["expires"])
-    except (jwt.InvalidSignatureError, jwt.InvalidTokenError):
+    except (jwt.InvalidSignatureError, jwt.InvalidTokenError, jwt.DecodeError, Exception):
         return False
     
     

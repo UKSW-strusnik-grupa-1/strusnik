@@ -144,8 +144,16 @@ export const useSnake = () => {
       });
 
       if (!data) {
-          throw new Error("Failed to submit score");
+        throw new Error("Failed to submit score");
       }
+
+      const score = finalFoodsEaten * 100;
+      await fetch("/api/profile/singleplayer/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ game_name: "snake", score }),
+      });
 
     } catch (err) {
       console.error(err);
