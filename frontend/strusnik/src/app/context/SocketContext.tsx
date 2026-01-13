@@ -37,9 +37,42 @@ export const SocketProvider = ({children} : {children: React.ReactNode}) => {
             setIsConnected(true)
         })
 
-        newSocket.on("disconnect", () => {
+        newSocket.on("connect_error", (err) => {
+            setIsConnected(false);
+            const msg = err instanceof Error ? err.message : "Błąd połączenia z serwerem";
+            notify(msg, "error");
+        });
+
+        newSocket.on("error", (err: any) => {
+             console.log("Socket error received:", err);
+             
+             let message = "Wystąpił błąd gniazda";
+
+             if (err && typeof err === "object" && "msg" in err) {
+                 message = String(err.msg);
+             }
+             else if (err && typeof err === "object" && "message" in err) {
+                 message = String(err.message);
+             }
+             else if (typeof err === "string") {
+                 message = err;
+             }
+             else {
+                 try {
+                    message = JSON.stringify(err);
+                 } catch (e) {
+                    message = "Nieznany błąd krytyczny";
+                 }
+             }
+
+             notify(message, "error");
+        });
+
+        newSocket.on("disconnect", (reason) => {
             setIsConnected(false)
-            notify("Utracono połączenie z serwerem", "error");
+            if (reason !== "io client disconnect") {
+                 notify("Utracono połączenie z serwerem", "error");
+            }
         })
 
         newSocket.on("error_message", (data: { message: string }) => {

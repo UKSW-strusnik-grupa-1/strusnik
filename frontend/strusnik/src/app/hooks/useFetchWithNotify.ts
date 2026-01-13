@@ -24,17 +24,17 @@ export const useFetchWithNotify = () => {
                         notify(`Błąd żądania: ${errorMessage}`, "warning");
                         break;
                     case 401:
-                        notify("Sesja wygasła. Zaloguj się ponownie.", "error");
+                        notify(errorMessage || "Sesja wygasła. Zaloguj się ponownie.", "error");
                         router.push("/auth");
                         break;
                     case 403:
-                        notify("Brak uprawnień do wykonania tej akcji.", "error");
+                        notify(errorMessage || "Brak uprawnień do wykonania tej akcji.", "error");
                         break;
                     case 404:
-                        notify("Nie znaleziono zasobu.", "warning");
+                        notify(errorMessage || "Nie znaleziono zasobu.", "warning");
                         break;
                     case 500:
-                        notify("Błąd serwera. Spróbuj później.", "error");
+                        notify(errorMessage || "Błąd serwera. Spróbuj później.", "error");
                         break;
                     default:
                         notify(errorMessage, "error");

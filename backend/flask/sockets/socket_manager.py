@@ -464,6 +464,7 @@ def handle_join_game_room(data):
         emit('join_room_response', {'success': False, 'message': 'POKOJ NIE ISTNIEJE LUB ZOSTAL USUNIETY.'})
         return
 
+    # Sprawdzamy, czy gracz już był w pokoju (zapobiega duplikatom powiadomień)
     is_returning_player = user_token in found_room.player_tokens
 
     if found_room.password and not is_returning_player:
@@ -485,11 +486,15 @@ def handle_join_game_room(data):
     active_sessions[user_token]['room_id'] = room_id
     room.player_tokens.add(user_token)
 
-    if str(game_name).lower() == "chess":
+    # --- POPRAWKA: Wysyłamy powiadomienie TYLKO jeśli to nowy gracz ---
+    if not is_returning_player:
+        username = active_sessions[user_token].get('username', 'Gracz')
+        emit('player_joined', {'username': username}, to=room_id)
+    # ------------------------------------------------------------------
 
+    if str(game_name).lower() == "chess":
         if room.game_instance is None:
             room.game_instance = lobby.game_class(room.players)
-
             if getattr(room, "time_control_min", None) and hasattr(room.game_instance, "set_time_control"):
                 try:
                     room.game_instance.set_time_control(int(room.time_control_min))
@@ -497,16 +502,13 @@ def handle_join_game_room(data):
                     pass
 
         game = room.game_instance
-
         try:
             from games.chess import chess as _chess
         except Exception:
             _chess = None
 
         if _chess is not None and isinstance(game, _chess):
-
             player_name = active_sessions.get(user_token, {}).get("username") or "Player"
-
             already_idx = None
             for i, s in enumerate(getattr(game, "seats", []) or []):
                 if s and str(s.get("userId")) == str(user_token):
@@ -514,7 +516,6 @@ def handle_join_game_room(data):
                     break
 
             if already_idx is None:
-
                 host_token = getattr(room, "host_user_token", None)
                 host_idx = getattr(room, "host_seat_index", None)
                 if host_idx not in (0, 1):
@@ -547,6 +548,9 @@ def handle_join_game_room(data):
 
         if isinstance(game, Stratego):
             broadcast_stratego_state(game, room_id)
+            # Fix dla Stratego (wysłanie stanu do nowego gracza)
+            state = get_game_state_safe(game, current_sid)
+            emit('game_state_update', state, to=current_sid)
         else:
             state = get_game_state_safe(game, current_sid)
             emit('game_state_update', state, to=current_sid)

@@ -7,7 +7,8 @@
     <list default="true" id="1023b583-6fe1-42ba-a4ef-9c72f2ddc121" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sockets/socket_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/sockets/socket_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/lobby/[slug]/createRoom/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/context/SocketContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/context/SocketContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../frontend/strusnik/src/app/hooks/useFetchWithNotify.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../frontend/strusnik/src/app/hooks/useFetchWithNotify.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

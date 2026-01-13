@@ -15,8 +15,6 @@ export default function LobbyPage() {
 
   return (
     <div>
-      <OnlinePlayersList collapsible />
-
       <ReturnArrow href="/multiplayer" />
 
       <div className="relative w-full h-screen flex items-center justify-center flex-col">

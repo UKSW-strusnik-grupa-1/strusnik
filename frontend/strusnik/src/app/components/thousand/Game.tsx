@@ -268,7 +268,7 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
 
     return () => {
       socket.off('game_state_update');
-      socket.off('error');
+    //   socket.off('error');
       socket.off('game_ended_timeout');
     };
   }, [socket, roomId, router, lang]);

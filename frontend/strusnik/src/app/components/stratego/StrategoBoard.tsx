@@ -102,13 +102,16 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
       setGameState(state);
     };
 
+    // Ten handler tylko loguje do konsoli, ale dzięki usunięciu socket.off('error')
+    // handler z SocketContext (ten z notify) również zadziała.
     const handleError = (err: any) => {
       console.error(t(lang, 'stratego.board.log.socket_error'), err);
     };
 
+    // WAŻNE: Nie używamy socket.off('error') bez argumentów, bo to usuwa listenery z Contextu!
     socket.off('join_room_response');
     socket.off('game_state_update');
-    socket.off('error');
+    // socket.off('error'); <--- TA LINIA POWODOWAŁA BŁĄD (została usunięta)
 
     socket.on('join_room_response', handleJoinResponse);
     socket.on('game_state_update', handleGameState);
@@ -120,7 +123,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
     return () => {
       socket.off('join_room_response', handleJoinResponse);
       socket.off('game_state_update', handleGameState);
-      socket.off('error', handleError);
+      socket.off('error', handleError); // Tu usuwamy tylko nasz lokalny handler
     };
   }, [socket, roomId, gameName, myName, searchParams, router, lang]);
 
