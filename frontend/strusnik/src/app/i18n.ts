@@ -2,6 +2,17 @@ export type Lang = 'pl' | 'en';
 
 export const I18N = {
 	pl: {
+		games: {
+			chess: "SZACHY",
+			stratego: "STRATEGO",
+			tysiac: "TYSIAC",
+			battleships: "STATKI",
+			set: "SET",
+			blackjack: "BLACKJACK",
+			snake: "SNAKE",
+			tictactoe: "KOLKO I KRZYZYK",
+		},
+
 		common: {
 			yes: 'TAK',
 			no: 'NIE',
@@ -392,6 +403,17 @@ export const I18N = {
 	},
 
 	en: {
+		games: {
+			chess: "CHESS",
+			stratego: "STRATEGO",
+			tysiac: "THOUSAND",
+			battleships: "BATTLESHIPS",
+			set: "SET",
+			blackjack: "BLACKJACK",
+			snake: "SNAKE",
+			tictactoe: "TIC TAC TOE",
+		},
+
 		common: {
 			yes: 'YES',
 			no: 'NO',

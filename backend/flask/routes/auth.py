@@ -87,7 +87,8 @@ def login():
         return response
         
     except Exception as e:
-        pass
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 @authentication.route("/token", methods=["GET"])
