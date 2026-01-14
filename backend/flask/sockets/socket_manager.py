@@ -84,13 +84,13 @@ def get_game_state_safe(game, player_sid, user_token=None):
         if hasattr(game, 'get_player_view'):
             return game.get_player_view(player_sid, user_token=user_token)
         return game.get_state()
-    
+
     if isinstance(game, Battleships):
         full_state = game.get_state()
         state_for_player = copy.deepcopy(full_state)
-        
+
         requesting_player_idx = game._get_player_idx(player_sid)
-        
+
         if state_for_player['stage'] == 'playing' and requesting_player_idx != -1:
             boards = state_for_player['boards']
             for i in range(2):
@@ -100,7 +100,6 @@ def get_game_state_safe(game, player_sid, user_token=None):
                             if boards[i][r][c] == 1:
                                 boards[i][r][c] = 0
         return state_for_player
-
 
     return game.get_state()
 
@@ -189,16 +188,19 @@ def process_player_loss(sid):
     if found_room and found_room.game_instance and user_token:
         game = found_room.game_instance
 
+        # --- FIX START ---
+        # Sprawdzamy, czy gra jest już zakończona
+        current_stage = game.game_state.get('stage')
+        is_game_over = current_stage in ['game_over', 'finished', 'checkmate', 'draw', 'stalemate', 'ended']
+        # --- FIX END ---
 
         if hasattr(game, 'set_player_connection_status'):
             game.set_player_connection_status(user_token, False, sid=sid)
-
 
         if isinstance(game, Stratego):
             broadcast_stratego_state(game, room_id, socket)
         else:
             emit('game_state_update', game.get_state(), to=room_id)
-
 
         still_seated = False
         if hasattr(game, 'seats'):
@@ -206,29 +208,30 @@ def process_player_loss(sid):
                 if s and s.get('userId') == user_token:
                     still_seated = True
                     break
-        
+
         print(f"[DEBUG] still_seated={still_seated}, user_token in disconnect_timers={user_token in disconnect_timers}")
 
-
-        if still_seated and user_token not in disconnect_timers:
+        # --- FIX START ---
+        # Dodany warunek "and not is_game_over" - nie uruchamiamy procedury rozłączenia, jeśli gra się skończyła
+        if still_seated and user_token not in disconnect_timers and not is_game_over:
             print(f"[DEBUG] Starting disconnect timer for {user_token}")
             timer = eventlet.spawn_after(90, close_room_due_to_timeout, room_id, user_token)
             disconnect_timers[user_token] = timer
-            
+
             disconnected_name = None
             for s in game.seats:
                 if s and s.get('userId') == user_token:
                     disconnected_name = s.get('name', 'OPPONENT')
                     break
-            
+
             print(f"[DEBUG] disconnected_name={disconnected_name}")
             print(f"[DEBUG] All seats: {game.seats}")
-            
 
             for s in game.seats:
                 print(f"[DEBUG] Checking seat: {s}")
                 if s and s.get('socketId') and s.get('userId') != user_token:
-                    print(f"[DEBUG] Emitting opponent_disconnected to socketId={s.get('socketId')}, name={s.get('name')}")
+                    print(
+                        f"[DEBUG] Emitting opponent_disconnected to socketId={s.get('socketId')}, name={s.get('name')}")
                     socket.emit('opponent_disconnected', {
                         'roomId': room_id,
                         'playerName': disconnected_name,
@@ -236,7 +239,9 @@ def process_player_loss(sid):
                     }, to=s.get('socketId'))
                 else:
                     if s:
-                        print(f"[DEBUG] SKIP seat - socketId={s.get('socketId')}, userId={s.get('userId')}, user_token={user_token}")
+                        print(
+                            f"[DEBUG] SKIP seat - socketId={s.get('socketId')}, userId={s.get('userId')}, user_token={user_token}")
+        # --- FIX END ---
 
         connected_count = 0
         seated_count = 0
@@ -244,19 +249,16 @@ def process_player_loss(sid):
             connected_count = len([s for s in game.seats if s is not None and s.get('connected', False)])
             seated_count = len([s for s in game.seats if s is not None])
 
-
         if connected_count == 0:
 
             for token in list(disconnect_timers.keys()):
                 if token in disconnect_timers:
                     disconnect_timers[token].cancel()
                     del disconnect_timers[token]
-            
 
             if room_id in room_deletion_timers:
                 room_deletion_timers[room_id].cancel()
                 del room_deletion_timers[room_id]
-            
 
             delay = 5 if seated_count == 0 else 10
             t = eventlet.spawn_after(delay, delete_room, room_id)
@@ -305,7 +307,7 @@ def handle_explicit_leave_room(data):
         if found_room.game_instance:
             game = found_room.game_instance
             disconnected_name = None
-            
+
             if hasattr(game, 'seats'):
                 for i, seat in enumerate(game.seats):
                     if seat and (seat.get('socketId') == sender_sid or seat.get('userId') == user_token):
@@ -313,53 +315,54 @@ def handle_explicit_leave_room(data):
                         if game.game_state.get('stage') == 'waiting_for_players':
                             game.seats[i] = None
                         else:
+                            # --- FIX START ---
+                            # Sprawdzamy czy gra zakończona
+                            current_stage = game.game_state.get('stage')
+                            is_game_over = current_stage in ['game_over', 'finished', 'checkmate', 'draw', 'stalemate',
+                                                             'ended']
+
                             if hasattr(game, 'set_player_connection_status'):
                                 game.set_player_connection_status(user_token, False, sid=sender_sid)
-                            
 
-                            game.seats[i]['explicitly_left'] = True
-                            
+                            # Oznaczamy wyjście i wysyłamy powiadomienie TYLKO jeśli gra wciąż trwa
+                            if not is_game_over:
+                                game.seats[i]['explicitly_left'] = True
 
-                            if user_token and user_token not in disconnect_timers:
-                                timer = eventlet.spawn_after(90, close_room_due_to_timeout, roomId, user_token)
-                                disconnect_timers[user_token] = timer
-                                
+                                if user_token and user_token not in disconnect_timers:
+                                    timer = eventlet.spawn_after(90, close_room_due_to_timeout, roomId, user_token)
+                                    disconnect_timers[user_token] = timer
 
-
-                                for s in game.seats:
-                                    if s and s.get('socketId') and s.get('userId') != user_token:
-                                        emit('opponent_disconnected', {
-                                            'roomId': roomId,
-                                            'playerName': disconnected_name,
-                                            'waitTime': 90
-                                        }, to=s.get('socketId'))
+                                    for s in game.seats:
+                                        if s and s.get('socketId') and s.get('userId') != user_token:
+                                            emit('opponent_disconnected', {
+                                                'roomId': roomId,
+                                                'playerName': disconnected_name,
+                                                'waitTime': 90
+                                            }, to=s.get('socketId'))
+                            # --- FIX END ---
                         break
 
             if isinstance(game, Stratego):
                 broadcast_stratego_state(game, roomId, socket)
             else:
                 emit('game_state_update', game.get_state(), to=roomId)
-            
 
             connected_count = 0
             if hasattr(game, 'seats'):
                 connected_count = len([s for s in game.seats if s is not None and s.get('connected', False)])
-            
 
             seated_count = len([s for s in game.seats if s is not None]) if hasattr(game, 'seats') else 0
-            
+
             if connected_count == 0 or seated_count == 0:
 
                 for token in list(disconnect_timers.keys()):
                     if token in disconnect_timers:
                         disconnect_timers[token].cancel()
                         del disconnect_timers[token]
-                
 
                 if roomId in room_deletion_timers:
                     room_deletion_timers[roomId].cancel()
                     del room_deletion_timers[roomId]
-                
 
                 if seated_count == 0:
                     delete_room(roomId)
@@ -390,20 +393,19 @@ def handle_explicit_leave_room(data):
         active_sessions[user_token]['room_id'] = None
         active_sessions[user_token]['connected'] = True
 
-
-    if found_room is None or not (found_room.game_instance and hasattr(found_room.game_instance, 'seats') and 
-            len([s for s in found_room.game_instance.seats if s is not None]) > 0):
+    if found_room is None or not (found_room.game_instance and hasattr(found_room.game_instance, 'seats') and
+                                  len([s for s in found_room.game_instance.seats if s is not None]) > 0):
         try:
             emit('your_active_game', None, to=sender_sid)
         except Exception:
             pass
-
 
     if found_room:
         socketio_leave_room(roomId)
 
     eventlet.sleep(0.1)
     broadcast_player_list()
+
 
 @socket.on("connect")
 def handle_connect(auth):
@@ -433,21 +435,18 @@ def handle_connect(auth):
                 found_game_name = game_name
                 break
 
-
         active_sessions[user_token]['sid'] = new_sid
         active_sessions[user_token]['username'] = username
         active_sessions[user_token]['connected'] = True
 
         if found_room:
 
-
-
             emit('your_active_game', {
                 'roomId': old_room_id,
                 'gameName': found_game_name,
                 'roomName': found_room.room_name
             })
-            
+
             active_sessions[user_token]['sid'] = new_sid
         else:
             active_sessions[user_token] = {'sid': new_sid, 'room_id': None, 'username': username, 'connected': True}
@@ -458,6 +457,7 @@ def handle_connect(auth):
         emit('your_active_game', None)
 
     broadcast_player_list()
+
 
 @socket.on("get_rooms")
 def handle_get_rooms(data):
@@ -484,7 +484,7 @@ def handle_create_room(data):
     host_seat_index = None
 
     if str(game_name).lower() == "chess":
-        
+
         t = data.get("time_control_min")
         try:
             t = int(t)
@@ -543,7 +543,7 @@ def handle_create_room(data):
                 }
 
         join_room(room.uuid)
-        
+
         if str(game_name).lower() == "battleships":
             if room.game_instance is None:
                 room.game_instance = lobby.game_class(room.players)
@@ -551,10 +551,9 @@ def handle_create_room(data):
             player_name = active_sessions.get(user_token, {}).get("username") or "Host"
             res = game.sit_player(host_id, player_name, 0, user_token)
             if res.get('success'):
-
                 state = get_game_state_safe(game, host_id)
                 emit('game_state_update', state, to=host_id)
-        
+
         emit('room_created', {'room_id': room.uuid, 'game': game_name}, to=host_id)
         broadcast_player_list()
 
@@ -610,12 +609,10 @@ def handle_join_game_room(data):
         return
 
     is_returning_player = user_token in found_room.player_tokens
-    
 
     if is_returning_player and user_token in disconnect_timers:
         disconnect_timers[user_token].cancel()
         del disconnect_timers[user_token]
-    
 
     if room_id in room_deletion_timers:
         room_deletion_timers[room_id].cancel()
@@ -637,17 +634,16 @@ def handle_join_game_room(data):
         return
 
     join_room(room_id)
-    
 
     if user_token not in active_sessions:
         active_sessions[user_token] = {'sid': current_sid, 'room_id': room_id, 'connected': True}
     else:
         active_sessions[user_token]['room_id'] = room_id
-    
+
     room.player_tokens.add(user_token)
 
     if str(game_name).lower() == "chess":
-        
+
         if room.game_instance is None:
             room.game_instance = lobby.game_class(room.players)
 
@@ -665,7 +661,7 @@ def handle_join_game_room(data):
             _chess = None
 
         if _chess is not None and isinstance(game, _chess):
-            
+
             player_name = active_sessions.get(user_token, {}).get("username") or "Player"
 
             already_idx = None
@@ -675,7 +671,7 @@ def handle_join_game_room(data):
                     break
 
             if already_idx is None:
-                
+
                 host_token = getattr(room, "host_user_token", None)
                 host_idx = getattr(room, "host_seat_index", None)
                 if host_idx not in (0, 1):
@@ -700,7 +696,6 @@ def handle_join_game_room(data):
 
     emit('join_room_response', {'success': True, 'room_data': room.to_dict()})
 
-
     try:
         emit('your_active_game', {
             'gameName': room.game_name,
@@ -712,10 +707,9 @@ def handle_join_game_room(data):
 
     if room.game_instance:
         game = room.game_instance
-        
+
         if is_returning_player and hasattr(game, 'set_player_connection_status'):
             game.set_player_connection_status(user_token, True, current_sid)
-            
 
             was_explicitly_left = False
             reconnected_name = None
@@ -727,7 +721,6 @@ def handle_join_game_room(data):
 
                         game.seats[i]['explicitly_left'] = False
                         break
-            
 
             if hasattr(game, 'seats'):
                 for s in game.seats:
@@ -744,27 +737,26 @@ def handle_join_game_room(data):
                                 'roomId': room_id,
                                 'playerName': reconnected_name
                             }, to=s.get('socketId'))
-        
 
         state = get_game_state_safe(game, current_sid, user_token=user_token)
         emit('game_state_update', state, to=current_sid)
-        
 
         if isinstance(game, Battleships):
             for seat in game.seats:
                 if seat and seat['socketId']:
                     safe_state = get_game_state_safe(game, seat['socketId'])
                     emit('game_state_update', safe_state, to=seat['socketId'])
-                    
+
         elif isinstance(game, Stratego):
 
             broadcast_stratego_state(game, room_id, socket)
-            
+
         else:
 
             emit('game_state_update', game.get_state(), to=room_id)
 
     broadcast_player_list()
+
 
 @socket.on('sit_down')
 def handle_sit_down(data):
@@ -801,7 +793,6 @@ def handle_sit_down(data):
                 if seat and seat['socketId']:
                     safe_state = get_game_state_safe(game, seat['socketId'])
                     emit('game_state_update', safe_state, to=seat['socketId'])
-            
 
             if game.game_state.get("stage") == "waiting_for_players":
                 if len(game.seats) >= 2 and game.seats[0] is not None and game.seats[1] is not None:
@@ -813,7 +804,6 @@ def handle_sit_down(data):
                             emit('game_state_update', safe_state, to=seat['socketId'])
         elif isinstance(game, SetGame):
             emit('game_state_update', game.get_state(), to=room_id)
-            
 
             if game.game_state.get("stage") == "waiting_for_players":
                 seated_count = len([s for s in game.seats if s is not None])
@@ -922,7 +912,7 @@ def handle_player_move(data):
                 if seat and seat['socketId']:
                     state = get_game_state_safe(game, seat['socketId'])
                     emit('game_state_update', state, to=seat['socketId'])
-            
+
             if len(game.game_state.get('ready_players', [])) == 2:
                 emit('game_stage_changed', {
                     'stage': 'playing'
@@ -937,7 +927,7 @@ def handle_player_move(data):
     elif isinstance(game, SetGame):
         res = game.handle_move(player_id, move_data)
         emit('game_state_update', game.get_state(), to=room_id)
-        
+
         if game.game_state.get('stage') == 'finished':
             broadcast_player_list()
             if room_id not in room_deletion_timers:
