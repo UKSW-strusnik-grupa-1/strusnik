@@ -425,6 +425,17 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
         );
     };
 
+    const handleBoardClickPlacement = (x: number, y: number) => {
+        if (!selectedShip) return;
+
+        const ship = ships.find(s => s.id === selectedShip);
+        if (!ship) return;
+
+        if (canPlaceShip(ship, x, y, ship.horizontal)) {
+            placeShipOnBoard(selectedShip, x, y, ship.horizontal);
+        }
+    };
+
     const renderCell = (val: number, x: number, y: number, ownerIdx: number) => {
         let cellStyle = "bg-cyan-900/30 hover:bg-cyan-800/40";
         let content = null;
@@ -453,10 +464,13 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
             const ship = ships.find(s => s.x === x && s.y === y);
             const hasShipPart = boardGrid[y][x] === 1;
             const isBeingDragged = ship && isDragging && draggedShip === ship.id;
+            
+            const isSelectedTarget = selectedShip && !isDragging; 
 
             return (
                 <div
                     key={`${x}-${y}`}
+                    onClick={() => handleBoardClickPlacement(x, y)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDropOnBoard(e, x, y)}
                     className={`
@@ -465,7 +479,9 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
                             ? isBeingDragged
                                 ? 'bg-amber-500/30 border-amber-400'
                                 : 'bg-gradient-to-br from-slate-500 to-slate-600 shadow-inner'
-                            : 'bg-cyan-900/30 hover:bg-cyan-700/40 cursor-crosshair'
+                            : isSelectedTarget 
+                                ? 'bg-cyan-900/30 hover:bg-amber-500/20 cursor-pointer' 
+                                : 'bg-cyan-900/30 hover:bg-cyan-700/40 cursor-crosshair'
                         }
                     `}
                 >
@@ -478,6 +494,10 @@ export default function ActiveGame({ socket, roomId, seats, myId, gameStage, gam
                                 onDragEnd={handleDragEnd}
                                 className="absolute inset-0 cursor-move z-10"
                                 title={`${t(lang, 'battleships.drag_to_move')} ${ship.length}m`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleShipClick(ship.id);
+                                }}
                             />
                             <div className="absolute inset-0 opacity-0 group-hover:opacity-50 bg-amber-400 transition-opacity pointer-events-none" />
                         </>

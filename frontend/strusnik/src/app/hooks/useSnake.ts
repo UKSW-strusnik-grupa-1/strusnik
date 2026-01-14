@@ -248,5 +248,6 @@ export const useSnake = () => {
     isSubmittingScore,
     startGame,
     resetGame,
+    enqueueDirection,
   };
 };

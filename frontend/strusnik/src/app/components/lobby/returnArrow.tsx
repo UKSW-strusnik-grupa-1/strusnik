@@ -22,7 +22,7 @@ export default function ReturnArrow({ href = "", text = "MENU", onClick }: retur
   };
 
   return (
-    <Link href={href} className="fixed sm:absolute top-2 sm:top-5 left-1 sm:left-2 z-30 touch-target" onClick={handleClick}>
+    <Link href={href} className="fixed sm:absolute top-2 sm:top-5 left-1 sm:left-2 touch-target z-9999" onClick={handleClick}>
       <div className="relative flex flex-row items-center group cursor-pointer">
         <img alt="strzalka powrotu" src="/main/arrow.png" className="w-32 sm:w-40 md:w-50 h-auto transition-transform group-hover:scale-105" />
         <p className="absolute top-1/2 -translate-y-1/2 left-14 sm:left-18 md:left-22 text-white font-bold text-xs sm:text-sm tracking-wide transition-all group-hover:scale-105"> {text} </p>

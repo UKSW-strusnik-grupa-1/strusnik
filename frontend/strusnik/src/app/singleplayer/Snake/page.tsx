@@ -101,7 +101,7 @@ const SNAKE_SPRITES = {
 } as const;
 
 export default function SnakePage() {
-  const { BOARD_SIZE, snake, food, gameStatus, score, isSubmittingScore, startGame, resetGame } = useSnake();
+  const { BOARD_SIZE, snake, food, gameStatus, score, isSubmittingScore, startGame, resetGame, enqueueDirection } = useSnake();
   const { lang } = useLang();
 
   const isSnakeCell = (x: number, y: number) => snake.some((seg) => seg.x === x && seg.y === y);
@@ -147,6 +147,8 @@ export default function SnakePage() {
 
     return { src: SNAKE_SPRITES.turn, rot };
   };
+
+  const btnClass = "w-16 h-16 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl flex items-center justify-center text-2xl active:bg-white/30 transition-all select-none touch-manipulation";
 
   return (
     <div className="fixed inset-0 overflow-hidden">
@@ -264,6 +266,40 @@ export default function SnakePage() {
             </button>
           )}
         </div>
+
+        <div className="absolute bottom-6 right-6 z-50 flex flex-col gap-2 items-center md:hidden opacity-80">
+            <button 
+              className={btnClass} 
+              onPointerDown={(e) => { e.preventDefault(); enqueueDirection("UP"); }}
+              aria-label="Up"
+            >
+              ▲
+            </button>
+            <div className="flex gap-2">
+                <button 
+                  className={btnClass} 
+                  onPointerDown={(e) => { e.preventDefault(); enqueueDirection("LEFT"); }}
+                  aria-label="Left"
+                >
+                  ◀
+                </button>
+                <button 
+                  className={btnClass} 
+                  onPointerDown={(e) => { e.preventDefault(); enqueueDirection("DOWN"); }}
+                  aria-label="Down"
+                >
+                  ▼
+                </button>
+                <button 
+                  className={btnClass} 
+                  onPointerDown={(e) => { e.preventDefault(); enqueueDirection("RIGHT"); }}
+                  aria-label="Right"
+                >
+                  ▶
+                </button>
+            </div>
+        </div>
+
       </div>
     </div>
   );
