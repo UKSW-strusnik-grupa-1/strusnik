@@ -14509,6 +14509,10 @@ button.haxball-seat:hover:not(:disabled) {
   padding-top: 104px;
 }
 
+.rankings-shell:has(> .rankings-frame > .account-required-state) {
+  align-items: center;
+}
+
 .rankings-frame {
   width: min(100%, 1080px);
   min-width: 0;
