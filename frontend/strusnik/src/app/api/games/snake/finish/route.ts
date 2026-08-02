@@ -5,6 +5,11 @@ export const dynamic = "force-dynamic";
 
 const BACKEND_URL = process.env.API_URL ?? "http://localhost:5000";
 
+type SnakeFinishPayload = {
+  uuid?: unknown;
+  foodsEaten?: unknown;
+};
+
 async function safeJson(res: Response) {
   const text = await res.text();
   if (!text) return null;
@@ -18,9 +23,10 @@ async function safeJson(res: Response) {
 export async function POST(request: NextRequest) {
   const bodyText = await request.text();
 
-  let parsed: any = null;
+  let parsed: SnakeFinishPayload | null = null;
   try {
-    parsed = bodyText ? JSON.parse(bodyText) : null;
+    const value: unknown = bodyText ? JSON.parse(bodyText) : null;
+    parsed = value && typeof value === "object" ? value as SnakeFinishPayload : null;
   } catch {
     parsed = null;
   }

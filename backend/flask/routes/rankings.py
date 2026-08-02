@@ -1,42 +1,72 @@
-from flask import Blueprint, jsonify, request
-from models import db, User, GameStats
-from sqlalchemy import desc
+from flask import Blueprint, jsonify
+from sqlalchemy import desc, func
+
+from api_utils import error_response, json_body, log_exception
+from models import GameStats, User, db
 
 rankings = Blueprint("rankings", __name__)
 
+GAME_NAME_ALIASES = {
+    "battleships": ("battleships",),
+    "chess": ("chess",),
+    "haxball": ("haxball",),
+    "set": ("set", "setgame"),
+    "stratego": ("stratego",),
+    "tysiac": ("tysiac", "thousand"),
+}
+
+
 @rankings.route("/<game_name>", methods=["GET"])
 def get_ranking(game_name):
-    try:
-        stats = GameStats.query \
-            .filter_by(game_name=game_name) \
-            .join(User) \
-            .order_by(desc(GameStats.wins)) \
-            .limit(10) \
-            .all()
+    game_name = (game_name or "").strip()
+    if not game_name:
+        return error_response("Nazwa gry jest wymagana.", 400)
 
-        return jsonify([stat.to_dict() for stat in stats]), 200
-    except Exception as e:
-        print(f"Error fetching ranking: {e}")
-        return jsonify({"error": str(e)}), 500
+    normalized_game_names = GAME_NAME_ALIASES.get(game_name.lower(), (game_name.lower(),))
+
+    try:
+        stats = (
+            GameStats.query
+            .filter(func.lower(GameStats.game_name).in_(normalized_game_names))
+            .join(User)
+            .order_by(desc(GameStats.points), desc(GameStats.wins), desc(GameStats.goals), User.username.asc())
+            .limit(10)
+            .all()
+        )
+        ranking = []
+        for stat in stats:
+            entry = stat.to_dict()
+            entry["avatar_url"] = f"/api/profile/avatar/{stat.user.id}" if stat.user.avatar_url else None
+            ranking.append(entry)
+        return jsonify(ranking), 200
+    except Exception as error:
+        log_exception("Unable to fetch ranking", error)
+        return error_response("Nie udalo sie pobrac rankingu.", 500)
 
 
 @rankings.route("/add_win", methods=["POST"])
 def add_win():
-    data = request.json
+    data = json_body()
     username = data.get("username")
     game_name = data.get("game_name")
+    if not isinstance(username, str) or not username.strip() or not isinstance(game_name, str) or not game_name.strip():
+        return error_response("Nazwa uzytkownika i gry sa wymagane.", 400)
 
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    try:
+        user = User.query.filter_by(username=username.strip()).first()
+        if not user:
+            return error_response("Nie znaleziono uzytkownika.", 404)
 
-    stat = GameStats.query.filter_by(user_id=user.id, game_name=game_name).first()
+        stat = GameStats.query.filter_by(user_id=user.id, game_name=game_name.strip()).first()
+        if not stat:
+            stat = GameStats(user_id=user.id, game_name=game_name.strip(), wins=1)
+            db.session.add(stat)
+        else:
+            stat.wins = (stat.wins or 0) + 1
 
-    if not stat:
-        stat = GameStats(user_id=user.id, game_name=game_name, wins=1)
-        db.session.add(stat)
-    else:
-        stat.wins += 1
-
-    db.session.commit()
-    return jsonify({"message": "Win added", "new_wins": stat.wins}), 200
+        db.session.commit()
+        return jsonify({"message": "Wygrana zostala zapisana.", "new_wins": stat.wins}), 200
+    except Exception as error:
+        db.session.rollback()
+        log_exception("Unable to save game win", error)
+        return error_response("Nie udalo sie zapisac wygranej.", 500)

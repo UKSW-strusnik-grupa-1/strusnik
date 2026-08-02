@@ -4,9 +4,12 @@ import CardList from "@/app/components/blackjack/cardList";
 import Token from "@/app/components/blackjack/token";
 import ReturnArrow from "@/app/components/lobby/returnArrow";
 import { useBlackjack } from "@/app/hooks/useBlackjack";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import { useNotification } from "@/app/context/NotificationsContext";
+
+const CHIP_VALUES = [5, 20, 100, 500];
 
 export default function BlackjackPage() {
   const {
@@ -14,27 +17,60 @@ export default function BlackjackPage() {
     addToken,
     removeToken,
     balance,
+    bet,
     startGame,
     gameStatus,
     playerDeck,
     dealerDeck,
     hit,
     stand,
+    doubleDown,
     playAgain,
     playerDeckValue,
     dealerDeckValue,
     winner,
     cashout,
+    isResolving,
   } = useBlackjack();
 
   const { lang } = useLang();
+  const { notify } = useNotification();
+  const previousStatusRef = useRef(gameStatus);
+  const canStart = bet > 0;
+
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+
+    if (gameStatus === "STARTED" && previousStatus === "NOT-STARTED") {
+      notify(t(lang, "blackjack.notifications.started"), "info");
+    }
+
+    if (gameStatus === "FINISHED" && previousStatus === "STARTED") {
+      if (winner === "PLAYER") {
+        notify(
+          t(lang, "blackjack.notifications.win").replace("{amount}", `${cashout}$`),
+          "success",
+        );
+      } else if (winner === "DEALER") {
+        notify(t(lang, "blackjack.notifications.lose"), "warning");
+      } else {
+        notify(t(lang, "blackjack.notifications.draw"), "info");
+      }
+    }
+
+    if (gameStatus === "NOT-STARTED" && previousStatus === "FINISHED") {
+      notify(t(lang, "blackjack.notifications.restarted"), "info");
+    }
+
+    previousStatusRef.current = gameStatus;
+  }, [cashout, gameStatus, lang, notify, winner]);
 
   return (
-    <div className="relative w-full h-screen flex flex-col overflow-hidden">
+    <div className="game-runtime-shell game-runtime-shell--singleplayer game-runtime-blackjack overflow-hidden">
       <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} />
 
       {gameStatus !== "NOT-STARTED" && (
-        <div className="absolute top-0 left-0 w-full h-full z-10 pointer-events-none flex items-center justify-center">
+        <div className="blackjack-game-overlay absolute top-0 left-0 z-10 flex h-full w-full items-center justify-center pointer-events-none">
           <div className="pointer-events-auto h-full w-full max-w-7xl mx-auto">
             <CardList
               playerDeck={playerDeck}
@@ -44,6 +80,10 @@ export default function BlackjackPage() {
               gameStatus={gameStatus}
               hit={hit}
               stand={stand}
+              doubleDown={doubleDown}
+              bet={bet}
+              balance={balance}
+              isResolving={isResolving}
               winner={winner}
               cashout={cashout}
               playAgain={playAgain}
@@ -53,56 +93,91 @@ export default function BlackjackPage() {
       )}
 
       {gameStatus === "NOT-STARTED" && (
-        <div className="w-full h-full flex items-center justify-end flex-col gap-6 pb-12 z-20 pointer-events-none">
-          <div className="pointer-events-auto flex flex-col min-h-[60px] justify-end items-center">
-            {[...tokens].reverse().map((token, index) => {
-              const reversedIndex = tokens.length - index - 1;
-              return (
-                <div
-                  key={index}
-                  className="-mt-8 cursor-pointer"
-                  style={{ zIndex: tokens.length - index }}
-                  onClick={() => removeToken(reversedIndex)}
-                >
-                  <Token amount={token} withText />
+        <main id="main-content" className="blackjack-bet-stage">
+          <section className="blackjack-bet-intro" aria-labelledby="blackjack-title">
+            <p className="blackjack-kicker">{t(lang, "blackjack.kicker")}</p>
+            <h1 id="blackjack-title">{t(lang, "blackjack.title")}</h1>
+            <p>{t(lang, "blackjack.subtitle")}</p>
+          </section>
+
+          <section className="blackjack-betting-layout" aria-label={t(lang, "blackjack.betting_area")}>
+            <div className="blackjack-betting-surface">
+              <div className="blackjack-money-row">
+                <div>
+                  <span className="blackjack-stat-label">{t(lang, "blackjack.balance")}</span>
+                  <strong className="blackjack-money-value">{balance}$</strong>
                 </div>
-              );
-            })}
-          </div>
+                <div className="blackjack-current-bet">
+                  <span className="blackjack-stat-label">{t(lang, "blackjack.bet")}</span>
+                  <strong className="blackjack-money-value">{bet}$</strong>
+                </div>
+              </div>
 
-          <h1 className="font-bold text-3xl text-white drop-shadow-lg tracking-wider">
-            {t(lang, "blackjack.balance")}: {balance}$
-          </h1>
+              <div className="blackjack-bet-zone" aria-live="polite">
+                <div className="blackjack-zone-heading">
+                  <div>
+                    <span className="blackjack-stat-label">{t(lang, "blackjack.chips_in_play")}</span>
+                    <p>{t(lang, tokens.length ? "blackjack.bet_ready" : "blackjack.empty_bet")}</p>
+                  </div>
+                  <span className="blackjack-bet-total">{bet}$</span>
+                </div>
 
-          <div className="pointer-events-auto flex items-center justify-center gap-4 bg-black/30 p-4 rounded-2xl backdrop-blur-sm">
-            <button onClick={() => addToken(5)} className="hover:scale-110 active:scale-95 transition-transform">
-              <Token amount={5} withText />
-            </button>
-            <button onClick={() => addToken(20)} className="hover:scale-110 active:scale-95 transition-transform">
-              <Token amount={20} withText />
-            </button>
-            <button onClick={() => addToken(100)} className="hover:scale-110 active:scale-95 transition-transform">
-              <Token amount={100} withText />
-            </button>
-            <button onClick={() => addToken(500)} className="hover:scale-110 active:scale-95 transition-transform">
-              <Token amount={500} withText />
+                <div className={`blackjack-bet-stack${tokens.length === 0 ? " blackjack-bet-stack--empty" : ""}`}>
+                  {tokens.length > 0 ? (
+                    tokens.map((token, index) => (
+                      <button
+                        key={`${token}-${index}`}
+                        type="button"
+                        className="blackjack-placed-chip"
+                        onClick={() => removeToken(index)}
+                        aria-label={`${t(lang, "blackjack.remove_chip")} ${token}$`}
+                      >
+                        <Token amount={token} withText />
+                      </button>
+                    ))
+                  ) : (
+                    <span>{t(lang, "blackjack.place_bet_hint")}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <aside className="blackjack-chip-picker" aria-labelledby="blackjack-chip-picker-title">
+              <div>
+                <span className="blackjack-stat-label">{t(lang, "blackjack.chip_kicker")}</span>
+                <h2 id="blackjack-chip-picker-title">{t(lang, "blackjack.choose_chip")}</h2>
+              </div>
+              <div className="blackjack-chip-options" role="group" aria-label={t(lang, "blackjack.choose_chip")}>
+                {CHIP_VALUES.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    className="blackjack-chip-choice"
+                    onClick={() => addToken(amount)}
+                    disabled={balance < amount}
+                    aria-label={`${t(lang, "blackjack.add_chip")} ${amount}$`}
+                  >
+                    <Token amount={amount} withText />
+                    <span>{amount}$</span>
+                  </button>
+                ))}
+              </div>
+              <p className="blackjack-chip-help">{t(lang, "blackjack.chip_help")}</p>
+            </aside>
+          </section>
+
+          <div className="blackjack-start-area">
+            <button
+              type="button"
+              className="blackjack-start-button"
+              onClick={startGame}
+              disabled={!canStart}
+            >
+              <span>{t(lang, "blackjack.start")}</span>
+              <small>{t(lang, canStart ? "blackjack.start_hint" : "blackjack.empty_bet")}</small>
             </button>
           </div>
-
-          <div
-            className="pointer-events-auto relative flex items-center justify-center group cursor-pointer mt-4"
-            onClick={startGame}
-          >
-            <img
-              src="/main/button.png"
-              alt={t(lang, "blackjack.start_button_alt")}
-              className="w-60 transition-all group-hover:scale-105 group-hover:brightness-110 drop-shadow-xl"
-            />
-            <p className="absolute font-bold text-xl text-white transition-all group-hover:scale-105">
-              {t(lang, "blackjack.start")}
-            </p>
-          </div>
-        </div>
+        </main>
       )}
     </div>
   );

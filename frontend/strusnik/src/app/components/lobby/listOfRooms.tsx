@@ -1,106 +1,136 @@
-"use client"
+"use client";
 
-import { useSocket } from '@/app/hooks/useSocket'
-import React, { useEffect, useState } from 'react'
-import RoomTile from './roomTile';
-import SearchInput from './searchInput';
-import RefreshButton from './refreshButton';
+import { SearchX } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useSocket } from "@/app/hooks/useSocket";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import RefreshButton from "./refreshButton";
+import RoomTile from "./roomTile";
+import SearchInput from "./searchInput";
 
 interface ListOfRoomsProps {
-    gameName: string;
+  gameName: string;
+}
+
+interface RoomSummary {
+  id: string;
+  room_name?: string;
+  players_count: number;
+  max_players: number;
+  has_password?: boolean;
+  observers_count?: number;
+  max_observers?: number;
+  observers_allowed?: boolean;
+  map_id?: string;
+  match_mode?: string;
+  duration_min?: number;
+}
+
+interface RoomsPayload {
+  rooms?: RoomSummary[];
+}
+
+function LoadingRooms({ label }: { label: string }) {
+  return (
+    <div className="lobby-loading-state" role="listitem">
+      <div className="lobby-loading-rows" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <span className="sr-only" role="status">{label}</span>
+    </div>
+  );
 }
 
 export default function ListOfRooms({ gameName }: ListOfRoomsProps) {
+  const { socket } = useSocket();
+  const { lang } = useLang();
+  const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
-    const { socket } = useSocket();
-    const [rooms, setRooms] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [searchQuery, setSearchQuery] = useState<string>("");
-    const { lang } = useLang();
+  const handleRefresh = () => {
+    if (!socket) return;
 
-    const handleRefresh = () => {
-        if (!socket) return;
+    setIsLoading(true);
+    socket.emit("get_rooms", { game_name: gameName });
+  };
 
-        setIsLoading(true);
-        socket.emit("get_rooms", { game_name: gameName });
+  useEffect(() => {
+    if (!socket || !gameName) return;
+
+    const handleRoomsList = (response: RoomsPayload) => {
+      if (Array.isArray(response.rooms)) {
+        setRooms(response.rooms);
+      }
+      setIsLoading(false);
     };
 
-    useEffect(() => {
-        if (!socket) return;
-        if (!gameName) return;
+    const handleSocketError = () => setIsLoading(false);
+    socket.on("rooms_list", handleRoomsList);
+    socket.on("error", handleSocketError);
+    socket.emit("get_rooms", { game_name: gameName });
 
-        const handleRoomsList = (response: any) => {
-            if (response.rooms) {
-                setRooms(response.rooms);
-                setTimeout(() => {
-                    setIsLoading(false);
-                }, 2000);
-            }
-        };
+    return () => {
+      socket.off("rooms_list", handleRoomsList);
+      socket.off("error", handleSocketError);
+    };
+  }, [socket, gameName]);
 
-        socket.on("rooms_list", handleRoomsList);
+  const filteredRooms = rooms.filter((room) =>
+    String(room.room_name || "").toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
-        handleRefresh();
-
-        return () => {
-            socket.off("rooms_list", handleRoomsList);
-        };
-    }, [socket, gameName]);
-
-    const filteredRooms = rooms.filter((room) =>
-        room.room_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    if (isLoading && rooms.length === 0) {
-        return (
-            <div className="relative w-full h-full flex flex-col gap-3 sm:gap-4">
-                <RefreshButton onClick={handleRefresh} isLoading={isLoading} />
-
-                <div className="shrink-0 pt-2 px-2 sm:px-4">
-                    <SearchInput
-                        placeholder={t(lang, "rooms.search_placeholder")}
-                        text={searchQuery}
-                        setText={setSearchQuery}
-                    />
-                </div>
-                <p className="text-center text-gray-400 font-bold text-sm sm:text-base">{t(lang, "loading")}</p>
-            </div>
-        )
-    }
-
-    return (
-        <div className="relative w-full h-full flex flex-col gap-3 sm:gap-4">
-
-            <RefreshButton onClick={handleRefresh} isLoading={isLoading} />
-
-            <div className="shrink-0 pt-2 px-2 sm:px-4">
-                <SearchInput
-                    placeholder={t(lang, "rooms.search_placeholder")}
-                    text={searchQuery}
-                    setText={setSearchQuery}
-                />
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1 pb-2 pl-2 sm:pl-4 pr-1 sm:pr-2">
-                {filteredRooms.length === 0 && !isLoading && (
-                    <h1 className='font-bold text-center mt-4 text-gray-400 text-sm sm:text-base'>{t(lang, "rooms.lack")}</h1>
-                )}
-
-                {filteredRooms.map(room => (
-                    <div key={room.id}>
-                        <RoomTile
-                            uuid={room.id}
-                            gameName={gameName}
-                            roomName={room.room_name}
-                            players={room.players_count}
-                            maxPlayers={room.max_players}
-                            isPrivate={room.has_password}
-                        />
-                    </div>
-                ))}
-            </div>
+  return (
+    <div className="lobby-rooms-panel">
+      <header className="lobby-rooms-header">
+        <div>
+          <p className="lobby-section-kicker">{t(lang, "lobby.rooms_kicker")}</p>
+          <h2>{t(lang, "lobby.rooms_title")}</h2>
+          <p>{t(lang, "lobby.rooms_hint")}</p>
         </div>
-    )
+        <RefreshButton onClick={handleRefresh} isLoading={isLoading} />
+      </header>
+
+      <div className="lobby-rooms-search">
+        <SearchInput
+          placeholder={t(lang, "rooms.search_placeholder")}
+          text={searchQuery}
+          setText={setSearchQuery}
+        />
+      </div>
+
+      <div className="lobby-rooms-list" role="list" aria-busy={isLoading}>
+        {isLoading && rooms.length === 0 ? (
+          <LoadingRooms label={t(lang, "loading")} />
+        ) : filteredRooms.length === 0 ? (
+          <div className="lobby-empty-state" role="listitem">
+            <SearchX size={24} strokeWidth={1.8} aria-hidden="true" />
+            <p>{t(lang, "rooms.lack")}</p>
+            <span>{t(lang, "lobby.rooms_empty_hint")}</span>
+          </div>
+        ) : (
+          filteredRooms.map((room) => (
+            <RoomTile
+              key={room.id}
+              uuid={room.id}
+              gameName={gameName}
+              roomName={room.room_name ?? ""}
+              players={room.players_count}
+              maxPlayers={room.max_players}
+              isPrivate={room.has_password}
+              observers={room.observers_count}
+              maxObservers={room.max_observers}
+              observersAllowed={room.observers_allowed}
+              mapId={room.map_id}
+              matchMode={room.match_mode}
+              durationMin={room.duration_min}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
 }

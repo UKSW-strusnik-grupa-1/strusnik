@@ -8,44 +8,26 @@ interface SearchInputProps {
   className?: string;
 }
 
-export default function SearchInput({ 
-  text, 
+export default function SearchInput({
+  text = "",
   setText,
-  placeholder = "Szukaj przeciwnika...", 
-  className = "" 
+  placeholder = "Szukaj pokoju...",
+  className = "",
 }: SearchInputProps) {
+  const inputId = "lobby-room-search";
 
   return (
-    <div className={`relative w-full max-w-md mx-auto mb-6 ${className}`}>
+    <div className={`room-search ${className}`}>
+      <label className="sr-only" htmlFor={inputId}>{placeholder}</label>
+      <Search className="room-search__icon" size={19} strokeWidth={2} aria-hidden="true" />
       <input
-        type="text"
-        onChange={(e) => setText?.(e.target.value)}
+        id={inputId}
+        type="search"
         value={text}
+        onChange={(event) => setText?.(event.target.value)}
         placeholder={placeholder}
-        className="
-          w-full
-          bg-[#2b1d15] 
-          text-[#eaddcf] 
-          placeholder-[#6F5C50]
-          border-2 
-          border-[#403832] 
-          rounded-lg
-          py-3 
-          pl-12 
-          pr-4
-          outline-none
-          transition-all
-          duration-300
-          shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7),inset_-1px_-1px_2px_rgba(255,255,255,0.05)]
-          hover:border-[#826c5e]
-          focus:border-[#826c5e]
-          focus:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9),0_0_10px_rgba(130,108,94,0.3)]
-        "
+        className="room-search__input"
       />
-
-      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-        <Search className="h-5 w-5 text-[#6F5C50]" />
-      </div>
     </div>
   );
 }

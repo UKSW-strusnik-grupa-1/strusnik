@@ -1,14 +1,56 @@
 'use client';
 
 import Link from 'next/link';
-import React, { useEffect, useState } from 'react';
+import type { Socket } from 'socket.io-client';
+import React, { useState } from 'react';
 import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
+import { useNotification } from '@/app/context/NotificationsContext';
+import { Check, Clock3, Flag, Shield, Shuffle, Swords, Trash2 } from 'lucide-react';
+import ParticipantZone from '@/app/components/multiplayer/ParticipantZone';
+import type { PlayerTileModel } from '@/app/components/multiplayer/types';
+
+export interface StrategoSeat {
+    socketId: string;
+    userId: string;
+    name: string;
+    connected?: boolean;
+    avatarUrl?: string | null;
+    avatar_url?: string | null;
+}
+
+interface StrategoPiece {
+    rank: string;
+    player: number;
+}
+
+interface StrategoLastMove {
+    from: { r: number; c: number };
+    to: { r: number; c: number };
+    combat?: { attacker: StrategoPiece; defender: StrategoPiece; result?: string };
+}
+
+interface StrategoWinner {
+    userId?: string;
+    name?: string;
+    reason?: string;
+}
+
+export interface StrategoGameState {
+    board: (StrategoPiece | null)[][];
+    seats: (StrategoSeat | null)[];
+    stage: string;
+    setup_ready?: boolean[];
+    current_player_idx?: number;
+    last_move?: StrategoLastMove;
+    winner?: StrategoWinner;
+    my_idx?: number;
+}
 
 interface ActiveGameProps {
-    socket: any;
+    socket: Socket | null;
     roomId: string;
-    gameState: any;
+    gameState: StrategoGameState | null;
     myId: string;
     opponentDisconnected?: boolean;
 }
@@ -58,16 +100,31 @@ const SETUP_CONFIG = {
     S: 1,
 };
 
+const LAKE_CELLS = new Set([
+    '4,2', '4,3', '5,2', '5,3',
+    '4,6', '4,7', '5,6', '5,7',
+]);
+
+const isLakeCell = (r: number, c: number) => LAKE_CELLS.has(`${r},${c}`);
+
 export default function Game({ socket, roomId, gameState, myId, opponentDisconnected }: ActiveGameProps) {
     const { lang } = useLang();
+    const { notify } = useNotification();
 
-    const { board, seats, stage, setup_ready, current_player_idx, last_move, winner } = gameState;
+    const fallbackGameState: StrategoGameState = {
+        board: Array.from({ length: 10 }, () => Array<StrategoPiece | null>(10).fill(null)),
+        seats: [null, null],
+        stage: 'loading',
+    };
+    const activeGameState = gameState ?? fallbackGameState;
+    const { board, seats, stage, setup_ready, current_player_idx, last_move, winner } = activeGameState;
 
-    const calculatedIdx = seats.findIndex((s: any) => s && s.userId === myId);
+    const calculatedIdx = seats.findIndex((s) => s && s.userId === myId);
 
-    const my_idx = (gameState.my_idx !== undefined && gameState.my_idx !== -1)
-        ? gameState.my_idx
+    const my_idx = (activeGameState.my_idx !== undefined && activeGameState.my_idx !== -1)
+        ? activeGameState.my_idx
         : calculatedIdx;
+    const isObserver = my_idx === -1;
 
     const [setupBoard, setSetupBoard] = useState<(string | null)[][]>(
         Array(4).fill(null).map(() => Array(10).fill(null))
@@ -99,13 +156,16 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
         }
     };
 
-    const isLakeBackend = (r: number, c: number) => {
-        const lakes = ['4,2', '4,3', '5,2', '5,3', '4,6', '4,7', '5,6', '5,7'];
-        return lakes.includes(`${r},${c}`);
+    const setupToBackend = (r: number, c: number) => {
+        if (isPlayer0) {
+            return { r: 3 - r, c: 9 - c };
+        }
+        return { r: 6 + r, c };
     };
 
     const handlePlacePiece = (r: number, c: number) => {
-        if (stage !== 'setup') return;
+        const backendCell = setupToBackend(r, c);
+        if (stage !== 'setup' || isLakeCell(backendCell.r, backendCell.c)) return;
 
         const existing = setupBoard[r][c];
 
@@ -130,6 +190,13 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
         }
     };
 
+    const handleSetupCellKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, r: number, c: number) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handlePlacePiece(r, c);
+        }
+    };
+
     const handleDragStart = (e: React.DragEvent, rank: string, fromBoard: boolean, r?: number, c?: number) => {
         const data = JSON.stringify({ rank, fromBoard, r, c });
         e.dataTransfer.setData("piece_data", data);
@@ -144,7 +211,8 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
         }
     };
 
-    const handleDragLeave = (e: React.DragEvent) => {
+    const handleDragLeave = () => {
+        setDragOverSquare(null);
     };
 
     const handleDrop = (e: React.DragEvent, targetR: number, targetC: number) => {
@@ -157,6 +225,9 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
         const { rank, fromBoard, r: srcR, c: srcC } = JSON.parse(dataStr);
 
         if (fromBoard && srcR === targetR && srcC === targetC) return;
+
+        const targetBackendCell = setupToBackend(targetR, targetC);
+        if (isLakeCell(targetBackendCell.r, targetBackendCell.c)) return;
 
         const newBoard = setupBoard.map((row) => [...row]);
         const newAvailable = { ...availablePieces };
@@ -208,42 +279,36 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
 
     const submitSetup = () => {
         if (my_idx === undefined || my_idx === null || my_idx === -1) {
-            alert(t(lang, 'stratego.setup.sync_error_refresh'));
+            notify(t(lang, 'stratego.setup.sync_error_refresh'), 'error');
             return;
         }
 
-        const pieces: any[] = [];
-        const isP0 = my_idx === 0;
+        const pieces: { r: number; c: number; rank: string }[] = [];
 
         for (let r = 0; r < 4; r++) {
             for (let c = 0; c < 10; c++) {
                 const rank = setupBoard[r][c];
                 if (rank) {
-                    let backendR, backendC;
-                    if (isP0) {
-                        backendR = 3 - r;
-                        backendC = 9 - c;
-                    } else {
-                        backendR = 6 + r;
-                        backendC = c;
-                    }
-                    pieces.push({ r: backendR, c: backendC, rank });
+                    const backendCell = setupToBackend(r, c);
+                    pieces.push({ r: backendCell.r, c: backendCell.c, rank });
                 }
             }
         }
 
-        socket.emit('player_move', {
+        socket?.emit('player_move', {
             roomId,
             move: { type: 'submit_setup', pieces },
         });
     };
 
     const handleSquareClick = (r_view: number, c_view: number) => {
-        if (stage !== 'playing') return;
+        if (isObserver || stage !== 'playing') return;
         if (current_player_idx !== my_idx) return;
         if (opponentDisconnected) return;
 
         const { r: realR, c: realC } = viewToBackend(r_view, c_view);
+        if (isLakeCell(realR, realC)) return;
+
         const piece = board[realR][realC];
         const isMyPiece = piece && piece.player === my_idx;
 
@@ -262,7 +327,7 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
                 return;
             }
 
-            socket.emit('player_move', {
+            socket?.emit('player_move', {
                 roomId,
                 move: {
                     type: 'move',
@@ -282,309 +347,308 @@ export default function Game({ socket, roomId, gameState, myId, opponentDisconne
 
     const renderGameCell = (r_view: number, c_view: number) => {
         const { r: realR, c: realC } = viewToBackend(r_view, c_view);
-
-        const piece = board[realR][realC];
+        const isLake = isLakeCell(realR, realC);
+        const piece = isLake ? null : board[realR][realC];
         const isSelected = selectedSquare?.r === r_view && selectedSquare?.c === c_view;
         const isLastMoveSrc = last_move?.from.r === realR && last_move?.from.c === realC;
         const isLastMoveDst = last_move?.to.r === realR && last_move?.to.c === realC;
-
-        if (!piece) {
-            return (
-                <div
-                    className={`w-full h-full transition-colors ${isSelected ? 'bg-amber-500/20' : 'hover:bg-white/5'
-                        } ${isLastMoveSrc ? 'bg-yellow-500/10' : ''}`}
-                    onClick={() => handleSquareClick(r_view, c_view)}
-                />
-            );
-        }
-
-        const isMine = piece.player === my_idx;
-        const pieceColorClass = piece.player === 0 ? 'bg-red-900 border-red-500' : 'bg-blue-900 border-blue-500';
-
-        const showRank = isMine || piece.rank !== '?';
+        const isDisabled = isObserver || current_player_idx !== my_idx || !!opponentDisconnected || isLake;
+        const squareLabel = `Pole ${r_view + 1}, ${c_view + 1}${isLake ? `, ${t(lang, 'stratego.lake')}, ${t(lang, 'stratego.lake_blocked')}` : piece ? `, ${piece.rank === '?' ? 'ukryta figura' : `figura ${piece.rank}`}` : ', puste'}`;
 
         return (
-            <div
+            <button
+                type="button"
+                className={`stratego-board-cell${isLake ? ' stratego-board-cell--lake' : piece ? ` stratego-board-cell--${piece.player === 0 ? 'red' : 'blue'}` : ' stratego-board-cell--empty'}${isSelected ? ' is-selected' : ''}${isLastMoveSrc ? ' is-last-source' : ''}${isLastMoveDst ? ' is-last-destination' : ''}`}
                 onClick={() => handleSquareClick(r_view, c_view)}
-                className={`
-                    w-[90%] h-[90%] rounded shadow-lg flex items-center justify-center select-none cursor-pointer relative
-                    border ${pieceColorClass}
-                    ${isSelected ? 'ring-2 ring-yellow-400 scale-110 z-10 brightness-110' : ''}
-                    ${isLastMoveDst ? 'ring-2 ring-white' : ''}
-                `}
+                aria-label={squareLabel}
+                disabled={isDisabled}
             >
-                {showRank ? (
+                {piece && (piece.player === my_idx || piece.rank !== '?') ? (
                     <>
                         <img
                             src={getPieceImgSrc(piece.rank, piece.player)}
-                            alt={piece.rank}
-                            className="w-full h-full object-fit rounded-sm flex"
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                (e.target as HTMLImageElement).parentElement!.innerText = PIECE_LABELS[piece.rank] || piece.rank;
+                            alt=""
+                            className="stratego-board-piece"
+                            onError={(event) => {
+                                const image = event.currentTarget;
+                                image.style.display = 'none';
+                                image.parentElement?.classList.add('has-fallback');
+                                if (image.parentElement) image.parentElement.setAttribute('data-fallback', PIECE_LABELS[piece.rank] || piece.rank);
                             }}
                         />
                         {shouldShowRankLabel(piece.rank) && (
-                            <div className="absolute top-0 right-0 bg-black/80 text-white text-[9px] lg:text-[11px] leading-none font-bold px-1 py-0.5 rounded-bl shadow-sm pointer-events-none z-20">
-                                {piece.rank}
-                            </div>
+                            <span className="stratego-board-piece__rank" aria-hidden="true">{piece.rank}</span>
                         )}
                     </>
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-black/20">
-                        <span className="opacity-60 sm:text-sm md:text-lg lg:text-2xl">❔</span>
-                    </div>
-                )}
-            </div>
+                ) : piece ? (
+                    <span className="stratego-board-piece__unknown" aria-hidden="true">?</span>
+                ) : null}
+            </button>
         );
     };
 
     if (stage === 'game_over') {
         return (
-            <div className="flex flex-col items-center justify-center h-full gap-6 animate-in fade-in duration-700">
-                <h2 className="text-5xl text-amber-500 font-bold tracking-widest drop-shadow-lg">{t(lang, 'stratego.game_over_title')}</h2>
-                <div className="text-2xl text-gray-200 bg-black/50 px-8 py-4 rounded-xl border border-amber-900/50">
-                    {t(lang, 'stratego.winner_label')}: <span className="text-white font-bold text-3xl ml-2">{winner?.name}</span>
-                    <p className="text-sm text-gray-400 mt-2 text-center italic">{winner?.reason}</p>
-                </div>
-                <Link href={"/lobby/Stratego"}>
-                    <button
-                        className="px-8 py-3 bg-amber-800 hover:bg-amber-700 text-white font-bold rounded shadow-lg transition-all transform hover:scale-105 cursor-pointer"
-                    >
+            <section className="stratego-result-stage" aria-labelledby="stratego-result-title">
+                <div className="stratego-result-card">
+                    <div className="stratego-result-card__icon" aria-hidden="true"><Flag size={26} strokeWidth={1.8} /></div>
+                    <p className="stratego-kicker">{t(lang, 'games.stratego')} / {t(lang, 'stratego.game_over_title')}</p>
+                    <h2 id="stratego-result-title">{t(lang, 'stratego.game_over_title')}</h2>
+                    <p className="stratego-result-card__winner">
+                        {t(lang, 'stratego.winner_label')}: <strong>{winner?.name || '—'}</strong>
+                    </p>
+                    <p className="stratego-result-card__reason">{winner?.reason || t(lang, 'stratego.game_over_title')}</p>
+                    <Link href="/lobby/Stratego" className="game-runtime-link-button game-runtime-link-button--primary stratego-result-card__action">
                         {t(lang, 'stratego.back_to_lobby')}
-                    </button>
-                </Link>
-            </div>
+                    </Link>
+                </div>
+            </section>
         );
     }
 
     if (stage === 'setup') {
+        if (isObserver) {
+            return (
+                <section className="stratego-state-stage" aria-labelledby="stratego-setup-observer-title">
+                    <div className="stratego-state-card">
+                        <div className="stratego-state-card__icon" aria-hidden="true"><Shield size={26} strokeWidth={1.8} /></div>
+                        <p className="stratego-kicker">{t(lang, 'stratego.setup.observer')}</p>
+                        <h2 id="stratego-setup-observer-title">{t(lang, 'stratego.setup.observer')}</h2>
+                        <p>{t(lang, 'stratego.setup.observer_hint')}</p>
+                    </div>
+                </section>
+            );
+        }
         if (setup_ready?.[my_idx]) {
             return (
-                <div className="flex flex-col items-center justify-center h-full text-amber-100 gap-4">
-                    <div className="text-4xl animate-bounce">⏳</div>
-                    <h2 className="text-2xl font-light tracking-wide">{t(lang, 'stratego.setup.waiting_opponent')}</h2>
-                </div>
+                <section className="stratego-state-stage" aria-labelledby="stratego-setup-ready-title">
+                    <div className="stratego-state-card">
+                        <div className="stratego-state-card__icon is-waiting" aria-hidden="true"><Clock3 size={26} strokeWidth={1.8} /></div>
+                        <p className="stratego-kicker">{t(lang, 'stratego.setup.completed')}</p>
+                        <h2 id="stratego-setup-ready-title">{t(lang, 'stratego.setup.completed')}</h2>
+                        <p>{t(lang, 'stratego.setup.waiting_opponent')}</p>
+                    </div>
+                </section>
             );
         }
 
         const piecesLeft = Object.values(availablePieces).reduce((a, b) => a + b, 0);
+        const sideClass = my_idx === 0 ? 'is-red' : 'is-blue';
 
         return (
-            <div className="flex flex-col h-full w-full p-2 overflow-hidden">
-                <div className="flex-1 flex items-center justify-center min-h-0">
-                    <div
-                        className="grid grid-cols-10 gap-1 p-2 border-2 border-amber-900/50 rounded-lg shadow-2xl"
-                        style={{
-                            backgroundImage: "url('/board.png')",
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'bottom'
-                        }}
-                    >
-                        {setupBoard.map((row, r) => (
-                            row.map((cell, c) => {
-                                const borderColor = my_idx === 0 ? 'border-red-600' : 'border-blue-600';
-                                const isDragOver = dragOverSquare?.r === r && dragOverSquare?.c === c;
+            <section className="game-runtime-game stratego-setup" aria-labelledby="stratego-setup-title">
+                <header className="stratego-stage-header">
+                    <div className="stratego-stage-heading">
+                        <p className="stratego-kicker">{t(lang, 'games.stratego')} / SETUP</p>
+                        <h2 id="stratego-setup-title">{t(lang, 'stratego.setup.title')}</h2>
+                        <p>{t(lang, 'stratego.setup.subtitle')}</p>
+                    </div>
+                    <div className={`stratego-setup-counter ${sideClass}`} aria-live="polite">
+                        <strong>{piecesLeft}<span>/40</span></strong>
+                        <span>{t(lang, 'stratego.setup.remaining')}</span>
+                    </div>
+                </header>
 
+                <div className="stratego-setup-layout">
+                    <section className="stratego-setup-board-panel" aria-labelledby="stratego-setup-board-title">
+                        <div className="stratego-section-heading">
+                            <div>
+                                <p className="stratego-section-kicker">{t(lang, 'stratego.setup.board_label')}</p>
+                                <h3 id="stratego-setup-board-title">{t(lang, 'stratego.setup.mine')}</h3>
+                            </div>
+                            <span className={`stratego-side-badge ${sideClass}`}><span aria-hidden="true" />{t(lang, my_idx === 0 ? 'stratego.red' : 'stratego.blue')}</span>
+                        </div>
+
+                        <div
+                            className="stratego-setup-board"
+                            role="grid"
+                            aria-label={t(lang, 'stratego.setup.board_label')}
+                            style={{ backgroundImage: "url('/stratego/board.webp')" }}
+                        >
+                            {Array.from({ length: 10 }).map((_, boardRow) => {
+                                const setupRow = boardRow - 6;
+                                const row = setupRow >= 0 ? setupBoard[setupRow] : null;
+
+                                return Array.from({ length: 10 }).map((__, c) => {
+                                    const cell = row?.[c] ?? null;
+
+                                    if (setupRow < 0) {
+                                        return <div key={`${boardRow}-${c}`} className="stratego-setup-cell stratego-setup-cell--locked" aria-hidden="true" />;
+                                    }
+
+                                    const isDragOver = dragOverSquare?.r === setupRow && dragOverSquare?.c === c;
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={`${boardRow}-${c}`}
+                                            className={`stratego-setup-cell${isDragOver ? ' is-drag-over' : ''}${cell ? ` ${sideClass}` : ''}`}
+                                            onClick={() => handlePlacePiece(setupRow, c)}
+                                            onKeyDown={(event) => handleSetupCellKeyDown(event, setupRow, c)}
+                                            onDragOver={(event) => handleDragOver(event, setupRow, c)}
+                                            onDragLeave={handleDragLeave}
+                                            onDrop={(event) => handleDrop(event, setupRow, c)}
+                                            aria-label={`Pole ${boardRow + 1}, ${c + 1}${cell ? `, figura ${cell}` : ', puste'}`}
+                                        >
+                                            {cell && (
+                                                <span
+                                                    className={`stratego-setup-piece ${sideClass}`}
+                                                    draggable
+                                                    onDragStart={(event) => handleDragStart(event, cell, true, setupRow, c)}
+                                                    aria-hidden="true"
+                                                >
+                                                    <img src={getPieceImgSrc(cell, my_idx)} alt="" />
+                                                    {shouldShowRankLabel(cell) && <span>{cell}</span>}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                });
+                            })}
+                        </div>
+                    </section>
+
+                    <aside className="stratego-setup-tray" aria-labelledby="stratego-setup-tray-title">
+                        <div className="stratego-section-heading">
+                            <div>
+                                <p className="stratego-section-kicker">{t(lang, 'stratego.setup.inventory_kicker')}</p>
+                                <h3 id="stratego-setup-tray-title">{t(lang, 'stratego.setup.inventory')}</h3>
+                            </div>
+                            <Swords size={20} aria-hidden="true" />
+                        </div>
+
+                        <div className="stratego-piece-inventory">
+                            {Object.entries(SETUP_CONFIG).map(([rank, total]) => {
+                                const left = availablePieces[rank];
+                                const isSelected = selectedPieceToPlace === rank;
                                 return (
-                                    <div
-                                        key={`${r}-${c}`}
-                                        className={`
-                                            w-20 h-20 md:w-25 md:h-25 lg:w-30 lg:h-30 
-                                            border border-gray-800/30
-                                            flex items-center justify-center cursor-pointer 
-                                            transition-colors relative
-                                            ${isDragOver ? 'bg-green-500/30 ring-2 ring-green-500' : 'bg-black/10 hover:bg-white/10'}
-                                        `}
-                                        onClick={() => handlePlacePiece(r, c)}
-                                        onDragOver={(e) => handleDragOver(e, r, c)}
-                                        onDragLeave={handleDragLeave}
-                                        onDrop={(e) => handleDrop(e, r, c)}
+                                    <button
+                                        type="button"
+                                        key={rank}
+                                        className={`stratego-inventory-piece${isSelected ? ' is-selected' : ''}${left === 0 ? ' is-empty' : ''}`}
+                                        draggable={left > 0}
+                                        onDragStart={(event) => handleDragStart(event, rank, false)}
+                                        onClick={() => left > 0 && setSelectedPieceToPlace(rank)}
+                                        aria-pressed={isSelected}
+                                        aria-label={`${rank}, ${left}/${total}`}
+                                        disabled={left === 0}
                                     >
-                                        {cell && (
-                                            <div
-                                                className={`
-                                                    w-[95%] h-[95%] rounded border ${borderColor} flex items-center justify-center shadow-md animate-in zoom-in duration-200 overflow-hidden relative
-                                                    cursor-grab active:cursor-grabbing bg-black/40 backdrop-blur-sm
-                                                `}
-                                                draggable={true}
-                                                onDragStart={(e) => handleDragStart(e, cell, true, r, c)}
-                                            >
-                                                <img
-                                                    src={getPieceImgSrc(cell, my_idx)}
-                                                    alt={cell}
-                                                    className="w-full h-full object-fit pointer-events-none"
-                                                />
-                                                {shouldShowRankLabel(cell) && (
-                                                    <div className="absolute top-0 right-0 bg-black/80 text-white text-[15px] font-bold px-1 rounded-bl shadow-sm pointer-events-none">
-                                                        {cell}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                        <span className="stratego-inventory-piece__image" aria-hidden="true">
+                                            <img src={getPieceImgSrc(rank, my_idx)} alt="" />
+                                            {shouldShowRankLabel(rank) && <span>{rank}</span>}
+                                        </span>
+                                        <span className="stratego-inventory-piece__count">{left}/{total}</span>
+                                    </button>
                                 );
-                            })
-                        ))}
-                    </div>
-                </div>
+                            })}
+                        </div>
 
-                <div className="flex justify-center gap-4 my-3">
-                    <button onClick={handleAutoFill} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs uppercase font-bold tracking-wide transition-colors">Losowo</button>
-                    <button onClick={() => { setSetupBoard(Array(4).fill(null).map(() => Array(10).fill(null))); setAvailablePieces({ ...SETUP_CONFIG }) }} className="px-3 py-1 bg-red-900/40 hover:bg-red-900 rounded text-xs uppercase font-bold tracking-wide transition-colors text-red-200">WYCZYSC</button>
-                    <button
-                        onClick={submitSetup}
-                        disabled={piecesLeft > 0}
-                        className={`px-6 py-1 rounded text-sm font-bold uppercase transition-all shadow-lg
-                            ${piecesLeft > 0
-                                ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                                : 'bg-green-700 hover:bg-green-600 text-white shadow-green-900/50 scale-105'}`}
-                    >
-                        ZATWIERDZ
-                    </button>
+                        <div className="stratego-setup-actions">
+                            <button type="button" onClick={handleAutoFill} className="game-runtime-button">
+                                <Shuffle size={16} aria-hidden="true" />
+                                {t(lang, 'stratego.setup.random')}
+                            </button>
+                            <button type="button" onClick={() => { setSetupBoard(Array(4).fill(null).map(() => Array(10).fill(null))); setAvailablePieces({ ...SETUP_CONFIG }); setSelectedPieceToPlace(null); }} className="game-runtime-button game-runtime-button--danger">
+                                <Trash2 size={16} aria-hidden="true" />
+                                {t(lang, 'stratego.setup.clear')}
+                            </button>
+                            <button type="button" onClick={submitSetup} disabled={piecesLeft > 0} className="game-runtime-button game-runtime-button--primary stratego-setup-confirm">
+                                <Check size={17} aria-hidden="true" />
+                                {t(lang, 'stratego.setup.confirm')}
+                            </button>
+                        </div>
+                    </aside>
                 </div>
-
-                <div className="h-35 overflow-y-auto bg-black/40 rounded-t-xl border-t border-amber-900/30 p-2 custom-scrollbar">
-                    <div className="flex flex-wrap gap-2 justify-center">
-                        {Object.entries(SETUP_CONFIG).map(([rank, total]) => {
-                            const left = availablePieces[rank];
-                            const isSelected = selectedPieceToPlace === rank;
-
-                            return (
-                                <div
-                                    key={rank}
-                                    draggable={left > 0}
-                                    onDragStart={(e) => handleDragStart(e, rank, false)}
-                                    onClick={() => left > 0 && setSelectedPieceToPlace(rank)}
-                                    className={`
-                                        flex flex-col items-center p-1 rounded border transition-all select-none
-                                        ${isSelected ? 'bg-amber-900/60 border-amber-500 scale-105 ring-1 ring-amber-500' : 'bg-black/40 border-gray-700'}
-                                        ${left === 0 ? 'opacity-30 grayscale cursor-default' : 'hover:border-gray-500 cursor-grab active:cursor-grabbing'}
-                                    `}
-                                >
-                                    <div className="w-15 h-15 md:w-20 md:h-20 flex items-center justify-center relative pointer-events-none">
-                                        <img
-                                            src={getPieceImgSrc(rank, my_idx)}
-                                            alt={rank}
-                                            className="w-full h-full object-fit drop-shadow-md"
-                                        />
-                                        {shouldShowRankLabel(rank) && (
-                                            <div className="absolute top-0 right-0 bg-black/80 text-white text-[12px] font-bold px-1 rounded-bl">
-                                                {rank}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className={`text-md mt-1 ${left === 0 ? 'text-red-500' : 'text-gray-400'}`}>{left}/{total}</span>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            </div>
+            </section>
         );
     }
 
-    const isMyTurn = current_player_idx === my_idx;
-    const opponentIdx = 1 - my_idx;
-    const opponentSeat = seats[opponentIdx];
+    const strategoParticipants: PlayerTileModel[] = seats.flatMap((player, index) => {
+        if (!player) return [];
+        const isSelf = String(player.userId) === String(myId);
+        const isActive = current_player_idx === index;
+        return [{
+            id: String(player.userId || player.socketId || `stratego-seat-${index}`),
+            displayName: player.name || t(lang, 'multiplayer.empty_seat'),
+            avatarUrl: player.avatarUrl ?? player.avatar_url ?? (String(player.userId).startsWith('guest_') ? null : `/api/profile/avatar/${encodeURIComponent(String(player.userId))}`),
+            isSelf,
+            selfLabel: t(lang, 'stratego.waiting_room.you'),
+            role: 'player' as const,
+            team: { id: String(index), label: t(lang, index === 0 ? 'stratego.red' : 'stratego.blue') },
+            connection: player.connected === false ? 'disconnected' as const : 'connected' as const,
+            activity: isActive ? 'active' as const : 'playing' as const,
+            activityLabel: isActive ? t(lang, 'stratego.your_turn') : t(lang, 'stratego.opponent_turn'),
+            metric: { label: t(lang, 'stratego.your_turn'), value: isActive ? t(lang, 'common.yes') : t(lang, 'common.no') },
+            outcome: stage === 'game_over' ? (winner && String(winner.userId ?? winner.name) === String(player.userId ?? player.name) ? 'won' as const : 'finished' as const) : undefined,
+        }];
+    });
 
-    let combatResultText = "";
-    let combatResultColor = "";
+    let combatResultText = '';
+    let combatResultTone = 'is-draw';
 
     if (last_move?.combat) {
         const combat = last_move.combat;
         const amIAttacker = combat.attacker.player === my_idx;
-        const result = combat.result;
+        const isViewerWinner = my_idx === -1
+            ? false
+            : (amIAttacker && combat.result === 'win') || (!amIAttacker && combat.result === 'loss');
 
-        if (result === 'draw') {
+        if (combat.result === 'draw') {
             combatResultText = t(lang, 'stratego.draw_result');
-            combatResultColor = "text-gray-400";
-        } else if (amIAttacker) {
-            if (result === 'win') {
-                combatResultText = t(lang, 'stratego.win_result');
-                combatResultColor = "text-green-400";
-            } else {
-                combatResultText = t(lang, 'stratego.lose_result');
-                combatResultColor = "text-red-400";
-            }
         } else {
-            if (result === 'win') {
-                combatResultText = t(lang, 'stratego.lose_result');
-                combatResultColor = "text-red-400";
-            } else {
-                combatResultText = t(lang, 'stratego.win_result');
-                combatResultColor = "text-green-400";
-            }
+            combatResultText = isViewerWinner ? t(lang, 'stratego.win_result') : t(lang, 'stratego.lose_result');
+            combatResultTone = isViewerWinner ? 'is-win' : 'is-loss';
         }
     }
 
     return (
-        <div className="relative flex flex-col items-center h-full w-full justify-center">
+        <section className="game-runtime-game game-runtime-stratego stratego-match" aria-label={t(lang, 'games.stratego')}>
+            <div className="stratego-match-layout">
+                <section className="stratego-board-column" aria-label={t(lang, 'stratego.setup.board_label')}>
+                    <ParticipantZone
+                        participants={strategoParticipants}
+                        title={t(lang, 'multiplayer.participants')}
+                        layout="stack"
+                        variant={isObserver ? 'observer' : 'active'}
+                        className="stratego-player-zone"
+                    />
 
-            <div className="mb-4 flex flex-col items-center gap-2 z-10">
-                <div className={`
-                    px-6 py-2 rounded-full text-sm uppercase font-bold border shadow-xl transition-all duration-500
-                    ${isMyTurn
-                        ? 'bg-linear-to-r from-green-900 to-green-800 text-green-100 border-green-500 scale-105'
-                        : 'bg-gray-900 text-gray-500 border-gray-700'}
-                `}>
-                    {isMyTurn ? t(lang, 'stratego.your_turn') : t(lang, 'stratego.opponent_turn')}
-                </div>
-            </div>
-
-            {last_move?.combat && (
-                <div className="absolute right-4 top-24 z-50 flex flex-col items-end gap-2 animate-in slide-in-from-right fade-in duration-500">
-                    <div className="bg-black/80 backdrop-blur-md px-4 py-3 rounded-xl border border-amber-900/50 shadow-2xl flex flex-col items-center gap-2 max-w-[200px]">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest border-b border-gray-700 w-full text-center pb-1 mb-1">{t(lang, 'stratego.combat_result_title')}</span>
-
-                        <div className="flex items-center gap-2">
-                            <div className="flex flex-col items-center">
-                                <img src={getPieceImgSrc(last_move.combat.attacker.rank, last_move.combat.attacker.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(255,0,0,0.5)]" />
-                                <span className="text-[10px] text-gray-500 mt-1">ATAK</span>
-                            </div>
-                            <span className="text-gray-400 font-bold">vs</span>
-                            <div className="flex flex-col items-center">
-                                <img src={getPieceImgSrc(last_move.combat.defender.rank, last_move.combat.defender.player)} className="h-10 w-10 object-fit drop-shadow-[0_0_5px_rgba(0,0,255,0.5)]" />
-                                <span className="text-[10px] text-gray-500 mt-1">OBRONA</span>
-                            </div>
+                    <div className="game-runtime-board-surface stratego-board-frame">
+                        <div
+                            className="stratego-game-board"
+                            role="grid"
+                            aria-label={t(lang, 'stratego.setup.board_label')}
+                            style={{ backgroundImage: "url('/stratego/board.webp')" }}
+                        >
+                            {Array.from({ length: 10 }).map((_, r) => Array.from({ length: 10 }).map((__, c) => (
+                                <div key={`${r}-${c}`} className="stratego-board-cell-shell" role="gridcell">
+                                    {renderGameCell(r, c)}
+                                </div>
+                            )))}
                         </div>
-
-                        <div className={`text-sm font-bold uppercase tracking-wide mt-1 ${combatResultColor}`}>{combatResultText}</div>
                     </div>
-                </div>
-            )}
 
-            <div className="relative p-3 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-[#4a3525]">
-                <div
-                    className="grid grid-cols-10 grid-rows-10 gap-0 border-2 border-[#1a120b]"
-                    style={{
-                        width: 'min(100vw, 80vh)',
-                        height: 'min(100vw, 80vh)',
-                        backgroundImage: "url('/stratego/board.webp')",
-                        backgroundSize: '100% 100%'
-                    }}
-                >
-                    {Array.from({ length: 10 }).map((_, r) => (
-                        Array.from({ length: 10 }).map((_, c) => (
-                            <div key={`${r}-${c}`} className="relative border border-white/5 flex items-center justify-center">
-                                {renderGameCell(r, c)}
+                    {last_move?.combat && (
+                        <aside className="stratego-combat-card" aria-live="polite">
+                            <div className="stratego-combat-card__header">
+                                <span className="stratego-section-kicker">{t(lang, 'stratego.combat_result_title')}</span>
+                                <Swords size={16} aria-hidden="true" />
                             </div>
-                        ))
-                    ))}
-                </div>
+                            <div className="stratego-combat-card__pieces">
+                                <div>
+                                    <img src={getPieceImgSrc(last_move.combat.attacker.rank, last_move.combat.attacker.player)} alt="" />
+                                    <span>{t(lang, 'stratego.attacker')}</span>
+                                </div>
+                                <strong aria-hidden="true">VS</strong>
+                                <div>
+                                    <img src={getPieceImgSrc(last_move.combat.defender.rank, last_move.combat.defender.player)} alt="" />
+                                    <span>{t(lang, 'stratego.defender')}</span>
+                                </div>
+                            </div>
+                            <strong className={`stratego-combat-card__result ${combatResultTone}`}>{combatResultText}</strong>
+                        </aside>
+                    )}
+                </section>
             </div>
-
-            <div className="mt-6 flex gap-12 text-xs font-mono tracking-widest text-gray-500 opacity-80 h-14 items-center">
-                <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${my_idx === 0 ? 'bg-red-600 shadow-[0_0_10px_red]' : 'bg-blue-600 shadow-[0_0_10px_blue]'}`}></div>
-                    TY ({seats[my_idx]?.name})
-                </div>
-
-                <div className="relative flex items-center gap-2 min-w-[140px] h-full justify-center">
-                    <div className={`w-3 h-3 rounded-full ${my_idx === 0 ? 'bg-blue-600' : 'bg-red-600'}`}></div>
-                    WRÓG ({opponentSeat?.name})
-                </div>
-            </div>
-        </div>
+        </section>
     );
 }

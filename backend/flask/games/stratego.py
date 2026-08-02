@@ -3,9 +3,9 @@ import time
 from typing import List, Dict, Any, Optional
 from .base import MultiplayerGame
 
-# Importy potrzebne do obsługi bazy danych
-from models import db, User, GameStats
 from flask import current_app
+from models import db
+from utils import record_multiplayer_result
 
 
 class Stratego(MultiplayerGame):
@@ -47,10 +47,6 @@ class Stratego(MultiplayerGame):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
 
-                if not is_connected and self.game_state['stage'] == 'waiting_for_players':
-                    self.seats[i] = None
-                    return True
-
                 if is_connected and sid:
                     seat['socketId'] = sid
                     seat['disconnect_timestamp'] = None
@@ -68,13 +64,13 @@ class Stratego(MultiplayerGame):
 
     def sit_player(self, player_id: str, player_name: str, seat_index: int, user_token: str) -> Dict[str, Any]:
         if not (0 <= seat_index < 2):
-            return {"success": False, "msg": "Nieprawidłowe miejsce."}
+            return {"success": False, "msg": "Nieprawidlowe miejsce."}
         if self.seats[seat_index] is not None:
-            return {"success": False, "msg": "Miejsce zajęte."}
+            return {"success": False, "msg": "Miejsce zajete."}
 
         for s in self.seats:
             if s and s.get('userId') == user_token:
-                return {"success": False, "msg": "Już siedzisz."}
+                return {"success": False, "msg": "Juz siedzisz."}
 
         self.seats[seat_index] = {
             "socketId": player_id,
@@ -85,9 +81,6 @@ class Stratego(MultiplayerGame):
             "disconnect_timestamp": None
         }
 
-        if all(s is not None for s in self.seats) and self.game_state['stage'] == 'waiting_for_players':
-            self.game_state['stage'] = 'setup'
-
         return {"success": True}
 
     def start_game(self) -> Dict[str, Any]:
@@ -97,8 +90,10 @@ class Stratego(MultiplayerGame):
         return {"success": False, "msg": "Czekamy na graczy."}
 
     def handle_move(self, player_id: str, move_data: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(move_data, dict):
+            return {"success": False, "msg": "Nieprawidlowy ruch."}
         player_idx = self._get_player_idx(player_id)
-        if player_idx == -1: return {"success": False, "msg": "Nie jesteś graczem."}
+        if player_idx == -1: return {"success": False, "msg": "Nie jestes graczem."}
         move_type = move_data.get('type')
 
         if self.game_state['stage'] == 'setup':
@@ -106,48 +101,68 @@ class Stratego(MultiplayerGame):
         elif self.game_state['stage'] == 'playing':
             if move_type == 'move': return self._handle_game_move(player_idx, move_data)
 
-        return {"success": False, "msg": "Nieprawidłowy ruch."}
+        return {"success": False, "msg": "Nieprawidlowy ruch."}
 
     def _handle_setup_submit(self, player_idx: int, pieces: List[Dict]) -> Dict[str, Any]:
-        if self.game_state['setup_ready'][player_idx]: return {"success": False, "msg": "Już zatwierdziłeś."}
+        if self.game_state['setup_ready'][player_idx]:
+            return {"success": False, "msg": "Juz zatwierdziles."}
+        if not isinstance(pieces, list) or len(pieces) != 40:
+            count = len(pieces) if isinstance(pieces, list) else 0
+            return {"success": False, "msg": f"Musisz ustawic 40 (masz {count})."}
 
-        valid_rows = range(0, 4) if player_idx == 0 else range(6, 10)
-        piece_counts = {k: 0 for k in self.SETUP_COUNTS.keys()}
+        valid_rows = set(range(0, 4) if player_idx == 0 else range(6, 10))
+        piece_counts = {rank: 0 for rank in self.SETUP_COUNTS}
+        proposed = {}
 
-        if len(pieces) != 40: return {"success": False, "msg": f"Musisz ustawić 40 (masz {len(pieces)})."}
+        for piece in pieces:
+            if not isinstance(piece, dict):
+                return {"success": False, "msg": "Nieprawidlowa figura."}
+            r, c, rank = piece.get('r'), piece.get('c'), piece.get('rank')
+            if isinstance(r, bool) or isinstance(c, bool) or not isinstance(r, int) or not isinstance(c, int):
+                return {"success": False, "msg": "Nieprawidlowe pole."}
+            if r not in valid_rows or not (0 <= c < 10):
+                return {"success": False, "msg": "Figura jest poza strefa."}
+            if rank not in piece_counts:
+                return {"success": False, "msg": f"Nieznana figura {rank}."}
+            if (r, c) in proposed:
+                return {"success": False, "msg": "Dwie figury zajmuja to samo pole."}
+            proposed[(r, c)] = {'player': player_idx, 'rank': rank, 'revealed': False}
+            piece_counts[rank] += 1
+
+        for rank, count in piece_counts.items():
+            if count != self.SETUP_COUNTS[rank]:
+                return {"success": False, "msg": f"Nieprawidlowa liczba figur {rank}."}
 
         for r in valid_rows:
             for c in range(10):
-                if self.board[r][c] and self.board[r][c]['player'] == player_idx: self.board[r][c] = None
-
-        for p in pieces:
-            r, c = p['r'], p['c']
-            rank = p['rank']
-            if r not in valid_rows: return {"success": False, "msg": "Poza strefą."}
-            if not (0 <= c < 10): return {"success": False, "msg": "Poza planszą."}
-            if rank not in piece_counts: return {"success": False, "msg": f"Nieznany {rank}."}
-            if self.board[r][c]: return {"success": False, "msg": "Pole zajęte."}
-            piece_counts[rank] += 1
-            self.board[r][c] = {'player': player_idx, 'rank': rank, 'revealed': False}
-
-        for r, c in piece_counts.items():
-            if c != self.SETUP_COUNTS[r]: return {"success": False, "msg": f"Zła liczba {r}."}
+                if self.board[r][c] and self.board[r][c].get('player') == player_idx:
+                    self.board[r][c] = None
+        for position, piece in proposed.items():
+            self.board[position[0]][position[1]] = piece
 
         self.game_state['setup_ready'][player_idx] = True
         if all(self.game_state['setup_ready']):
             self.game_state['stage'] = 'playing'
             self.game_state['current_player_idx'] = 0
-
         return {"success": True}
 
     def _handle_game_move(self, player_idx: int, move_data: Dict) -> Dict[str, Any]:
         if player_idx != self.game_state['current_player_idx']: return {"success": False, "msg": "Nie Twoja tura."}
         start, end = move_data.get('from'), move_data.get('to')
-        r1, c1 = start['r'], start['c']
-        r2, c2 = end['r'], end['c']
+        if not isinstance(start, dict) or not isinstance(end, dict):
+            return {"success": False, "msg": "Nieprawidlowe pole ruchu."}
+        r1, c1 = start.get('r'), start.get('c')
+        r2, c2 = end.get('r'), end.get('c')
+        coords = (r1, c1, r2, c2)
+        if any(isinstance(value, bool) or not isinstance(value, int) for value in coords):
+            return {"success": False, "msg": "Nieprawidlowe pole ruchu."}
+        if not all(0 <= value < 10 for value in coords):
+            return {"success": False, "msg": "Nieprawidlowe pole ruchu."}
+        if (r1, c1) == (r2, c2):
+            return {"success": False, "msg": "Wybierz inne pole."}
         piece = self.board[r1][c1]
 
-        if not piece or piece['player'] != player_idx: return {"success": False, "msg": "To nie Twój pionek."}
+        if not piece or piece['player'] != player_idx: return {"success": False, "msg": "To nie Twoj pionek."}
         if piece['rank'] in ['F', 'B']: return {"success": False, "msg": "Stacjonarna."}
         if (r2, c2) in self.LAKES: return {"success": False, "msg": "Jezioro."}
 
@@ -166,7 +181,7 @@ class Stratego(MultiplayerGame):
             return {"success": False, "msg": "Za daleko."}
 
         target = self.board[r2][c2]
-        if target and target['player'] == player_idx: return {"success": False, "msg": "Zajęte przez Ciebie."}
+        if target and target['player'] == player_idx: return {"success": False, "msg": "Zajete przez Ciebie."}
 
         combat_info = None
         if target:
@@ -190,7 +205,7 @@ class Stratego(MultiplayerGame):
             self.board[r1][c1] = None
 
         self.game_state['last_move'] = {'combat': combat_info, 'from': start, 'to': end}
-        if not self._player_has_moves(1 - player_idx): self._end_game(player_idx, "Brak ruchów przeciwnika")
+        if not self._player_has_moves(1 - player_idx): self._end_game(player_idx, "Brak ruchow przeciwnika")
 
         if self.game_state['stage'] == 'playing':
             self.game_state['current_player_idx'] = 1 - self.game_state['current_player_idx']
@@ -220,24 +235,11 @@ class Stratego(MultiplayerGame):
 
     def _record_win(self, winner_idx: int) -> None:
         try:
-            winner_seat = self.seats[winner_idx]
-            if not winner_seat: return
-            winner_name = winner_seat.get('name')
-            if not winner_name: return
-
+            record_multiplayer_result('Stratego', self.seats, [winner_idx])
+        except Exception as error:
+            db.session.rollback()
             if current_app:
-                with current_app.app_context():
-                    user = User.query.filter_by(username=winner_name).first()
-                    if user:
-                        stat = GameStats.query.filter_by(user_id=user.id, game_name='Stratego').first()
-                        if not stat:
-                            stat = GameStats(user_id=user.id, game_name='Stratego', wins=1)
-                            db.session.add(stat)
-                        else:
-                            stat.wins += 1
-                        db.session.commit()
-        except Exception as e:
-            print(f"Error saving Stratego stats: {e}")
+                current_app.logger.exception("Error saving Stratego stats", exc_info=error)
 
     def _get_player_idx(self, sid):
         for i, s in enumerate(self.seats):
@@ -248,6 +250,15 @@ class Stratego(MultiplayerGame):
         for i, s in enumerate(self.seats):
             if s and s.get('userId') == user_token: return i
         return -1
+
+    def forfeit_player(self, user_token: str, reason: str = "resign") -> Dict[str, Any]:
+        if self.game_state.get('stage') in {'waiting_for_players', 'game_over'}:
+            return {'success': False, 'msg': 'Gra nie jest aktywna.'}
+        loser_idx = self._get_player_idx_by_token(user_token)
+        if loser_idx == -1:
+            return {'success': False, 'msg': 'Gracz nie siedzi przy stole.'}
+        self._end_game(1 - loser_idx, 'Poddanie' if reason == 'resign' else 'Rozlaczenie')
+        return {'success': True}
 
     def get_state(self):
         return {
@@ -277,9 +288,10 @@ class Stratego(MultiplayerGame):
                 p = self.board[r][c]
                 if p:
                     pc = p.copy()
-                    if state['stage'] != 'game_over':
-                        if pid != -1 and p['player'] != pid and not p['revealed']: pc['rank'] = '?'
-                        if pid == -1 and not p['revealed']: pc['rank'] = '?'
+                    if pid != -1 and state['stage'] != 'game_over' and p['player'] != pid and not p['revealed']:
+                        pc['rank'] = '?'
+                    if pid == -1 and not p['revealed']:
+                        pc['rank'] = '?'
                     masked[r][c] = pc
         state['board'] = masked
         state['my_idx'] = pid

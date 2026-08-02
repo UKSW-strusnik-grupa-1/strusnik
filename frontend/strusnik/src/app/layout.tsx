@@ -5,12 +5,16 @@ import { SocketProvider } from "./context/SocketContext";
 import { UserProvider } from "./context/UserContext";
 import InvitationModal from "./components/lobby/invitationModal";
 import { LangProvider } from "./lang";
+import { MotionProvider } from "./motion";
 import TopRightToggles from "./components/TopRightToggles";
 import { NotificationProvider } from "./context/NotificationsContext";
+import PageTransition from "./components/PageTransition";
 
 const Perciles = localFont({
   src: "./fonts/Perciles.ttf",
   variable: "--font-perciles",
+  display: "swap",
+  fallback: ["Poppins", "Segoe UI", "system-ui", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -27,36 +31,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-(() => {
-  try {
-    const saved = localStorage.getItem("theme");
-    const theme = (saved === "light" || saved === "dark") ? saved : "dark";
-    document.documentElement.dataset.theme = theme;
-  } catch (e) {}
-})();
-            `.trim(),
-          }}
-        />
       </head>
 
       <body className="antialiased font-sans">
+        <a className="skip-link" href="#main-content">Przejdz do tresci</a>
         <LangProvider>
-          <NotificationProvider>
-            <UserProvider>
-              <SocketProvider>
-                <TopRightToggles />
-                <InvitationModal />
-                {children}
-              </SocketProvider>
-            </UserProvider>
-          </NotificationProvider>
+          <MotionProvider>
+            <NotificationProvider>
+              <UserProvider>
+                <SocketProvider>
+                  <TopRightToggles />
+                  <InvitationModal />
+                  <PageTransition>{children}</PageTransition>
+                </SocketProvider>
+              </UserProvider>
+            </NotificationProvider>
+          </MotionProvider>
         </LangProvider>
       </body>
     </html>

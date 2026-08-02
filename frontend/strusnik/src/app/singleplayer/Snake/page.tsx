@@ -2,9 +2,10 @@
 
 import ReturnArrow from "@/app/components/lobby/returnArrow";
 import { useSnake } from "@/app/hooks/useSnake";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import { useNotification } from "@/app/context/NotificationsContext";
 
 type BoardMetrics = {
   cell: number;
@@ -101,14 +102,36 @@ const SNAKE_SPRITES = {
 } as const;
 
 export default function SnakePage() {
-  const { BOARD_SIZE, snake, food, gameStatus, score, isSubmittingScore, startGame, resetGame, enqueueDirection } = useSnake();
+  const { BOARD_SIZE, snake, food, gameStatus, score, isSubmittingScore, startGame, enqueueDirection } = useSnake();
   const { lang } = useLang();
+  const { notify } = useNotification();
+  const previousStatusRef = useRef(gameStatus);
+
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+
+    if (gameStatus === "STARTED") {
+      notify(
+        t(lang, previousStatus === "FINISHED" ? "snake.notifications.restarted" : "snake.notifications.started"),
+        "info",
+      );
+    }
+
+    if (gameStatus === "FINISHED" && previousStatus === "STARTED") {
+      notify(
+        t(lang, "snake.notifications.finished").replace("{score}", String(score)),
+        "warning",
+      );
+    }
+
+    previousStatusRef.current = gameStatus;
+  }, [gameStatus, lang, notify, score]);
 
   const isSnakeCell = (x: number, y: number) => snake.some((seg) => seg.x === x && seg.y === y);
   const isFoodCell = (x: number, y: number) => food.x === x && food.y === y;
 
   const plankClass =
-    "w-full h-16 bg-no-repeat bg-center bg-cover flex items-center justify-center text-white font-extrabold tracking-wide drop-shadow-[0_2px_2px_rgba(0,0,0,0.75)]";
+    "game-runtime-asset-button w-full h-16 bg-no-repeat bg-center bg-cover flex items-center justify-center text-white font-extrabold tracking-wide";
 
   const boardRef = useRef<HTMLDivElement | null>(null);
   const metrics = useSnappedBoard(boardRef, BOARD_SIZE, BOARD_IMG, GRID_RECT);
@@ -148,15 +171,15 @@ export default function SnakePage() {
     return { src: SNAKE_SPRITES.turn, rot };
   };
 
-  const btnClass = "w-16 h-16 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl flex items-center justify-center text-2xl active:bg-white/30 transition-all select-none touch-manipulation";
+  const btnClass = "game-runtime-button w-16 h-16 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-xl flex items-center justify-center text-2xl select-none touch-manipulation";
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="game-runtime-shell game-runtime-shell--singleplayer overflow-hidden">
       <div className="absolute w-full h-screen flex flex-col overflow-visible">
         <ReturnArrow href="/singleplayer" text={t(lang, "arrow")} />
       </div>
 
-      <div className="relative z-10 w-full h-full flex items-center justify-center">
+      <div className="game-runtime-game relative z-10 w-full h-full">
         <div className="flex flex-col items-center gap-4 w-[min(680px,92vw)]">
           <div className={plankClass} style={{ backgroundImage: "url('/main/button.png')" }}>
             <span className="text-lg">
@@ -167,7 +190,7 @@ export default function SnakePage() {
 
           <div
             ref={boardRef}
-            className="relative aspect-square w-[min(680px,92vw,calc(100vh-260px))] bg-no-repeat bg-center bg-contain"
+            className="game-runtime-board-surface relative aspect-square w-[min(680px,92vw,calc(100vh-260px))] bg-no-repeat bg-center bg-contain"
             style={{ backgroundImage: "url('/snake/board.png')" }}
           >
             {metrics && (

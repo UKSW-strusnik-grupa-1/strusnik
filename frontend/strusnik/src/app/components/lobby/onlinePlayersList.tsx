@@ -1,163 +1,220 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react";
-import { UserPlus, Check, Users, X } from "lucide-react";
+import { Check, ChevronDown, UserPlus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useSocket } from "@/app/hooks/useSocket";
 import { useUser } from "@/app/hooks/useUser";
+import { t } from "@/app/i18n";
+import { useLang } from "@/app/lang";
+import ProfileAvatar from "@/app/components/profile/ProfileAvatar";
 
 interface OnlinePlayer {
-    userId: string;
-    username: string;
-    status: 'available' | 'in_lobby' | 'in_game';
+  userId: string;
+  username: string;
+  hasAvatar?: boolean;
+  status: "available" | "in_lobby" | "in_game";
+  isGuest?: boolean;
 }
 
 interface OnlinePlayersListProps {
-    inviteMode?: boolean;
-    currentRoomId?: string;
-    collapsible?: boolean;
+  inviteMode?: boolean;
+  currentRoomId?: string;
+  placement?: "bottom" | "top" | "lobby";
 }
 
-export default function OnlinePlayersList({ inviteMode = false, currentRoomId, collapsible = false }: OnlinePlayersListProps) {
-    const { socket, isConnected } = useSocket();
-    const { userInfo } = useUser();
+export default function OnlinePlayersList({
+  inviteMode = false,
+  currentRoomId,
+  placement = "bottom",
+}: OnlinePlayersListProps) {
+  const { socket, isConnected } = useSocket();
+  const { userInfo } = useUser();
+  const { lang } = useLang();
+  const [players, setPlayers] = useState<OnlinePlayer[]>([]);
+  const [invitedPlayers, setInvitedPlayers] = useState<Set<string>>(new Set());
+  const isCompact = inviteMode && placement !== "lobby";
+  const [isOpen, setIsOpen] = useState(!isCompact);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
-    const [players, setPlayers] = useState<OnlinePlayer[]>([]);
-    const [invitedPlayers, setInvitedPlayers] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!socket || !isConnected) return;
 
-    const [isOpen, setIsOpen] = useState(!collapsible);
+    socket.emit("get_online_players");
 
-    useEffect(() => {
-        if (!socket || !isConnected) return;
+    const handlePlayersUpdate = (data: OnlinePlayer[]) => setPlayers(data);
+    socket.on("online_players_update", handlePlayersUpdate);
 
-        socket.emit("get_online_players");
+    return () => {
+      socket.off("online_players_update", handlePlayersUpdate);
+    };
+  }, [socket, isConnected]);
 
-        socket.on("online_players_update", (data: OnlinePlayer[]) => {
-            setPlayers(data);
-        });
+  useEffect(() => {
+    if (!isCompact || !isOpen) return;
 
-        return () => {
-            socket.off("online_players_update");
-        };
-    }, [socket, isConnected]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
 
-    const handleInvite = (targetUserId: string) => {
-        if (!socket) return;
-        console.log("SENDING INVITE TO:", targetUserId);
-        socket.emit('send_invite', { targetUserId });
-
-        setInvitedPlayers(prev => new Set(prev).add(targetUserId));
-        setTimeout(() => {
-            setInvitedPlayers(prev => {
-                const next = new Set(prev);
-                next.delete(targetUserId);
-                return next;
-            });
-        }, 5000);
+      event.preventDefault();
+      setIsOpen(false);
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'in_game': return "bg-red-500 shadow-red-500/50";
-            case 'in_lobby': return "bg-yellow-400 shadow-yellow-400/50";
-            case 'available':
-            default: return "bg-green-400 shadow-green-400/50";
-        }
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      setIsOpen(false);
     };
 
-    if (!userInfo) return null;
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
 
-    if (collapsible && !isOpen) {
-        return (
-            <button
-                onClick={() => setIsOpen(true)}
-                className="fixed sm:absolute top-14 sm:top-4 right-3 sm:right-4 md:right-20 lg:right-40 z-50 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:scale-110 group cursor-pointer touch-target"
-                title="pokaz graczy online"
-            >
-                <Users className="text-white" size={20} />
-                <span className="absolute -bottom-1 -right-1 bg-red-600 text-white text-[9px] sm:text-[10px] font-bold w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full border border-black">
-                    {players.length}
-                </span>
-            </button>
-        );
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isCompact, isOpen]);
+
+  const handleInvite = (targetUserId: string) => {
+    if (!socket) return;
+
+    socket.emit("send_invite", { targetUserId });
+    setInvitedPlayers((current) => new Set(current).add(targetUserId));
+
+    window.setTimeout(() => {
+      setInvitedPlayers((current) => {
+        const next = new Set(current);
+        next.delete(targetUserId);
+        return next;
+      });
+    }, 5000);
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "in_game":
+        return t(lang, "lobby.status_in_game");
+      case "in_lobby":
+        return t(lang, "lobby.status_in_lobby");
+      default:
+        return t(lang, "lobby.status_available");
     }
+  };
 
-    const positionClasses = collapsible
-        ? "fixed sm:absolute top-14 sm:top-4 right-3 sm:right-4 md:right-20 lg:right-40 h-[50vh] sm:h-[60vh]"
-        : "fixed sm:absolute top-14 sm:top-4 left-3 sm:left-4 xl:left-10 h-[45vh] sm:h-[50vh] xl:h-[65vh]";
+  if (!userInfo) return null;
 
-    return (
-        <div className={`
-            z-50 flex flex-col 
-            w-[calc(100vw-1.5rem)] sm:w-64 xl:w-72 
-            bg-black/80 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl p-3 sm:p-4
-            transition-all duration-300 animate-in fade-in zoom-in-95
-            ${positionClasses}
-        `}>
-            <div className="flex items-center justify-between border-b border-white/20 pb-2 mb-2">
-                <h3 className="text-base sm:text-lg font-bold text-white flex gap-2 items-center">
-                    {inviteMode ? "Invite players" : "Online"}
-                    <span className="text-xs sm:text-sm font-normal text-gray-400">({players.length})</span>
-                </h3>
+  const placementClass = `online-players-panel--${placement}`;
+  const title = inviteMode ? t(lang, "lobby.invite_title") : t(lang, "lobby.players_title");
+  const panelId = `online-players-panel-${placement}`;
+  const titleId = `online-players-title-${placement}`;
 
-                {collapsible && (
-                    <button
-                        onClick={() => setIsOpen(false)}
-                        className="p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-                    >
-                        <X size={20} className="text-gray-400 hover:text-white" />
-                    </button>
-                )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                {players.length === 0 ? (
-                    <p className="text-gray-400 text-center text-sm italic mt-10">-</p>
-                ) : (
-                    players.map((player) => {
-                        const isMe = String(player.userId) === String(userInfo.userId);
-                        const canInvite = inviteMode && !isMe && player.status === 'available';
-                        const wasInvited = invitedPlayers.has(player.userId);
-
-                        return (
-                            <div
-                                key={player.userId}
-                                className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${isMe
-                                    ? "bg-blue-600/30 border border-blue-400/30"
-                                    : "hover:bg-white/10"
-                                    }`}
-                            >
-                                <div
-                                    className={`shrink-0 w-2.5 h-2.5 rounded-full shadow-[0_0_8px] ${getStatusColor(player.status)}`}
-                                />
-
-                                <div className="flex flex-col overflow-hidden">
-                                    <span className="font-medium truncate text-sm text-gray-200">
-                                        {player.username}
-                                    </span>
-                                </div>
-
-                                {isMe && (
-                                    <span className="text-xs text-blue-200 ml-auto whitespace-nowrap">(Ty)</span>
-                                )}
-
-                                {canInvite && (
-                                    <button
-                                        onClick={() => handleInvite(player.userId)}
-                                        disabled={wasInvited}
-                                        className={`ml-auto p-1.5 rounded-full transition-all cursor-pointer ${wasInvited
-                                            ? "bg-green-500/20 text-green-400 cursor-default"
-                                            : "bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-white"
-                                            }`}
-                                        title="Invite"
-                                    >
-                                        {wasInvited ? <Check size={16} /> : <UserPlus size={16} />}
-                                    </button>
-                                )}
-                            </div>
-                        );
-                    })
-                )}
-            </div>
+  const panel = (
+    <section
+      ref={isCompact ? panelRef : undefined}
+      id={panelId}
+      data-current-room-id={currentRoomId}
+      className={`online-players-panel ${placementClass}${isCompact ? " online-players-panel--popover" : ""}`}
+      aria-labelledby={titleId}
+    >
+      <header className="online-players-header">
+        <div>
+          <h2 id={titleId}>{title}</h2>
         </div>
-    );
+        <div className="online-players-header-actions">
+          <span className="online-players-count">{players.length}</span>
+          {isCompact && (
+            <button
+              type="button"
+              className="online-players-close"
+              onClick={() => {
+                setIsOpen(false);
+                window.requestAnimationFrame(() => triggerRef.current?.focus());
+              }}
+              aria-label={t(lang, "lobby.players_close")}
+            >
+              <X size={17} strokeWidth={2} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </header>
+
+      <div className="online-players-list" role="list" aria-label={title}>
+        {players.length === 0 ? (
+          <p className="online-players-empty">{t(lang, "lobby.players_empty")}</p>
+        ) : (
+          players.map((player) => {
+            const isMe = String(player.userId) === String(userInfo.userId);
+            const canInvite = inviteMode && !isMe && player.status === "available";
+            const wasInvited = invitedPlayers.has(player.userId);
+            const avatarUrl = isMe
+              ? userInfo.avatarUrl
+              : player.hasAvatar && !player.isGuest
+                ? `/api/profile/${encodeURIComponent(player.username)}/avatar`
+                : null;
+            const statusLabel = getStatusLabel(player.status);
+
+            return (
+              <div
+                key={player.userId}
+                role="listitem"
+                aria-label={`${player.username}, ${statusLabel}${isMe ? ", Ty" : ""}`}
+                className={`online-player-row${isMe ? " is-current" : ""}`}
+              >
+                <span className={`online-player-status online-player-status--${player.status}`} aria-hidden="true" />
+                <ProfileAvatar avatarUrl={avatarUrl} displayName={player.username} />
+
+                <div className="online-player-copy">
+                  <span className="online-player-name">{player.username}</span>
+                  <span className="online-player-state">{statusLabel}</span>
+                </div>
+
+                {isMe && <span className="online-player-you">{t(lang, 'multiplayer.you')}</span>}
+
+                {canInvite && (
+                  <button
+                    type="button"
+                    onClick={() => handleInvite(player.userId)}
+                    disabled={wasInvited}
+                    aria-label={wasInvited ? t(lang, "lobby.invite_sent") : `${t(lang, "lobby.invite_player")} ${player.username}`}
+                    className={`online-player-invite${wasInvited ? " is-sent" : ""}`}
+                    title={t(lang, "lobby.invite_player")}
+                  >
+                    {wasInvited ? (
+                      <Check size={16} strokeWidth={2} aria-hidden="true" />
+                    ) : (
+                      <UserPlus size={16} strokeWidth={2} aria-hidden="true" />
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+
+  if (!isCompact) return panel;
+
+  return (
+    <div className={`online-players-dock online-players-dock--${placement}`}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`online-players-launcher${isOpen ? " is-open" : ""}`}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        aria-label={`${title}. ${isOpen ? t(lang, "lobby.players_close") : t(lang, "lobby.players_open")}`}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        <UserPlus size={17} strokeWidth={2} aria-hidden="true" />
+        <span>{title}</span>
+        <span className="online-players-launcher__count">{players.length}</span>
+        <ChevronDown className="online-players-launcher__chevron" size={16} strokeWidth={2} aria-hidden="true" />
+      </button>
+      {isOpen && panel}
+    </div>
+  );
 }

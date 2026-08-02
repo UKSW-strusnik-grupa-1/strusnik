@@ -13,7 +13,7 @@ export default function Board({ board, onSquareClick }: BoardProps) {
                     key={index}
                     onClick={() => onSquareClick(index)}
                     disabled={value !== ""}
-                    className="w-24 h-24 text-white text-4xl font-bold hover:brightness-110 disabled:cursor-not-allowed transition-all bg-no-repeat bg-center bg-cover"
+                    className="game-runtime-tictactoe-cell w-24 h-24 text-white text-4xl font-bold disabled:cursor-not-allowed transition-transform bg-no-repeat bg-center bg-cover"
                     style={{ backgroundImage: "url('/main/button.png')" }}
                 >
                     {value}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetchWithNotify } from "./useFetchWithNotify";
+import { useUser } from "./useUser";
 
 type Direction = "UP" | "DOWN" | "LEFT" | "RIGHT";
 
@@ -20,25 +21,19 @@ const createInitialSnake = (): Cell[] => [
 const INITIAL_SNAKE_LENGTH = createInitialSnake().length;
 
 const randomFood = (snake: Cell[]): Cell => {
-  while (true) {
-    const x = Math.floor(Math.random() * BOARD_SIZE);
-    const y = Math.floor(Math.random() * BOARD_SIZE);
-
-    if (!snake.some((s) => s.x === x && s.y === y)) return { x, y };
+  const available: Cell[] = [];
+  for (let y = 0; y < BOARD_SIZE; y += 1) {
+    for (let x = 0; x < BOARD_SIZE; x += 1) {
+      if (!snake.some((segment) => segment.x === x && segment.y === y)) {
+        available.push({ x, y });
+      }
+    }
   }
+  if (available.length === 0) return snake[0] ?? { x: 0, y: 0 };
+  return available[Math.floor(Math.random() * available.length)];
 };
 
 export type GameStatus = "NOT-STARTED" | "STARTED" | "FINISHED";
-
-async function readJsonOrText(res: Response) {
-  const text = await res.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text };
-  }
-}
 
 export const useSnake = () => {
   const [uuid, setUuid] = useState<string | null>(null);
@@ -51,6 +46,7 @@ export const useSnake = () => {
   const [isSubmittingScore, setIsSubmittingScore] = useState(false);
 
   const fetchWithNotify = useFetchWithNotify();
+  const { userInfo } = useUser();
 
   const score = foodsEaten * 100;
 
@@ -88,6 +84,7 @@ export const useSnake = () => {
   }, [food]);
 
   const startGame = async () => {
+    if (gameStatus === "STARTED") return;
     try {
       const data = await fetchWithNotify("/api/games/snake/start", {
         method: "POST",
@@ -98,7 +95,8 @@ export const useSnake = () => {
 
       const initialSnake = createInitialSnake();
 
-      setUuid((data as any)?.uuid ?? null);
+      const uuidValue = data && typeof data === "object" && "uuid" in data ? data.uuid : null;
+      setUuid(typeof uuidValue === "string" ? uuidValue : null);
       setSnake(initialSnake);
       setDirection("RIGHT");
       directionRef.current = "RIGHT";
@@ -148,12 +146,14 @@ export const useSnake = () => {
       }
 
       const score = finalFoodsEaten * 100;
-      await fetch("/api/profile/singleplayer/score", {
+      if (!userInfo?.isGuest) {
+        await fetch("/api/profile/singleplayer/score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ game_name: "snake", score }),
-      });
+        });
+      }
 
     } catch (err) {
       console.error(err);
@@ -199,7 +199,7 @@ export const useSnake = () => {
         setDirection(queuedDir);
       }
 
-      let newHead: Cell = { ...head };
+      const newHead: Cell = { ...head };
 
       if (directionRef.current === "UP") newHead.y -= 1;
       if (directionRef.current === "DOWN") newHead.y += 1;
@@ -230,8 +230,12 @@ export const useSnake = () => {
 
       if (ateFood) {
         setFoodsEaten((fe) => fe + 1);
-        setFood(randomFood(nextSnake));
         setSpeed((sp) => Math.max(60, sp - 5));
+        if (nextSnake.length >= BOARD_SIZE * BOARD_SIZE) {
+          finishGame(nextSnake);
+          return;
+        }
+        setFood(randomFood(nextSnake));
       }
     }, speed);
 

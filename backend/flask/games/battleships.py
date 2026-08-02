@@ -1,9 +1,11 @@
-import random
-from typing import List, Dict, Any, Optional
-from .base import MultiplayerGame
+import time
+from typing import Any, Dict, List, Optional
 
-from models import db, User, GameStats
 from flask import current_app
+
+from .base import MultiplayerGame
+from utils import record_multiplayer_result
+
 
 class Battleships(MultiplayerGame):
     player_range = [2]
@@ -19,161 +21,163 @@ class Battleships(MultiplayerGame):
             "current_player_idx": 0,
             "winner": None,
             "boards": [self._create_empty_board() for _ in range(2)],
-            "ready_players": []
+            "ready_players": [],
         }
 
-    def _create_empty_board(self):
+    @staticmethod
+    def _create_empty_board():
         return [[0] * 10 for _ in range(10)]
 
     def sit_player(self, player_id: str, player_name: str, seat_index: int, user_token: str) -> Dict[str, Any]:
         if not (0 <= seat_index < 2):
-            return {"success": False, "msg": "Nieprawidłowe miejsce."}
+            return {"success": False, "msg": "Nieprawidlowe miejsce."}
+        if self.game_state["stage"] != "waiting_for_players":
+            return {"success": False, "msg": "Gra juz sie rozpoczela."}
         if self.seats[seat_index] is not None:
-            return {"success": False, "msg": "Miejsce zajęte."}
+            return {"success": False, "msg": "Miejsce zajete."}
+        if any(seat and seat.get("userId") == user_token for seat in self.seats):
+            return {"success": False, "msg": "Juz siedzisz przy stole."}
 
         self.seats[seat_index] = {
             "socketId": player_id,
             "userId": user_token,
             "name": player_name,
             "connected": True,
-            "score": 0
+            "score": 0,
         }
-        return {"success": True, "msg": "Usiadłeś."}
+        return {"success": True, "msg": "Usiadles."}
 
     def start_game(self) -> Dict[str, Any]:
-        seated_count = len([s for s in self.seats if s is not None])
-        if seated_count < 2:
-            return {"success": False, "msg": "Za mało graczy (wymagani 2)."}
+        if self.game_state["stage"] != "waiting_for_players":
+            return {"success": False, "msg": "Gra juz zostala rozpoczeta."}
+        if any(seat is None for seat in self.seats):
+            return {"success": False, "msg": "Potrzebnych jest dwoch graczy."}
 
-        self.game_state['stage'] = 'placement'
-        self.game_state['boards'] = [self._create_empty_board() for _ in range(2)]
-        self.game_state['ready_players'] = []
+        self.game_state["stage"] = "placement"
+        self.game_state["boards"] = [self._create_empty_board() for _ in range(2)]
+        self.game_state["ready_players"] = []
         return {"success": True}
 
+    @staticmethod
+    def _validate_board(board):
+        if not isinstance(board, list) or len(board) != 10:
+            return False, "Plansza musi miec 10 wierszy."
+        if any(not isinstance(row, list) or len(row) != 10 for row in board):
+            return False, "Kazdy wiersz planszy musi miec 10 pol."
+        if any(cell not in (0, 1) for row in board for cell in row):
+            return False, "Plansza zawiera nieprawidlowe pola."
+        if not any(cell == 1 for row in board for cell in row):
+            return False, "Ustaw przynajmniej jeden statek."
+        return True, None
+
     def handle_move(self, player_id: str, move_data: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(move_data, dict):
+            return {"success": False, "msg": "Nieprawidlowy ruch."}
         player_idx = self._get_player_idx(player_id)
-        if player_idx == -1: return {"success": False, "msg": "Nie grasz."}
+        if player_idx == -1:
+            return {"success": False, "msg": "Nie grasz."}
 
-        move_type = move_data.get('type')
+        move_type = move_data.get("type")
+        if self.game_state["stage"] == "placement" and move_type == "confirm_placement":
+            board = move_data.get("board")
+            valid, message = self._validate_board(board)
+            if not valid:
+                return {"success": False, "msg": message}
+            self.game_state["boards"][player_idx] = [list(row) for row in board]
+            if player_idx not in self.game_state["ready_players"]:
+                self.game_state["ready_players"].append(player_idx)
+            if len(self.game_state["ready_players"]) == 2:
+                self.game_state["stage"] = "playing"
+                self.game_state["current_player_idx"] = 0
+            return {"success": True}
 
-        if self.game_state['stage'] == 'placement':
-            if move_type == 'confirm_placement':
-                board = move_data.get('board')
+        if self.game_state["stage"] == "playing" and move_type == "shoot":
+            if self.game_state["current_player_idx"] != player_idx:
+                return {"success": False, "msg": "Nie Twoja kolej."}
+            x, y = move_data.get("x"), move_data.get("y")
+            if isinstance(x, bool) or isinstance(y, bool) or not isinstance(x, int) or not isinstance(y, int) or not (0 <= x < 10 and 0 <= y < 10):
+                return {"success": False, "msg": "Nieprawidlowe pole ostrzalu."}
 
-                if not isinstance(board, list) or len(board) != 10:
-                    return {"success": False, "msg": "Błędna wielkość planszy."}
-                for row in board:
-                    if not isinstance(row, list) or len(row) != 10:
-                        return {"success": False, "msg": "Błędny wiersz planszy."}
+            opponent_idx = 1 - player_idx
+            opponent_board = self.game_state["boards"][opponent_idx]
+            if opponent_board[y][x] in (2, 3):
+                return {"success": False, "msg": "W to pole juz strzelano."}
 
-                self.game_state['boards'][player_idx] = board
+            hit = opponent_board[y][x] == 1
+            opponent_board[y][x] = 3 if hit else 2
+            if hit and self._check_win(opponent_idx):
+                self.game_state["stage"] = "game_over"
+                winner = self.seats[player_idx]
+                self.game_state["winner"] = {
+                    "name": winner.get("name"),
+                    "userId": winner.get("userId"),
+                }
+                self._record_win(player_idx)
+            elif not hit:
+                self.game_state["current_player_idx"] = opponent_idx
+            return {"success": True, "hit": hit}
 
-                if player_idx not in self.game_state['ready_players']:
-                    self.game_state['ready_players'].append(player_idx)
-
-                print(
-                    f"DEBUG Battleships: Player {player_idx} confirmed. Ready players: {self.game_state['ready_players']}, Stage: {self.game_state['stage']}")
-
-                if len(self.game_state['ready_players']) == 2:
-                    self.game_state['stage'] = 'playing'
-                    self.game_state['current_player_idx'] = 0
-                    print(f"DEBUG Battleships: Game started! Stage is now: {self.game_state['stage']}")
-                return {"success": True}
-
-        elif self.game_state['stage'] == 'playing':
-            if move_type == 'shoot':
-                if self.game_state['current_player_idx'] != player_idx:
-                    return {"success": False, "msg": "Nie Twoja kolej."}
-
-                x, y = move_data.get('x'), move_data.get('y')
-                opponent_idx = (player_idx + 1) % 2
-                opponent_board = self.game_state['boards'][opponent_idx]
-
-                if opponent_board[y][x] in [2, 3]:
-                    return {"success": False, "msg": "Już tu strzelałeś."}
-
-                hit = False
-                if opponent_board[y][x] == 1:
-                    opponent_board[y][x] = 3
-                    hit = True
-                    if self._check_win(opponent_idx):
-                        self.game_state['stage'] = 'game_over'
-                        self.game_state['winner'] = self.seats[player_idx]
-                        # Zapis statystyk po wygranej
-                        self._record_win(player_idx)
-                else:
-                    opponent_board[y][x] = 2
-                    self.game_state['current_player_idx'] = opponent_idx
-
-                return {"success": True, "hit": hit}
-
-        return {"success": False, "msg": "Nieznany ruch."}
+        return {"success": False, "msg": "Nieznany ruch albo gra zostala zakonczona."}
 
     def _get_player_idx(self, socket_id):
-        for i, s in enumerate(self.seats):
-            if s and s['socketId'] == socket_id: return i
+        for i, seat in enumerate(self.seats):
+            if seat and seat.get("socketId") == socket_id:
+                return i
         return -1
 
     def set_player_connection_status(self, user_token: str, is_connected: bool, sid: str = None):
-
         for i, seat in enumerate(self.seats):
-            if seat and seat.get('userId') == user_token:
-
-                if not is_connected and self.game_state['stage'] == 'waiting_for_players':
-                    self.seats[i] = None
-                    return True
-
+            if seat and seat.get("userId") == user_token:
                 if is_connected and sid:
-                    seat['socketId'] = sid
-
-                if seat.get('connected') == is_connected:
+                    seat["socketId"] = sid
+                if seat.get("connected") == is_connected:
                     return False
-
-                seat['connected'] = is_connected
+                seat["connected"] = is_connected
                 return True
         return False
 
     def update_player_sid(self, user_token: str, new_sid: str):
-
         for seat in self.seats:
-            if seat and seat.get('userId') == user_token:
-                seat['socketId'] = new_sid
-                seat['connected'] = True
+            if seat and seat.get("userId") == user_token:
+                seat["socketId"] = new_sid
+                seat["connected"] = True
                 return True
         return False
 
     def _check_win(self, victim_idx):
-        for row in self.game_state['boards'][victim_idx]:
-            if 1 in row: return False
-        return True
+        return all(cell != 1 for row in self.game_state["boards"][victim_idx] for cell in row)
 
     def _record_win(self, winner_idx: int) -> None:
         try:
-            winner_seat = self.seats[winner_idx]
-            if not winner_seat: return
-            winner_name = winner_seat.get('name')
-            if not winner_name: return
+            record_multiplayer_result("Battleships", self.seats, [winner_idx])
+        except Exception as error:
+            from models import db
 
+            db.session.rollback()
             if current_app:
-                with current_app.app_context():
-                    user = User.query.filter_by(username=winner_name).first()
-                    if user:
-                        stat = GameStats.query.filter_by(user_id=user.id, game_name='Battleships').first()
-                        if not stat:
-                            stat = GameStats(user_id=user.id, game_name='Battleships', wins=1)
-                            db.session.add(stat)
-                        else:
-                            stat.wins += 1
-                        db.session.commit()
-        except Exception as e:
-            print(f"Error saving Battleships stats: {e}")
+                current_app.logger.exception("Error saving Battleships stats", exc_info=error)
+
+    def forfeit_player(self, user_token: str, reason: str = "resign") -> Dict[str, Any]:
+        if self.game_state.get("stage") in {"waiting_for_players", "game_over"}:
+            return {"success": False, "msg": "Gra nie jest aktywna."}
+        loser_idx = next((index for index, seat in enumerate(self.seats) if seat and str(seat.get("userId")) == str(user_token)), None)
+        if loser_idx is None:
+            return {"success": False, "msg": "Gracz nie siedzi przy stole."}
+        winner_idx = 1 - loser_idx
+        winner = self.seats[winner_idx]
+        if winner is None:
+            return {"success": False, "msg": "Brak zwyciezcy."}
+        self.game_state["stage"] = "game_over"
+        self.game_state["winner"] = {"name": winner.get("name"), "userId": winner.get("userId"), "reason": reason}
+        self._record_win(winner_idx)
+        return {"success": True}
 
     def get_state(self) -> Dict[str, Any]:
         return {
-            "stage": self.game_state['stage'],
+            "stage": self.game_state["stage"],
             "seats": self.seats,
-            "current_player_idx": self.game_state['current_player_idx'],
-            "boards": self.game_state['boards'],
-            "winner": self.game_state.get('winner'),
-            "ready_players": self.game_state.get('ready_players', [])
+            "current_player_idx": self.game_state["current_player_idx"],
+            "boards": self.game_state["boards"],
+            "winner": self.game_state.get("winner"),
+            "ready_players": self.game_state.get("ready_players", []),
         }

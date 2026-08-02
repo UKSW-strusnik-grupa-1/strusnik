@@ -10,7 +10,11 @@ import SetWaitingRoom from './SetWaitingRoom';
 import { GameChat } from '@/app/components/chat/GameChat';
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import { useNotification } from "@/app/context/NotificationsContext";
 import OpponentDisconnectedBanner from '@/app/components/common/OpponentDisconnectedBanner';
+import RoomUnavailableState from '@/app/components/common/RoomUnavailableState';
+import MultiplayerShell from '@/app/components/multiplayer/MultiplayerShell';
+import type { PlayerTileModel } from '@/app/components/multiplayer/types';
 
 interface SetBoardProps {
     gameName: string;
@@ -36,6 +40,18 @@ interface Card {
     id: string;
 }
 
+interface JoinRoomResponse {
+    success?: boolean;
+    room_data?: { host_id?: string; max_players?: number };
+    error_code?: string;
+    message?: string;
+}
+
+interface OpponentDisconnectPayload {
+    playerName?: string;
+    waitTime?: number;
+}
+
 interface GameState {
     stage: string;
     seats: (Seat | null)[];
@@ -48,6 +64,13 @@ interface GameState {
     msg: string;
     game_over: boolean;
 }
+
+const fillSetMessage = (lang: Parameters<typeof t>[0], key: string, values: Record<string, string>) => {
+    return Object.entries(values).reduce(
+        (message, [name, value]) => message.replace(`{${name}}`, value),
+        t(lang, key),
+    );
+};
 
 export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardProps) {
     const { socket } = useSocket();
@@ -70,6 +93,36 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
     const [opponentDisconnected, setOpponentDisconnected] = useState<{ name: string; timeLeft: number } | null>(null);
 
     const { lang } = useLang();
+    const { notify } = useNotification();
+    const lastNotifiedMessageRef = useRef('');
+
+    useEffect(() => {
+        const message = gameState?.msg?.trim();
+        if (!message || message === lastNotifiedMessageRef.current) return;
+
+        lastNotifiedMessageRef.current = message;
+        const normalized = message.toLowerCase();
+        const nameMatch = message.match(/^(.*?)\s+(?:found a set|made a mistake)/i);
+        const name = nameMatch?.[1] || gameState?.last_set_by || t(lang, 'set.you');
+
+        if (gameState?.stage === 'finished' || normalized.includes('game over')) {
+            if ((gameState?.winners?.length || 0) > 1) {
+                notify(fillSetMessage(lang, 'set.notifications.draw', { names: gameState?.winners.join(', ') || '' }), 'info');
+            } else {
+                notify(fillSetMessage(lang, 'set.notifications.winner', { name: gameState?.winners?.[0] || gameState?.winner || name }), 'success');
+            }
+        } else if (normalized.includes('game started')) {
+            notify(t(lang, 'set.notifications.started'), 'info');
+        } else if (normalized.includes('found a set')) {
+            notify(fillSetMessage(lang, 'set.notifications.found', { name }), 'success');
+        } else if (normalized.includes('made a mistake - set')) {
+            notify(t(lang, 'set.notifications.no_set_mistake'), 'warning');
+        } else if (normalized.includes('made a mistake')) {
+            notify(t(lang, 'set.notifications.mistake'), 'warning');
+        } else if (normalized.includes('no set')) {
+            notify(t(lang, 'set.notifications.no_set'), 'info');
+        }
+    }, [gameState?.last_set_by, gameState?.msg, gameState?.stage, gameState?.winner, gameState?.winners, lang, notify]);
 
     const joinRoom = (pwd: string = "") => {
         if (!socket) return;
@@ -78,12 +131,14 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
         socket.emit('join_room', {
             game_name: gameName,
             room_id: roomId,
-            password: pwd
+            password: pwd,
+            role: searchParams.get('role') === 'observer' ? 'observer' : 'player'
         });
     };
 
     const leaveRoom = () => {
-        if (!socket || !roomId) return;
+        if (!socket || !roomId || !hasJoinedRoomRef.current) return;
+        hasJoinedRoomRef.current = false;
         socket.emit('leave_room', { roomId });
     };
 
@@ -91,13 +146,12 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
         if (!socket) return;
 
         if (!roomId) {
-            setConnectionError(t(lang, "set.error.no_room_id"));
             return;
         }
 
-        const handleJoinResponse = (response: any) => {
+        const handleJoinResponse = (response: JoinRoomResponse) => {
             if (response.success && response.room_data) {
-                setHostId(response.room_data.host_id);
+                setHostId(response.room_data.host_id ?? null);
                 if (response.room_data.max_players) {
                     setMaxPlayers(response.room_data.max_players);
                 }
@@ -115,7 +169,8 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                     socket.emit('sit_down', {
                         roomId,
                         seatIndex: 0,
-                        playerName: myName
+                        playerName: myName,
+                        autoJoin: true
                     });
 
                     router.replace(`/games/${gameName}/${roomId}`, { scroll: false });
@@ -124,7 +179,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                 if (response.error_code === 'PASSWORD_REQUIRED') {
                     setShowPasswordModal(true);
                     const msg = String(response.message || '').toLowerCase();
-                    if (msg.includes('password') || msg.includes('haslo') || msg.includes('błędne') || msg.includes('bledne')) {
+                    if (msg.includes('password') || msg.includes('haslo') || msg.includes('bledne') || msg.includes('bledne')) {
                         setErrorMessage(t(lang, "set.error.wrong_password"));
                     }
                 } else {
@@ -139,7 +194,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             if (state.seats) {
                 setSeats(state.seats);
 
-                const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
+                const mySeatIdx = state.seats.findIndex((s) => s && s.userId === myId);
                 if (mySeatIdx !== -1 && state.stage === 'playing') {
                     const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
                     const opponentSeat = state.seats[opponentSeatIdx];
@@ -162,13 +217,14 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             }
         };
 
-        const handleError = (err: any) => {
+        const handleError = (err: unknown) => {
             if (err && typeof err === 'object' && Object.keys(err).length > 0 && JSON.stringify(err) !== '{}') {
                 console.error("Socket error:", err);
+                notify(t(lang, 'set.error.action_failed'), 'error');
             }
         };
 
-        const handleOpponentDisconnected = (data: any) => {
+        const handleOpponentDisconnected = (data: OpponentDisconnectPayload) => {
             if (data.playerName) {
                 setOpponentDisconnected({ name: data.playerName, timeLeft: data.waitTime || 90 });
             }
@@ -187,13 +243,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             setOpponentDisconnected(null);
         };
 
-        socket.off('join_room_response');
-        socket.off('game_state_update');
-        socket.off('error');
-        socket.off('opponent_disconnected');
-        socket.off('opponent_reconnected');
-        socket.off('opponent_returned');
-        socket.off('game_ended_timeout');
+        socket.off('error', handleError);
 
         socket.on('join_room_response', handleJoinResponse);
         socket.on('game_state_update', handleGameState);
@@ -203,7 +253,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
         socket.on('opponent_returned', handleOpponentReturned);
         socket.on('game_ended_timeout', handleGameEndedTimeout);
 
-        joinRoom("");
+        joinRoom(searchParams.get('autojoin') ? searchParams.get('password') || '' : '');
         socket.emit('get_game_state', { roomId });
 
         return () => {
@@ -215,7 +265,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
             socket.off('opponent_returned', handleOpponentReturned);
             socket.off('game_ended_timeout', handleGameEndedTimeout);
         };
-    }, [socket, roomId, gameName, myName, myId, searchParams, router, lang]);
+    }, [socket, roomId, gameName, myName, myId, searchParams, router, lang, notify]);
 
     useEffect(() => {
         if (!opponentDisconnected) return;
@@ -235,12 +285,14 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
 
         const handleBeforeUnload = () => {
             if (hasJoinedRoomRef.current) {
+                hasJoinedRoomRef.current = false;
                 socket.emit('leave_room', { roomId });
             }
         };
 
         const handlePopState = () => {
             if (hasJoinedRoomRef.current) {
+                hasJoinedRoomRef.current = false;
                 socket.emit('leave_room', { roomId });
             }
         };
@@ -310,30 +362,45 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
 
     const mySeatedIndex = seats.findIndex(s => s && String(s.userId) === String(myId));
     const isSeated = mySeatedIndex !== -1;
+    const finishedWinners = gameState?.winners ?? [];
+    const setParticipants: PlayerTileModel[] = seats.flatMap((seat) => {
+        if (!seat) return [];
+        const isSelf = String(seat.userId) === String(myId);
+        return [{
+            id: String(seat.userId || seat.socketId),
+            displayName: seat.name,
+            avatarUrl: String(seat.userId).startsWith('guest_') ? null : `/api/profile/avatar/${encodeURIComponent(String(seat.userId))}`,
+            isSelf,
+            selfLabel: t(lang, 'set.you'),
+            role: 'player' as const,
+            connection: seat.connected === false ? 'disconnected' as const : 'connected' as const,
+            activity: 'playing' as const,
+            activityLabel: t(lang, 'multiplayer.status.playing'),
+            metric: { label: t(lang, 'set.points'), value: String(seat.score ?? 0) },
+            outcome: gameStage === 'finished'
+                ? finishedWinners.length > 1
+                    ? 'draw' as const
+                    : finishedWinners.includes(seat.name)
+                        ? 'won' as const
+                        : 'lost' as const
+                : undefined,
+        }];
+    });
 
     if (connectionError) {
         return (
-            <div className="relative w-full h-screen flex flex-col items-center justify-center p-4">
-                <div className="bg-[#1a120b]/90 p-8 rounded-xl border-2 border-red-600/50 text-center shadow-2xl backdrop-blur-md max-w-md w-full">
-                    <h2 className="text-2xl text-red-500 font-bold mb-4 uppercase tracking-widest">
-                        {t(lang, "set.error.title")}
-                    </h2>
-                    <p className="text-gray-200 mb-6 font-medium">{connectionError}</p>
-                    <a
-                        href={`/lobby/${gameName}`}
-                        className="inline-block w-full bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg uppercase tracking-wide text-sm"
-                    >
-                        {t(lang, "set.back_to_lobby")}
-                    </a>
-                </div>
-            </div>
+            <RoomUnavailableState
+                roomId={roomId}
+                href={`/lobby/${gameName}`}
+                backLabel={t(lang, "set.back_to_lobby")}
+            />
         );
     }
 
     return (
-        <div className="relative w-full h-screen flex flex-col p-1 overflow-hidden text-amber-50">
+        <div className="game-runtime-shell game-runtime-shell--set p-1 text-amber-50">
             <div className="shrink-0 mb-1 pl-2 z-10">
-                <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, 'arrow')} onClick={leaveRoom} />
+                <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, 'arrow')} onClick={leaveRoom} confirmMessage={gameStage !== 'waiting_for_players' && seats.some((seat) => seat && String(seat.userId) === String(myId)) ? t(lang, 'common.leave_active_confirm') : undefined} />
             </div>
 
             <PasswordModal
@@ -354,6 +421,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                         myId={myId}
                         myName={myName}
                         hostId={hostId}
+                        isObserver={searchParams.get('role') === 'observer'}
                     />
 
                     <GameChat
@@ -362,41 +430,25 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                         myId={myId}
                         myName={myName}
                         isBubble={true}
-                        className="bottom-4 right-4 rounded-xl border border-amber-900/50 bg-[#1a120b]/95"
+                        bubbleClassName="waiting-chat-bubble"
+                        className="waiting-chat-panel rounded-xl border border-amber-900/50 bg-app-surface/95"
                     />
                 </>
             ) : gameStage === 'playing' ? (
                 <>
-                    <div className="flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto">
-                        <div className="flex justify-center gap-3 mb-4 flex-wrap">
-                            {seats.filter(s => s).map((seat, idx) => seat && (
-                                <div
-                                    key={idx}
-                                    className={`
-                    px-4 py-2 rounded-lg bg-[#1a120b]/80 backdrop-blur-sm border
-                    ${String(seat.userId) === String(myId)
-                                            ? 'border-amber-500 ring-2 ring-amber-500/50'
-                                            : 'border-[#353434]'
-                                        }
-                  `}
-                                >
-                                    <span className="font-semibold text-amber-100">{seat.name}</span>
-                                    <span className="ml-2 text-amber-400 font-bold">{seat.score} {t(lang, "set.points")}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {gameState?.msg && (
-                            <div className="text-center mb-3 text-lg text-amber-300 font-bold animate-pulse">
-                                {gameState.msg}
-                            </div>
-                        )}
-
-                        <div className="text-center mb-3 text-sm text-amber-200/70">
+                    <MultiplayerShell
+                        stage={searchParams.get('role') === 'observer' ? 'observer' : opponentDisconnected ? 'disconnected' : 'active'}
+                        participants={setParticipants}
+                        participantTitle={t(lang, 'multiplayer.participants')}
+                        participantLayout="grid"
+                        className="multiplayer-active-shell multiplayer-active-shell--set"
+                    >
+                    <div className="game-runtime-game-region flex-1 flex flex-col items-center justify-start pt-4 px-4 overflow-y-auto">
+                        <div className="set-game-meta">
                             {t(lang, "set.cards_remaining")}: {gameState?.deck_remaining || 0}
                         </div>
 
-                        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-3 mb-4 justify-items-center max-w-4xl">
+                        <div className="game-runtime-board-surface set-game-table grid grid-cols-4 gap-3 mb-4">
                             {gameState?.table_cards.map((card, idx) => (
                                 <SetCard
                                     key={card?.id || `empty-${idx}`}
@@ -413,8 +465,8 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                                 <button
                                     onClick={handleClaimSet}
                                     disabled={selectedCards.length !== 3}
-                                    className={`
-                    px-6 py-3 rounded-lg font-bold uppercase tracking-wide transition-all border-2
+                                    className={`game-runtime-button
+                    px-6 py-3 rounded-lg font-bold uppercase tracking-wide border-2
                     ${selectedCards.length === 3
                                             ? 'bg-green-700 hover:bg-green-600 text-white border-green-500 shadow-lg shadow-green-900/50'
                                             : 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed'
@@ -426,13 +478,14 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
 
                                 <button
                                     onClick={handleNoSet}
-                                    className="px-6 py-3 rounded-lg font-bold uppercase tracking-wide bg-amber-700 hover:bg-amber-600 text-white transition-colors border-2 border-amber-500"
+                                    className="game-runtime-button game-runtime-button--primary px-6 py-3 rounded-lg font-bold uppercase tracking-wide"
                                 >
                                     {t(lang, "set.no_set")}
                                 </button>
                             </div>
                         )}
                     </div>
+                    </MultiplayerShell>
 
                     <GameChat
                         socket={socket}
@@ -440,21 +493,20 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                         myId={myId}
                         myName={myName}
                         isBubble
-                        height="28%"
-                        className="
-              w-[140px] md:w-[220px] lg:w-[300px]
-              mr-1
-              bg-[#000000]/30
-              backdrop-blur-md
-              border-l border-r border-[#353434]
-              bottom-0 right-0
-            "
+                        variant="game"
                     />
                 </>
             ) : gameStage === 'finished' ? (
                 <>
-                    <div className="flex-1 flex flex-col items-center justify-center p-4">
-                        <div className="max-w-lg w-full text-center">
+                    <MultiplayerShell
+                        stage="finished"
+                        participants={setParticipants}
+                        participantTitle={t(lang, 'multiplayer.participants')}
+                        participantLayout="grid"
+                        className="multiplayer-active-shell multiplayer-active-shell--set"
+                    >
+                    <div className="game-runtime-result-stage flex-1 flex flex-col items-center justify-center p-4">
+                        <div className="game-runtime-result max-w-lg w-full text-center">
                             <h1 className="text-4xl font-bold mb-6 text-amber-200">
                                 {t(lang, "set.game_over")}
                             </h1>
@@ -473,7 +525,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                                 </div>
                             )}
 
-                            <div className="bg-[#1a120b]/80 rounded-xl p-6 mb-6 border border-amber-900/50">
+                            <div className="game-runtime-surface p-6 mb-6">
                                 <h2 className="text-xl font-semibold mb-4 text-amber-200">{t(lang, "set.final_scores")}</h2>
                                 <div className="space-y-2">
                                     {seats
@@ -486,7 +538,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                           flex justify-between items-center p-3 rounded-lg
                           ${gameState?.winners?.includes(seat.name)
                                                         ? 'bg-amber-700/50 border border-amber-500'
-                                                        : 'bg-black/30 border border-[#353434]'
+                                                        : 'bg-app-surface/70 border border-app-border'
                                                     }
                         `}
                                             >
@@ -500,12 +552,13 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
 
                             <a
                                 href={`/lobby/${gameName}`}
-                                className="inline-block bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg uppercase tracking-wide border-2 border-amber-500"
+                                className="game-runtime-link-button game-runtime-link-button--primary py-3 px-8 uppercase tracking-wide"
                             >
                                 {t(lang, "set.back_to_lobby")}
                             </a>
                         </div>
                     </div>
+                    </MultiplayerShell>
 
                     <GameChat
                         socket={socket}
@@ -513,7 +566,7 @@ export default function SetBoard({ gameName, roomId, myId, myName }: SetBoardPro
                         myId={myId}
                         myName={myName}
                         isBubble={true}
-                        className="bottom-4 right-4 rounded-xl border border-amber-900/50 bg-[#1a120b]/95"
+                        variant="game"
                     />
                 </>
             ) : null}

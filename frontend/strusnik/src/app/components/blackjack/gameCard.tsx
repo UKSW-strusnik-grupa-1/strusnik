@@ -13,14 +13,10 @@ export default function GameCard({
     const [isAnimatingRevealed, setIsAnimatingRevealed] = useState(false);
 
     useEffect(() => {
-        if (shouldBeRevealed) {
-            const timer = setTimeout(() => {
-                setIsAnimatingRevealed(true);
-            }, 50);
-            return () => clearTimeout(timer);
-        } else {
-            setIsAnimatingRevealed(false);
-        }
+        const timer = setTimeout(() => {
+            setIsAnimatingRevealed(shouldBeRevealed);
+        }, shouldBeRevealed ? 50 : 0);
+        return () => clearTimeout(timer);
     }, [shouldBeRevealed]);
 
     return (
@@ -29,7 +25,7 @@ export default function GameCard({
         >
             <div
                 className={`
-                    w-full h-full relative transition-all duration-700 
+                    w-full h-full relative transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]
                     transform-3d 
                     ${isAnimatingRevealed ? 'transform-[rotateY(180deg)]' : ''}
                 `}

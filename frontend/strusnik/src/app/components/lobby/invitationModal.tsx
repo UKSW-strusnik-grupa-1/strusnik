@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,135 +7,92 @@ import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
 
 interface InvitationData {
-    hostName: string;
-    gameName: string;
-    roomId: string;
-    password?: string;
+  hostName: string;
+  gameName: string;
+  roomId: string;
+  password?: string;
 }
 
 export default function InvitationModal() {
+  const { socket } = useSocket();
+  const [invitation, setInvitation] = useState<InvitationData | null>(null);
+  const [isCheckingRoom, setIsCheckingRoom] = useState(false);
+  const [roomError, setRoomError] = useState("");
+  const router = useRouter();
+  const { lang } = useLang();
 
-    const { socket } = useSocket();
-    const [invitation, setInvitation] = useState<InvitationData | null>(null);
-    const router = useRouter();
-    const { lang } = useLang();
-
-    useEffect(() => {
-        if (!socket) return;
-
-        const handleIncoming = (data: InvitationData) => {
-            setInvitation(data);
-        };
-
-        socket.on("incoming_invite", handleIncoming);
-
-        return () => {
-            socket.off("incoming_invite", handleIncoming);
-        };
-    }, [socket]);
-
-    const handleAccept = () => {
-        if (!invitation) return;
-        
-        const targetUrl = `/games/${invitation.gameName}/${invitation.roomId}?autojoin=true`;
-        
-        router.push(targetUrl);
-        
-        setInvitation(null);
+  useEffect(() => {
+    if (!socket) return;
+    const handleIncoming = (data: InvitationData) => {
+      setRoomError("");
+      setIsCheckingRoom(false);
+      setInvitation(data);
     };
-
-    const handleDecline = () => {
-        setInvitation(null);
+    socket.on("incoming_invite", handleIncoming);
+    return () => {
+      socket.off("incoming_invite", handleIncoming);
     };
+  }, [socket]);
 
-    if (!invitation) return null;
+  const handleDecline = () => {
+    setInvitation(null);
+    setRoomError("");
+  };
+  const handleAccept = () => {
+    if (!invitation || !socket || isCheckingRoom) return;
+    setRoomError("");
+    setIsCheckingRoom(true);
+    socket.emit(
+      "validate_invite_room",
+      { gameName: invitation.gameName, roomId: invitation.roomId },
+      (response: { available?: boolean }) => {
+        setIsCheckingRoom(false);
+        if (!response?.available) {
+          setRoomError(t(lang, "invitation.room_unavailable"));
+          return;
+        }
 
-    return (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="
-                relative 
-                w-full max-w-sm 
-                bg-[#2b1d15] 
-                border-2 border-[#403832] 
-                rounded-xl 
-                shadow-[0_0_20px_rgba(0,0,0,0.8),inset_1px_1px_2px_rgba(255,255,255,0.05)]
-                p-6 
-                text-center 
-                overflow-hidden
-            ">
-                <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
-                
-                <h3 className="text-xl font-bold text-[#eaddcf] mb-6 drop-shadow-md">
-                    {t(lang, "invitation.notification")}
-                </h3>
-                
-                <div className="
-                    py-4 px-4 mb-6 
-                    bg-[#231710] 
-                    rounded-lg 
-                    border border-[#403832]/50
-                    shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7)]
-                ">
-                    <p className="text-[#eaddcf] font-bold text-lg mb-4 truncate">
-                        {invitation.hostName}
-                    </p>
-                    
-                    <p className="text-[#8b735b] text-sm mb-1">
-                        {t(lang, "invitation.contents")}
-                    </p>
-                    <p className="text-amber-500/90 font-bold text-xl drop-shadow-sm">
-                        {invitation.gameName}
-                    </p>
-                </div>
-
-                <div className="flex gap-3 justify-center">
-                    <button 
-                        onClick={handleDecline}
-                        className="
-                            flex-1
-                            cursor-pointer 
-                            py-3 px-4 
-                            rounded-lg 
-                            bg-[#3f1d1d] 
-                            text-red-200/80
-                            font-bold 
-                            border-2 border-[#5c2b2b]
-                            shadow-[inset_2px_2px_5px_rgba(0,0,0,0.5)]
-                            transition-all duration-200
-                            hover:bg-[#5c2b2b] 
-                            hover:text-red-100
-                            hover:border-red-500/30
-                            hover:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7),0_0_10px_rgba(220,38,38,0.2)]
-                            active:scale-95
-                        "
-                    >
-                        {t(lang, "invitation.decline")}
-                    </button>
-
-                    <button 
-                        onClick={handleAccept}
-                        className="
-                            flex-1
-                            cursor-pointer 
-                            py-3 px-4 
-                            rounded-lg 
-                            bg-[#1d3f23] 
-                            text-green-200/80
-                            font-bold 
-                            border-2 border-[#2b5c33]
-                            shadow-[inset_2px_2px_5px_rgba(0,0,0,0.5)]
-                            transition-all duration-200
-                            hover:bg-[#2b5c33] 
-                            hover:text-green-100
-                            hover:border-green-500/30
-                            hover:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7),0_0_10px_rgba(34,197,94,0.2)]
-                            active:scale-95
-                        "
-                    >
-                        {t(lang, "invitation.accept")}
-                    </button>
-                </div>
-            </div>
-        </div>
+        const query = new URLSearchParams({ autojoin: "true" });
+        if (invitation.password) query.set("password", invitation.password);
+        const gameRoute = invitation.gameName.toLowerCase() === "haxball" ? "haxball" : invitation.gameName;
+        router.push(`/games/${gameRoute}/${invitation.roomId}?${query.toString()}`);
+        setInvitation(null);
+      },
     );
+  };
+
+  useEffect(() => {
+    if (!invitation) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleDecline();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [invitation]);
+
+  if (!invitation) return null;
+
+  return (
+    <div className="fixed inset-0 z-9999 grid place-items-center bg-black/80 p-4 backdrop-blur-sm" role="presentation">
+      <section className="game-panel w-full max-w-sm text-center" role="dialog" aria-modal="true" aria-labelledby="invitation-title">
+        <p className="page-kicker">{t(lang, "invitation.notification")}</p>
+        <h2 id="invitation-title" className="mb-6 text-xl font-bold text-[var(--text)]">
+          {t(lang, "invitation.contents")}
+        </h2>
+        <div className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-4">
+          <p className="mb-2 truncate text-lg font-bold text-[var(--text)]">{invitation.hostName}</p>
+          <p className="text-xl font-bold text-[var(--amber)]">{invitation.gameName}</p>
+        </div>
+        {roomError && <p className="mb-4 text-sm text-[var(--danger)]" role="alert">{roomError}</p>}
+        <div className="flex gap-3">
+          <button type="button" onClick={handleDecline} className="game-secondary-button flex-1" disabled={isCheckingRoom}>
+            {t(lang, "invitation.decline")}
+          </button>
+          <button type="button" onClick={handleAccept} className="game-primary-button flex-1" disabled={isCheckingRoom}>
+            {isCheckingRoom ? t(lang, "invitation.checking") : t(lang, "invitation.accept")}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }

@@ -116,6 +116,7 @@ export default function ChessBoard({
   const squareH = boardH / 8;
 
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null);
 
   const chess = useMemo(() => {
@@ -130,7 +131,7 @@ export default function ChessBoard({
     const out: Array<{ square: string; piece: { type: string; color: Color } }> = [];
     for (let r = 1; r <= 8; r++) {
       for (let f = 0; f < 8; f++) {
-        const sq = `${FILES[f]}${r}` as any;
+        const sq = `${FILES[f]}${r}`;
         const p = chess.get(sq);
         if (p) out.push({ square: sq, piece: { type: p.type, color: p.color as Color } });
       }
@@ -169,10 +170,23 @@ export default function ChessBoard({
     return coordsToSquare(fileIdx, rankIdx);
   };
 
+  // Pointer coordinates come from the visual (zoomed) rectangle, while the
+  // board layers use the component's unzoomed CSS dimensions.
+  const getBoardPoint = (clientX: number, clientY: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return null;
+
+    return {
+      x: (clientX - rect.left) * (width / rect.width),
+      y: (clientY - rect.top) * (height / rect.height),
+    };
+  };
+
   const legalTargets = useMemo(() => {
-    if (!drag) return [];
-    return legalMovesBySquare?.[drag.from] ?? [];
-  }, [drag, legalMovesBySquare]);
+    if (drag) return legalMovesBySquare?.[drag.from] ?? [];
+    if (selectedSquare) return legalMovesBySquare?.[selectedSquare] ?? [];
+    return [];
+  }, [drag, selectedSquare, legalMovesBySquare]);
 
   const isDraggable = (square: string, piece: { type: string; color: Color }) => {
     if (!isGameStarted) return false;
@@ -183,19 +197,52 @@ export default function ChessBoard({
     return Array.isArray(moves) && moves.length > 0;
   };
 
+  const moveSelectedPiece = (toSquare: string) => {
+    if (!selectedSquare) return false;
+
+    const piece = chess.get(selectedSquare);
+    const targets = legalMovesBySquare?.[selectedSquare] ?? [];
+    if (!piece || !targets.includes(toSquare)) return false;
+
+    const promo = needsPromotion({ type: piece.type, color: piece.color as Color }, toSquare) ? 'q' : undefined;
+    onMove(selectedSquare, toSquare, promo);
+    setSelectedSquare(null);
+    return true;
+  };
+
+  const onPointerDownBoard = (e: React.PointerEvent) => {
+    if (drag) return;
+
+    const point = getBoardPoint(e.clientX, e.clientY);
+    if (!point) return;
+
+    const square = pixelToSquare(point.x, point.y);
+    if (!square) return;
+    if (moveSelectedPiece(square)) return;
+
+    const piece = chess.get(square);
+    if (piece && isDraggable(square, { type: piece.type, color: piece.color as Color })) {
+      setSelectedSquare(square);
+    } else {
+      setSelectedSquare(null);
+    }
+  };
+
   const onPointerDownPiece = (
     e: React.PointerEvent,
     square: string,
     piece: { type: string; color: Color },
   ) => {
     if (!isDraggable(square, piece)) return;
+    e.stopPropagation();
+    setSelectedSquare(square);
 
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const point = getBoardPoint(e.clientX, e.clientY);
+    if (!point) return;
 
     const { x, y } = squareToPixel(square);
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
+    const px = point.x;
+    const py = point.y;
 
     setDrag({
       from: square,
@@ -205,23 +252,23 @@ export default function ChessBoard({
     });
     setPointerPos({ x: px, y: py });
 
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    containerRef.current?.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drag) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setPointerPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    const point = getBoardPoint(e.clientX, e.clientY);
+    if (!point) return;
+    setPointerPos(point);
   };
 
   const finishDrag = (clientX: number, clientY: number) => {
     if (!drag) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const point = getBoardPoint(clientX, clientY);
+    if (!point) return;
 
-    const px = clientX - rect.left;
-    const py = clientY - rect.top;
+    const px = point.x;
+    const py = point.y;
 
     const toSq = pixelToSquare(px, py);
     const fromSq = drag.from;
@@ -235,6 +282,7 @@ export default function ChessBoard({
     if (!targets.includes(toSq)) return;
 
     const promo = needsPromotion(piece, toSq) ? 'q' : undefined;
+    setSelectedSquare(null);
     onMove(fromSq, toSq, promo);
   };
 
@@ -253,6 +301,7 @@ export default function ChessBoard({
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape') {
         setDrag(null);
+        setSelectedSquare(null);
         setPointerPos(null);
       }
     };
@@ -265,6 +314,7 @@ export default function ChessBoard({
       ref={containerRef}
       className="relative select-none touch-none"
       style={{ width, height }}
+      onPointerDown={onPointerDownBoard}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
@@ -277,7 +327,7 @@ export default function ChessBoard({
         draggable={false}
       />
 
-      {drag &&
+      {(drag || selectedSquare) &&
         legalTargets.map((sq) => {
           const { x, y } = squareToPixel(sq);
           return (

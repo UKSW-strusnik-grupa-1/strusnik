@@ -1,4 +1,3 @@
-import { SocketProvider } from "../context/SocketContext";
 import "./../globals.css";
 
 export default function MultiplayerLayout({

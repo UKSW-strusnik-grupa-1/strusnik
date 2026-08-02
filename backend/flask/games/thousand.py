@@ -3,8 +3,9 @@ import time
 from typing import List, Dict, Any, Optional
 from .base import MultiplayerGame
 
-from models import db, User, GameStats
+from models import db
 from flask import current_app
+from utils import record_multiplayer_result
 
 WINNING_SCORE = 1000
 BARREL_THRESHOLD = 800
@@ -64,16 +65,11 @@ class Thousand(MultiplayerGame):
             "connected": True,
             "disconnect_timestamp": None
         }
-        return {"success": True, "msg": "Usiadłeś."}
+        return {"success": True, "msg": "Usiadles."}
 
     def set_player_connection_status(self, user_token: str, is_connected: bool, sid: str = None):
         for i, seat in enumerate(self.seats):
             if seat and seat.get('userId') == user_token:
-
-
-                if not is_connected and self.game_state['stage'] == 'waiting_for_players':
-                    self.seats[i] = None
-                    return True
 
 
                 if is_connected and sid:
@@ -97,7 +93,7 @@ class Thousand(MultiplayerGame):
     def start_game(self) -> Dict[str, Any]:
         seated_indices = [i for i, s in enumerate(self.seats) if s is not None]
         if len(seated_indices) < 3:
-            return {"success": False, "msg": "Za mało graczy (min. 3)."}
+            return {"success": False, "msg": "Za malo graczy (min. 3)."}
 
         self.dealer_idx = seated_indices[0]
         self._setup_new_round()
@@ -217,23 +213,12 @@ class Thousand(MultiplayerGame):
             self.game_state['stage'] = 'game_over'
 
             try:
+                winner_idx = self.seats.index(potential_winner)
+                record_multiplayer_result('Tysiac', self.seats, [winner_idx])
+            except Exception as error:
+                db.session.rollback()
                 if current_app:
-                    with current_app.app_context():
-                        winner_name = potential_winner['name']
-                        user = User.query.filter_by(username=winner_name).first()
-
-                        if user:
-                            stat = GameStats.query.filter_by(user_id=user.id, game_name='Tysiac').first()
-
-                            if not stat:
-                                stat = GameStats(user_id=user.id, game_name='Tysiac', wins=1)
-                                db.session.add(stat)
-                            else:
-                                stat.wins += 1
-
-                            db.session.commit()
-            except Exception as e:
-                print(e)
+                    current_app.logger.exception("Error saving Thousand stats", exc_info=error)
 
             return
 
@@ -250,7 +235,9 @@ class Thousand(MultiplayerGame):
         if self.game_state['stage'] != 'stock_reveal': return False
 
         player_idx = self.game_state['current_player_idx']
-        winner_seat = self.seats[player_idx]
+        winner_seat = self.seats[player_idx] if 0 <= player_idx < len(self.seats) else None
+        if not winner_seat:
+            return False
         stock_cards = self.game_state['stock']
 
         if stock_cards:
@@ -262,6 +249,8 @@ class Thousand(MultiplayerGame):
         return True
 
     def handle_move(self, player_id: str, move_data: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(move_data, dict):
+            return {"success": False, "msg": "Nieprawidlowy ruch."}
         move_type = move_data.get('type')
         player_idx = -1
         for i, seat in enumerate(self.seats):
@@ -291,9 +280,10 @@ class Thousand(MultiplayerGame):
     def _handle_declare_score(self, player_idx, move_data):
         amount = move_data.get('amount')
         current_bid = self.game_state['current_bid']
-        if not isinstance(amount, int): return {"success": False, "msg": "Błąd wartości"}
-        if amount % 10 != 0: return {"success": False, "msg": "Musi być podzielne przez 10"}
-        if amount < current_bid: return {"success": False, "msg": "Nie możesz zadeklarować mniej niż licytowałeś"}
+        if not isinstance(amount, int) or isinstance(amount, bool):
+            return {"success": False, "msg": "Blad wartosci"}
+        if amount % 10 != 0: return {"success": False, "msg": "Musi byc podzielne przez 10"}
+        if amount < current_bid: return {"success": False, "msg": "Nie mozesz zadeklarowac mniej niz licytowales"}
         self.game_state['current_bid'] = amount
         self.game_state['stage'] = 'distributing'
         return {"success": True}
@@ -304,7 +294,8 @@ class Thousand(MultiplayerGame):
 
         if move_type == 'bid':
             amount = move_data.get('amount')
-            if not amount or amount <= current_bid or amount % 10 != 0: return {"success": False}
+            if not isinstance(amount, int) or isinstance(amount, bool) or amount <= current_bid or amount % 10 != 0:
+                return {"success": False, "msg": "Nieprawidlowa licytacja."}
             self.game_state['current_bid'] = amount
             self.game_state['highest_bidder_idx'] = player_idx
             self._next_bidder()
@@ -350,6 +341,8 @@ class Thousand(MultiplayerGame):
     def _handle_give_card(self, player_idx, move_data):
         card = move_data.get('card')
         target = move_data.get('target_idx')
+        if not isinstance(card, str) or not isinstance(target, int) or isinstance(target, bool):
+            return {"success": False, "msg": "Nieprawidlowa karta albo cel."}
         seat = self.seats[player_idx]
         if card not in seat['hand']: return {"success": False, "msg": "BRAK KARTY"}
         if target is None or not (0 <= target < 4) or not self.seats[target]: return {"success": False,
@@ -439,10 +432,12 @@ class Thousand(MultiplayerGame):
     def _handle_card_play(self, player_idx, move_data):
         card = move_data.get('card')
         seat = self.seats[player_idx]
+        if not isinstance(card, str):
+            return {"success": False, "msg": "Nieprawidlowa karta."}
 
         if card not in seat['hand']: return {"success": False, "msg": "Nie masz tej karty."}
         if not self._validate_card_play(seat, card): return {"success": False,
-                                                             "msg": "Musisz dołożyć do koloru lub przebić atutem!"}
+                                                             "msg": "Musisz dolozyc do koloru lub przebic atutem!"}
 
         seated_count = len([s for s in self.seats if s])
         TRICK_SIZE = 3 if seated_count >= 3 else seated_count
@@ -492,6 +487,31 @@ class Thousand(MultiplayerGame):
         self.game_state['current_player_idx'] = nxt
         if self.seats[nxt]:
             self.game_state['current_player'] = self.seats[nxt]['socketId']
+
+    def forfeit_player(self, user_token: str, reason: str = "resign") -> Dict[str, Any]:
+        if self.game_state.get('stage') in {'waiting_for_players', 'game_over'}:
+            return {'success': False, 'msg': 'Gra nie jest aktywna.'}
+        loser_idx = next((index for index, seat in enumerate(self.seats) if seat and str(seat.get('userId')) == str(user_token)), None)
+        if loser_idx is None:
+            return {'success': False, 'msg': 'Gracz nie siedzi przy stole.'}
+        remaining = [(index, seat) for index, seat in enumerate(self.seats) if seat and index != loser_idx]
+        if not remaining:
+            return {'success': False, 'msg': 'Brak zwyciezcy.'}
+        winner_idx, winner = max(remaining, key=lambda item: item[1].get('score', 0))
+        self.game_state['winner'] = {
+            'name': winner.get('name'),
+            'score': winner.get('score', 0),
+            'userId': winner.get('userId'),
+            'reason': reason,
+        }
+        self.game_state['stage'] = 'game_over'
+        try:
+            record_multiplayer_result('Tysiac', self.seats, [winner_idx])
+        except Exception as error:
+            db.session.rollback()
+            if current_app:
+                current_app.logger.exception("Error saving Thousand forfeit stats", exc_info=error)
+        return {'success': True}
 
     def get_state(self) -> Dict[str, Any]:
         public_seats = []
