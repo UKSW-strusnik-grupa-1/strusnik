@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Gamepad2, Medal, RefreshCw, Trophy, Users } from "lucide-react";
 import ReturnArrow from "../components/lobby/returnArrow";
 import ActiveGameBanner from "../components/lobby/ActiveGameBanner";
-import AccountRequiredState from "../components/common/AccountRequiredState";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { Games } from "../constants/games";
 import { useLang } from "@/app/lang";
@@ -73,7 +72,7 @@ export default function RankingsPage() {
   const remainingPlayers = rankingData.slice(3);
 
   useEffect(() => {
-    if (isUserLoading || userInfo?.isGuest || !activeGame) return;
+    if (isUserLoading || !activeGame) return;
 
     const controller = new AbortController();
 
@@ -104,7 +103,7 @@ export default function RankingsPage() {
 
     fetchRanking();
     return () => controller.abort();
-  }, [activeGame, isUserLoading, lang, refreshToken, userInfo?.isGuest]);
+  }, [activeGame, isUserLoading, lang, refreshToken]);
 
   const getEntryAriaLabel = (entry: RankingEntry, index: number) => (
     `${index + 1}. ${entry.username}, ` +
@@ -128,11 +127,7 @@ export default function RankingsPage() {
       )}
 
       <div className="rankings-frame z-10">
-        {userInfo?.isGuest && !isUserLoading ? (
-          <AccountRequiredState />
-        ) : (
-          <>
-            <header className="rankings-header">
+        <header className="rankings-header">
               <div className="rankings-header__copy">
                 <p className="rankings-kicker">
                   <Trophy size={15} aria-hidden="true" />
@@ -292,9 +287,7 @@ export default function RankingsPage() {
                   )}
                 </>
               )}
-            </section>
-          </>
-        )}
+        </section>
       </div>
     </main>
   );
