@@ -11483,10 +11483,6 @@ html[data-reduced-motion="true"] *::after {
   opacity: 0.9;
 }
 
-.haxball-lobby-splash {
-  margin-bottom: 24px;
-}
-
 .multiplayer-active-shell--haxball-lobby .haxball-waiting-header {
   align-items: center;
   flex-direction: column;
