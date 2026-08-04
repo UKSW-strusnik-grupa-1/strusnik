@@ -5,6 +5,7 @@ import ThousandBoard from '@/app/components/thousand/ThousandBoard';
 import { useUser } from '@/app/hooks/useUser';
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
+import { MultiplayerStateView } from "@/app/components/multiplayer/MultiplayerShell";
 
 export default function RoomPage() {
 
@@ -14,9 +15,9 @@ export default function RoomPage() {
 
     if (!params?.roomId) {
         return (
-            <div className="flex items-center justify-center h-screen w-full bg-[#1a120b] text-amber-50">
-                <h1 className="text-xl animate-pulse">{t(lang, "loading")}</h1>
-            </div>
+            <main id="main-content" className="game-runtime-shell game-runtime-result-stage">
+                <MultiplayerStateView stage="loading" title={t(lang, "loading")} />
+            </main>
         );
     }
 

@@ -1,4 +1,6 @@
 export interface User {
-    userId: number,
-    nickname: string
+    userId: number | string;
+    nickname: string;
+    isGuest?: boolean;
+    avatarUrl?: string | null;
 }

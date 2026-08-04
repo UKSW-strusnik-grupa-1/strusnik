@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 878 1297" role="img" aria-labelledby="title desc">
+  <title id="title">Haxball</title>
+  <desc id="desc">A dark arena with a white ball between two goals.</desc>
+  <rect width="878" height="1297" fill="#181818"/>
+  <rect x="56" y="56" width="766" height="1185" rx="34" fill="#1f1f1f" stroke="#ff8a3d" stroke-opacity=".4" stroke-width="5"/>
+  <path d="M439 56v1185M56 648.5h766" stroke="#e9ecf3" stroke-opacity=".16" stroke-width="4"/>
+  <circle cx="439" cy="648.5" r="164" fill="none" stroke="#e9ecf3" stroke-opacity=".16" stroke-width="4"/>
+  <path d="M56 470h74v357H56M822 470h-74v357h74" fill="#ff8a3d" fill-opacity=".12" stroke="#ff8a3d" stroke-width="5"/>
+  <circle cx="439" cy="648.5" r="22" fill="#ff8a3d"/>
+  <circle cx="256" cy="648.5" r="67" fill="#e9ecf3"/>
+  <circle cx="622" cy="648.5" r="67" fill="#e9ecf3"/>
+  <path d="M189 648.5h-95M689 648.5h95" stroke="#ff8a3d" stroke-width="14" stroke-linecap="round"/>
+</svg>

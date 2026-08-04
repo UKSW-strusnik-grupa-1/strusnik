@@ -13,8 +13,12 @@ interface CardListProps {
   gameStatus: 'NOT-STARTED' | 'STARTED' | 'FINISHED';
   winner?: 'PLAYER' | 'DEALER' | 'DRAW' | null;
   cashout?: number;
+  bet: number;
+  balance: number;
+  isResolving: boolean;
   hit: () => void;
   stand: () => void;
+  doubleDown: () => void;
   playAgain: () => void;
 }
 
@@ -26,41 +30,46 @@ export default function CardList({
   gameStatus,
   winner,
   cashout = 0,
+  bet,
+  balance,
+  isResolving,
   hit,
   stand,
+  doubleDown,
   playAgain,
 }: CardListProps) {
   const { lang } = useLang();
+  const dealerHasHiddenCard = dealerDeck.includes('cardBack');
+  const canDouble = gameStatus === 'STARTED' && !isResolving && playerDeck.length === 2 && bet > 0 && balance >= bet;
+  const displayedDealerValue = dealerHasHiddenCard ? '?' : dealerDeckValue;
 
   const renderResult = () => {
     if (winner === 'PLAYER') {
       return (
-        <div className="flex flex-col items-center animate-in zoom-in duration-300">
-          <h2 className="text-xl md:text-5xl font-black uppercase text-transparent bg-clip-text bg-linear-to-b from-green-300 to-green-600 drop-shadow-[0_0_15px_rgba(34,197,94,0.6)]">
-            {t(lang, 'blackjack.result.win')}
-          </h2>
-          <p className="text-white font-bold text-xl mt-2 drop-shadow-md">+{cashout}$</p>
+        <div className="blackjack-result blackjack-result--win">
+          <span className="blackjack-result-kicker">{t(lang, 'blackjack.result.kicker')}</span>
+          <h2>{t(lang, 'blackjack.result.win')}</h2>
+          <p>{t(lang, 'blackjack.result.payout')}: <strong>+{cashout}$</strong></p>
         </div>
       );
     }
 
     if (winner === 'DEALER') {
       return (
-        <div className="flex flex-col items-center animate-in zoom-in duration-300">
-          <h3 className="text-xl md:text-5xl font-black uppercase text-transparent bg-clip-text bg-linear-to-b from-red-400 to-red-700 drop-shadow-[0_0_15px_rgba(239,68,68,0.6)]">
-            {t(lang, 'blackjack.result.lose')}
-          </h3>
+        <div className="blackjack-result blackjack-result--lose">
+          <span className="blackjack-result-kicker">{t(lang, 'blackjack.result.kicker')}</span>
+          <h2>{t(lang, 'blackjack.result.lose')}</h2>
+          <p>{t(lang, 'blackjack.result.lose_hint')}</p>
         </div>
       );
     }
 
     if (winner === 'DRAW') {
       return (
-        <div className="flex flex-col items-center animate-in zoom-in duration-300">
-          <h2 className="text-xl md:text-5xl font-black uppercase text-transparent bg-clip-text bg-linear-to-b from-yellow-300 to-yellow-600 drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]">
-            {t(lang, 'blackjack.result.draw')}
-          </h2>
-          <p className="text-white font-bold text-xl mt-2 drop-shadow-md">{t(lang, 'blackjack.result.refund')}</p>
+        <div className="blackjack-result blackjack-result--draw">
+          <span className="blackjack-result-kicker">{t(lang, 'blackjack.result.kicker')}</span>
+          <h2>{t(lang, 'blackjack.result.draw')}</h2>
+          <p>{t(lang, 'blackjack.result.refund')}</p>
         </div>
       );
     }
@@ -69,84 +78,92 @@ export default function CardList({
   };
 
   return (
-    <div className="flex flex-col h-full w-full justify-between py-12 px-4 md:px-8">
-      <div className="w-full flex flex-col items-center justify-center">
-        <p className="text-white font-bold text-lg uppercase tracking-widest mb-4 drop-shadow-md bg-black/40 px-4 py-1 rounded-full border border-white/10">
-          {t(lang, 'blackjack.dealer')} ({dealerDeckValue})
-        </p>
+    <main className="blackjack-table" aria-label={t(lang, 'blackjack.title')}>
+      <header className="blackjack-table-header">
+        <div>
+          <span className="blackjack-kicker">{t(lang, 'blackjack.kicker')}</span>
+          <h1>{t(lang, 'blackjack.table_title')}</h1>
+        </div>
+        <div className="blackjack-table-bet">
+          <span>{t(lang, 'blackjack.bet')}</span>
+          <strong>{bet}$</strong>
+        </div>
+      </header>
 
-        <div className="flex flex-row flex-wrap justify-center gap-2 md:gap-4 min-h-40">
+      <section className="blackjack-hand blackjack-hand--dealer" aria-labelledby="blackjack-dealer-hand">
+        <div className="blackjack-hand-heading">
+          <h2 id="blackjack-dealer-hand">{t(lang, 'blackjack.dealer')}</h2>
+          <span className="blackjack-hand-score">{displayedDealerValue}</span>
+        </div>
+        <div className="blackjack-card-row">
           {dealerDeck.map((card, index) => (
-            <div key={card + '-' + index} className="animate-in fade-in zoom-in duration-300">
-              <GameCard cardName={card} className="w-24 md:w-32 shadow-2xl" />
+            <div key={card + '-' + index} className="blackjack-card-entry" style={{ '--card-index': index } as React.CSSProperties}>
+              <GameCard cardName={card} className="blackjack-card" />
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="w-full flex flex-col items-center justify-center gap-6">
-        <p className="text-white font-bold text-lg uppercase tracking-widest drop-shadow-md bg-black/40 px-4 py-1 rounded-full border border-white/10">
-          {t(lang, 'blackjack.you')} ({playerDeckValue})
-        </p>
-
-        <div className="flex flex-row flex-wrap justify-center gap-2 md:gap-4 min-h-40">
+      <section className="blackjack-hand blackjack-hand--player" aria-labelledby="blackjack-player-hand">
+        <div className="blackjack-hand-heading">
+          <h2 id="blackjack-player-hand">{t(lang, 'blackjack.you')}</h2>
+          <span className="blackjack-hand-score">{playerDeckValue}</span>
+        </div>
+        <div className="blackjack-card-row">
           {playerDeck.map((card, index) => (
-            <div
-              key={card + '-' + index}
-              className="animate-in fade-in zoom-in duration-300 slide-in-from-bottom-10"
-            >
-              <GameCard cardName={card} className="w-24 md:w-32 shadow-2xl" />
+            <div key={card + '-' + index} className="blackjack-card-entry" style={{ '--card-index': index } as React.CSSProperties}>
+              <GameCard cardName={card} className="blackjack-card" />
             </div>
           ))}
         </div>
+      </section>
 
-        <div className="h-24 flex items-center justify-center mt-4">
-          {gameStatus === 'STARTED' ? (
-            <div className="flex flex-row gap-6">
-              <div
-                className="relative w-24 md:w-28 flex items-center justify-center group cursor-pointer"
-                onClick={hit}
+      <footer className="blackjack-controls">
+        {gameStatus === 'STARTED' ? (
+          <>
+            <p className="blackjack-controls-hint">{t(lang, isResolving ? 'blackjack.resolving_hint' : 'blackjack.actions_hint')}</p>
+            <div className="blackjack-action-row">
+              <button type="button" className="blackjack-action blackjack-action--hit" onClick={hit} disabled={isResolving}>
+                <span className="blackjack-action-symbol" aria-hidden="true">+</span>
+                <span>
+                  <strong>{t(lang, 'blackjack.actions.hit')}</strong>
+                  <small>{t(lang, 'blackjack.actions.hit_hint')}</small>
+                </span>
+              </button>
+              <button type="button" className="blackjack-action blackjack-action--stand" onClick={stand} disabled={isResolving}>
+                <span className="blackjack-action-symbol" aria-hidden="true">✓</span>
+                <span>
+                  <strong>{t(lang, 'blackjack.actions.stand')}</strong>
+                  <small>{t(lang, 'blackjack.actions.stand_hint')}</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="blackjack-action blackjack-action--double"
+                onClick={doubleDown}
+                disabled={!canDouble}
+                aria-describedby="blackjack-double-hint"
               >
-                <img
-                  src="/blackjack/button.webp"
-                  className="w-full transition-all group-hover:scale-105 group-hover:brightness-110 drop-shadow-xl"
-                  alt={t(lang, 'blackjack.actions.hit')}
-                />
-                <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105 text-white">
-                  {t(lang, 'blackjack.actions.hit')}
-                </p>
-              </div>
-
-              <div
-                className="relative w-24 md:w-28 flex items-center justify-center group cursor-pointer"
-                onClick={stand}
-              >
-                <img
-                  src="/blackjack/button.webp"
-                  className="w-full transition-all group-hover:scale-105 group-hover:brightness-110 drop-shadow-xl hue-rotate-15"
-                  alt={t(lang, 'blackjack.actions.stand')}
-                />
-                <p className="absolute font-bold text-sm md:text-base transition-all group-hover:scale-105 text-white">
-                  {t(lang, 'blackjack.actions.stand')}
-                </p>
-              </div>
+                <span className="blackjack-action-symbol" aria-hidden="true">2×</span>
+                <span>
+                  <strong>{t(lang, 'blackjack.actions.double')}</strong>
+                  <small>{t(lang, 'blackjack.actions.double_hint')}</small>
+                </span>
+              </button>
             </div>
-          ) : (
-            <div className="flex flex-col justify-center items-center">
-              <div className="bg-black/60 backdrop-blur-sm border border-white/10 px-12 py-4 rounded-2xl shadow-2xl">
-                {renderResult()}
-              </div>
-
-              <p
-                className="font-bold cursor-pointer transition-all duration-100 hover:brightness-110"
-                onClick={playAgain}
-              >
-                {t(lang, 'blackjack.actions.play_again')}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+            <p id="blackjack-double-hint" className="blackjack-double-note">
+              {canDouble ? t(lang, 'blackjack.double_available') : t(lang, 'blackjack.double_unavailable')}
+            </p>
+          </>
+        ) : (
+          <div className="blackjack-finished-panel" aria-live="polite">
+            {renderResult()}
+            <button type="button" className="blackjack-next-button" onClick={playAgain}>
+              {t(lang, 'blackjack.actions.play_again')}
+            </button>
+          </div>
+        )}
+      </footer>
+    </main>
   );
 }

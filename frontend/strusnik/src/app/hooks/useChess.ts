@@ -2,19 +2,68 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import { useLang } from '@/app/lang';
+import { useLang, type Lang } from '@/app/lang';
+import type { Socket } from 'socket.io-client';
 import { t } from '@/app/i18n';
 
 type Color = 'w' | 'b';
-type Seats = [any | null, any | null];
+
+interface ChessSeat {
+  userId?: string;
+  socketId?: string;
+  name?: string;
+  connected?: boolean;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
+}
+
+type Seats = [ChessSeat | null, ChessSeat | null];
+
+interface ChessResult {
+  reason?: unknown;
+  status?: unknown;
+  winner?: Color | null;
+}
+
+interface JoinResponse {
+  success?: boolean;
+  role?: 'player' | 'observer';
+  room_data?: { host_id?: string; time_control_min?: number; time_min?: number };
+  error_code?: string;
+  message?: string;
+}
+
+interface ChessGameState {
+  stage?: string;
+  seats?: (ChessSeat | null)[];
+  fen?: string;
+  turn?: string;
+  timeControlMin?: number;
+  clocks?: { w?: number | null; b?: number | null };
+  draw?: { offeredBy?: Color | null };
+  draw_offer_by?: Color | null;
+  ended?: boolean;
+  result?: ChessResult | null;
+  lastClientMoveId?: string;
+}
+
+interface ChessSocketError {
+  msg?: unknown;
+}
+
+interface OpponentDisconnectPayload {
+  playerName?: string;
+  waitTime?: number;
+}
 
 type DrawUiState = 'none' | 'offered_by_me' | 'offered_to_me';
 
 type UseChessArgs = {
-  socket: any;
+  socket: Socket | null;
   roomId: string | undefined;
   userId: string | null;
   username: string | null;
+  role?: 'player' | 'observer';
   onKickedToLobby?: (msg?: string) => void;
 };
 
@@ -32,17 +81,17 @@ function defaultInitialMsFromRoom(roomTimeMin: number | null): number {
 
 function computeMyColorFromSeats(seats: Seats, userId: string | null): Color | null {
   if (!userId) return null;
-  const s0 = seats?.[0] as any;
-  const s1 = seats?.[1] as any;
+  const s0 = seats?.[0];
+  const s1 = seats?.[1];
   if (s0 && String(s0.userId) === String(userId)) return 'w';
   if (s1 && String(s1.userId) === String(userId)) return 'b';
   return null;
 }
 
 function deriveEndText(
-  lang: any,
+  lang: Lang,
   myColor: Color | null,
-  result: any
+  result: ChessResult | null
 ): { title: string; subtitle: string } {
   if (!result) return { title: t(lang, 'chess.end.game_over'), subtitle: '' };
 
@@ -81,7 +130,7 @@ function deriveEndText(
   return { title: t(lang, 'chess.end.game_over'), subtitle: String(result.reason || result.status || '') };
 }
 
-export function useChess({ socket, roomId, userId, username, onKickedToLobby }: UseChessArgs) {
+export function useChess({ socket, roomId, userId, username, role = 'player', onKickedToLobby }: UseChessArgs) {
   const { lang } = useLang();
   const gameName = 'chess';
 
@@ -101,6 +150,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordModalMessage, setPasswordModalMessage] = useState('');
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [isObserver, setIsObserver] = useState(role === 'observer');
 
   const [gameEnded, setGameEnded] = useState(false);
   const [endTitle, setEndTitle] = useState(t(lang, 'chess.end.game_over'));
@@ -136,7 +186,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     try {
       const chess = fen === 'start' ? new Chess() : new Chess(fen);
 
-      const moves = chess.moves({ verbose: true }) as any[];
+      const moves = chess.moves({ verbose: true });
 
       const map: Record<string, string[]> = {};
       for (const m of moves) {
@@ -161,6 +211,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       room_id: roomId,
       password: pwd || undefined,
       userToken: userId ?? undefined,
+      role,
     });
   };
 
@@ -183,7 +234,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       const chess = fen === 'start' ? new Chess() : new Chess(fen);
       const prevFen = chess.fen();
 
-      const move: any = { from, to };
+      const move: { from: string; to: string; promotion?: string } = { from, to };
       if (promotion) move.promotion = promotion;
 
       const res = chess.move(move);
@@ -223,18 +274,20 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
   };
 
   const leaveRoom = () => {
-    if (!socket || !roomId) return;
+    if (!socket || !roomId || !hasJoinedRoomRef.current) return;
+    hasJoinedRoomRef.current = false;
     socket.emit('leave_room', { roomId });
   };
 
   useEffect(() => {
     if (!socket || !roomId || !userId) return;
 
-    const onJoinResponse = (payload: any) => {
+    const onJoinResponse = (payload: JoinResponse) => {
       if (!payload) return;
       if (payload.success) {
         const rd = payload.room_data || {};
         setHostId(rd.host_id ?? null);
+        setIsObserver(payload.role === 'observer');
         hasJoinedRoomRef.current = true;
 
         const tMin = rd.time_control_min ?? rd.time_min;
@@ -266,7 +319,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       }
     };
 
-    const onGameState = (state: any) => {
+    const onGameState = (state: ChessGameState) => {
       if (!state) return;
 
       if (state.stage) setStage(normalizeStage(state.stage));
@@ -317,7 +370,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
 
       if (state.ended || state.stage === 'ended') {
         setGameEnded(true);
-        const txt = deriveEndText(lang, localMyColor, state.result);
+        const txt = deriveEndText(lang, localMyColor, state.result ?? null);
         setEndTitle(txt.title);
         setEndSubtitle(txt.subtitle);
       } else {
@@ -331,7 +384,7 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       }
     };
 
-    const onError = (payload: any) => {
+    const onError = (payload: ChessSocketError) => {
       const msg = String(payload?.msg || t(lang, 'chess.error.generic'));
       if (pendingMoveRef.current) {
         setFen(pendingMoveRef.current.prevFen);
@@ -341,24 +394,24 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       console.error('chess socket error:', msg);
     };
 
-    const onOpponentDisconnected = (data: any) => {
+    const onOpponentDisconnected = (data: OpponentDisconnectPayload) => {
       if (data.playerName) {
         setOpponentDisconnected({ name: data.playerName, timeLeft: data.waitTime || 90 });
       }
     };
 
-    const onOpponentReconnected = (_data: any) => {
+    const onOpponentReconnected = () => {
       setOpponentDisconnected(null);
     };
 
-    const onOpponentReturned = (_data: any) => {
+    const onOpponentReturned = () => {
 
       setOpponentDisconnected(null);
     };
 
     const onGameEndedTimeout = () => {
       setOpponentDisconnected(null);
-      onKickedToLobby?.('Przeciwnik opuścił grę');
+      onKickedToLobby?.('Przeciwnik opuscil gre');
     };
 
     socket.off('join_room_response', onJoinResponse);
@@ -377,10 +430,13 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
     socket.on('opponent_returned', onOpponentReturned);
     socket.on('game_ended_timeout', onGameEndedTimeout);
 
-    emitJoin('');
+    const autoJoin = new URLSearchParams(window.location.search).get('autojoin');
+    const password = new URLSearchParams(window.location.search).get('password') || undefined;
+    const joinTimer = window.setTimeout(() => emitJoin(autoJoin ? password : undefined), 0);
     lastTickRef.current = Date.now();
 
     return () => {
+      window.clearTimeout(joinTimer);
       socket.off('join_room_response', onJoinResponse);
       socket.off('game_state_update', onGameState);
       socket.off('error', onError);
@@ -389,14 +445,17 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
       socket.off('opponent_returned', onOpponentReturned);
       socket.off('game_ended_timeout', onGameEndedTimeout);
     };
-  }, [socket, roomId, userId, lang]);
+  }, [socket, roomId, userId, lang, role]);
 
   useEffect(() => {
     if (stage !== 'active') return;
     const initMs = defaultInitialMsFromRoom(roomTimeMin);
-    if (whiteTimeMs === null) setWhiteTimeMs(initMs);
-    if (blackTimeMs === null) setBlackTimeMs(initMs);
+    const timer = window.setTimeout(() => {
+      if (whiteTimeMs === null) setWhiteTimeMs(initMs);
+      if (blackTimeMs === null) setBlackTimeMs(initMs);
+    }, 0);
     lastTickRef.current = Date.now();
+    return () => window.clearTimeout(timer);
   }, [stage, roomTimeMin, whiteTimeMs, blackTimeMs]);
 
   useEffect(() => {
@@ -439,12 +498,14 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
 
     const handleBeforeUnload = () => {
       if (hasJoinedRoomRef.current) {
+        hasJoinedRoomRef.current = false;
         socket.emit('leave_room', { roomId });
       }
     };
 
     const handlePopState = () => {
       if (hasJoinedRoomRef.current) {
+        hasJoinedRoomRef.current = false;
         socket.emit('leave_room', { roomId });
       }
     };
@@ -481,9 +542,14 @@ export function useChess({ socket, roomId, userId, username, onKickedToLobby }: 
 
     myTimeMs,
     opponentTimeMs,
+    whiteTimeMs,
+    blackTimeMs,
 
     drawUiState,
     bottomButtonsLocked,
+    isObserver,
+    hostId,
+    seats,
 
     waitingHint,
 

@@ -25,3 +25,6 @@ class MultiplayerGame(ABC):
 
     def start_game(self) -> Dict[str, Any]:
         return {"success": False, "msg": "Not implemented"}
+
+    def forfeit_player(self, user_token: str, reason: str = "resign") -> Dict[str, Any]:
+        return {"success": False, "msg": "Forfeit is not implemented"}

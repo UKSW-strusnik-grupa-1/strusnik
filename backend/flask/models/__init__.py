@@ -6,6 +6,22 @@ from models.User import User
 from models.GameStats import GameStats
 from models.Ban import Ban
 from models.AdminLog import AdminLog
+from models.GuestBan import GuestBan
 from models.SinglePlayerStats import SinglePlayerStats
+from models.FriendRequest import FriendRequest
+from models.Friendship import Friendship
+from models.HaxballMatch import HaxballMatch, HaxballMatchParticipant
 
-__all__ = ["db", "User", "GameStats", "Ban", "AdminLog", "SinglePlayerStats"]
+__all__ = [
+    "db",
+    "User",
+    "GameStats",
+    "Ban",
+    "AdminLog",
+    "GuestBan",
+    "SinglePlayerStats",
+    "FriendRequest",
+    "Friendship",
+    "HaxballMatch",
+    "HaxballMatchParticipant",
+]

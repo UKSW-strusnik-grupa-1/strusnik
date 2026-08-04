@@ -7,16 +7,30 @@ import ReturnArrow from '@/app/components/lobby/returnArrow';
 import WaitingRoom from './WaitingRoom';
 import PasswordModal from '../lobby/passwordModal';
 import { GameChat } from '@/app/components/chat/GameChat';
-import Game from './Game';
+import Game, { type StrategoGameState, type StrategoSeat } from './Game';
 import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
 import OpponentDisconnectedBanner from '@/app/components/common/OpponentDisconnectedBanner';
+import RoomUnavailableState from '@/app/components/common/RoomUnavailableState';
+import MultiplayerShell from '@/app/components/multiplayer/MultiplayerShell';
 
 interface StrategoBoardProps {
   gameName: string;
   roomId: string;
   myId: string;
   myName: string;
+}
+
+interface JoinRoomResponse {
+  success?: boolean;
+  room_data?: { host_id?: string };
+  error_code?: string;
+  message?: string;
+}
+
+interface OpponentDisconnectPayload {
+  playerName?: string;
+  waitTime?: number;
 }
 
 export default function StrategoBoard({ gameName, roomId, myId, myName }: StrategoBoardProps) {
@@ -28,8 +42,8 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
   const hasJoinedRoomRef = useRef(false);
 
   const [gameStage, setGameStage] = useState<string>('waiting_for_players');
-  const [seats, setSeats] = useState<any[]>([null, null]);
-  const [gameState, setGameState] = useState<any>(null);
+  const [seats, setSeats] = useState<(StrategoSeat | null)[]>([null, null]);
+  const [gameState, setGameState] = useState<StrategoGameState | null>(null);
   const [hostId, setHostId] = useState<string | null>(null);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -47,11 +61,13 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
       game_name: gameName,
       room_id: roomId,
       password: pwd,
+      role: searchParams.get('role') === 'observer' ? 'observer' : 'player',
     });
   };
 
   const leaveRoom = () => {
-    if (!socket || !roomId) return;
+    if (!socket || !roomId || !hasJoinedRoomRef.current) return;
+    hasJoinedRoomRef.current = false;
     socket.emit('leave_room', { roomId });
   };
 
@@ -59,13 +75,12 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
     if (!socket) return;
 
     if (!roomId) {
-      setConnectionError(t(lang, 'stratego.board.error.no_room_id'));
       return;
     }
 
-    const handleJoinResponse = (response: any) => {
+    const handleJoinResponse = (response: JoinRoomResponse) => {
       if (response.success && response.room_data) {
-        setHostId(response.room_data.host_id);
+        setHostId(response.room_data.host_id ?? null);
         setShowPasswordModal(false);
         setConnectionError(null);
         setErrorMessage('');
@@ -79,6 +94,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
             roomId,
             seatIndex: 0,
             playerName: myName,
+            autoJoin: true,
           });
         }
       } else {
@@ -88,7 +104,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
           const msg = String(response.message || '');
           const lower = msg.toLowerCase();
 
-          if (msg.includes('password') || msg.includes('haslo') || msg.includes('błędne') || msg.includes('bledne')) {
+          if (msg.includes('password') || msg.includes('haslo') || msg.includes('bledne') || msg.includes('bledne')) {
             setErrorMessage(t(lang, 'stratego.board.error.wrong_password'));
           }
         } else {
@@ -98,12 +114,12 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
       }
     };
 
-    const handleGameState = (state: any) => {
+    const handleGameState = (state: StrategoGameState) => {
       if (state.stage) setGameStage(state.stage);
       if (state.seats) {
         setSeats(state.seats);
 
-        const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
+        const mySeatIdx = state.seats.findIndex((s) => s && s.userId === myId);
         if (mySeatIdx !== -1 && (state.stage === 'playing' || state.stage === 'setup')) {
           const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
           const opponentSeat = state.seats[opponentSeatIdx];
@@ -122,13 +138,13 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
       setGameState(state);
     };
 
-    const handleError = (err: any) => {
+    const handleError = (err: unknown) => {
       if (err && typeof err === 'object' && Object.keys(err).length > 0 && JSON.stringify(err) !== '{}') {
         console.error(t(lang, 'stratego.board.log.socket_error'), err);
       }
     };
 
-    const handleOpponentDisconnected = (data: any) => {
+    const handleOpponentDisconnected = (data: OpponentDisconnectPayload) => {
       console.log('[STRATEGO] opponent_disconnected received:', data);
       if (data.playerName) {
         setOpponentDisconnected({ name: data.playerName, timeLeft: data.waitTime || 90 });
@@ -150,13 +166,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
       router.push(`/lobby/${gameName}`);
     };
 
-    socket.off('join_room_response');
-    socket.off('game_state_update');
-    socket.off('error');
-    socket.off('opponent_disconnected');
-    socket.off('opponent_reconnected');
-    socket.off('opponent_returned');
-    socket.off('game_ended_timeout');
+    socket.off('error', handleError);
 
     socket.on('join_room_response', handleJoinResponse);
     socket.on('game_state_update', handleGameState);
@@ -166,7 +176,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
     socket.on('opponent_returned', handleOpponentReturned);
     socket.on('game_ended_timeout', handleGameEndedTimeout);
 
-    joinRoom('');
+    joinRoom(searchParams.get('autojoin') ? searchParams.get('password') || '' : '');
     socket.emit('get_game_state', { roomId });
 
     return () => {
@@ -198,12 +208,14 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
 
     const handleBeforeUnload = () => {
       if (hasJoinedRoomRef.current) {
+        hasJoinedRoomRef.current = false;
         socket.emit('leave_room', { roomId });
       }
     };
 
     const handlePopState = () => {
       if (hasJoinedRoomRef.current) {
+        hasJoinedRoomRef.current = false;
         socket.emit('leave_room', { roomId });
       }
     };
@@ -232,29 +244,18 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
 
   if (connectionError) {
     return (
-      <div className="relative w-full h-screen flex flex-col items-center justify-center p-4">
-        <div className="bg-[#1a120b]/90 p-8 rounded-xl border-2 border-red-600/50 text-center shadow-2xl backdrop-blur-md max-w-md w-full">
-          <h2 className="text-2xl text-red-500 font-bold mb-4 uppercase tracking-widest">
-            {t(lang, 'stratego.board.error.title')}
-          </h2>
-
-          <p className="text-gray-200 mb-6 font-medium">{connectionError}</p>
-
-          <a
-            href={`/lobby/${gameName}`}
-            className="inline-block w-full bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg uppercase tracking-wide text-sm"
-          >
-            {t(lang, 'stratego.board.back_to_lobby')}
-          </a>
-        </div>
-      </div>
+      <RoomUnavailableState
+        roomId={roomId}
+        href={`/lobby/${gameName}`}
+        backLabel={t(lang, 'stratego.board.back_to_lobby')}
+      />
     );
   }
 
   return (
-    <div className="relative w-full h-screen flex flex-col p-1 overflow-hidden text-amber-50">
+    <div className="game-runtime-shell game-runtime-shell--stratego">
       <div className="shrink-0 mb-1 pl-2 z-10">
-        <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, 'arrow')} onClick={leaveRoom} />
+        <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, 'arrow')} onClick={leaveRoom} confirmMessage={gameStage !== 'waiting_for_players' && seats.some((seat) => seat && String(seat.userId) === String(myId)) ? t(lang, 'common.leave_active_confirm') : undefined} />
       </div>
 
       <PasswordModal
@@ -269,6 +270,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
         <>
           <WaitingRoom
             maxPlayers={2}
+            isObserver={searchParams.get('role') === 'observer'}
             socket={socket}
             roomId={roomId}
             seats={seats}
@@ -283,12 +285,18 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
             myId={myId}
             myName={myName}
             isBubble={true}
-            className="bottom-4 right-4 rounded-xl border border-amber-900/50 bg-[#1a120b]/95"
+            bubbleClassName="waiting-chat-bubble"
+            className="waiting-chat-panel rounded-xl border border-amber-900/50 bg-app-surface/95"
           />
         </>
       ) : (
         <>
-          <Game socket={socket} roomId={roomId} gameState={gameState} myId={myId} opponentDisconnected={!!opponentDisconnected} />
+          <MultiplayerShell
+            stage={gameStage === 'game_over' ? 'finished' : opponentDisconnected ? 'disconnected' : searchParams.get('role') === 'observer' ? 'observer' : 'active'}
+            className="multiplayer-active-shell multiplayer-active-shell--stratego"
+          >
+            <Game socket={socket} roomId={roomId} gameState={gameState} myId={myId} opponentDisconnected={!!opponentDisconnected} />
+          </MultiplayerShell>
 
           <GameChat
             socket={socket}
@@ -296,15 +304,7 @@ export default function StrategoBoard({ gameName, roomId, myId, myName }: Strate
             myId={myId}
             myName={myName}
             isBubble
-            height="28%"
-            className="
-              w-[140px] md:w-[220px] lg:w-[300px]
-              mr-1
-              bg-[#000000]/30
-              backdrop-blur-md
-              border-l border-r border-[#353434]
-              bottom-0 right-0
-            "
+            variant="game"
           />
         </>
       )}

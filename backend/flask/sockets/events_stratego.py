@@ -23,4 +23,4 @@ def handle_stratego_move(game, room, player_id, move_data, socket_instance=None)
     if res['success']:
         broadcast_stratego_state(game, room_id, socket_instance)
     else:
-        emit_fn('error', {'msg': res.get('msg', 'Błąd ruchu')}, to=player_id)
+        emit_fn('error', {'msg': res.get('msg', 'Blad ruchu')}, to=player_id)

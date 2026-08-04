@@ -1,16 +1,23 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
+import type { Socket } from 'socket.io-client';
 import GameCard from '../blackjack/gameCard';
 import { useRouter } from 'next/navigation';
+import { Clock3, Crown, Gavel, WifiOff } from 'lucide-react';
+import PlayerTile from '@/app/components/multiplayer/PlayerTile';
+import type { PlayerTileModel } from '@/app/components/multiplayer/types';
 import { useLang } from '@/app/lang';
 import { t } from '@/app/i18n';
+import { getCardAssetPath } from '@/app/utils/cardAssets';
 
 interface Player {
   socketId: string;
   userId: string;
   name: string;
   score: number;
+  avatarUrl?: string | null;
+  hasAvatar?: boolean;
   round_points?: number;
   connected?: boolean;
   disconnect_timestamp?: number;
@@ -22,6 +29,27 @@ interface Winner {
   userId: string;
 }
 
+interface CardOnTable {
+  card: string;
+  player?: string;
+  userId?: string;
+  player_id?: string;
+}
+
+interface ThousandGameState {
+  seats?: (Player | null)[];
+  active_user_id?: string | null;
+  my_hand?: string[];
+  current_bid?: number;
+  dealer_idx?: number;
+  winner?: Winner;
+  stage?: string;
+  stock_recipients?: number[];
+  trump_suit?: string | null;
+  stock?: string[];
+  cards_on_table?: CardOnTable[];
+}
+
 interface FlyingCard {
   id: string;
   src: string;
@@ -29,11 +57,17 @@ interface FlyingCard {
 }
 
 interface ActiveGameProps {
-  socket: any;
+  socket: Socket | null;
   roomId: string;
   seats: (Player | null)[];
   myId: string;
   initialHand: string[];
+}
+
+function avatarUrlForPlayer(player: Player) {
+  if (player.avatarUrl) return player.avatarUrl;
+  if (player.hasAvatar === false || String(player.userId).startsWith('guest_')) return null;
+  return `/api/profile/avatar/${encodeURIComponent(String(player.userId))}`;
 }
 
 const BigDisconnectOverlay = ({ timestamp, name }: { timestamp: number; name: string }) => {
@@ -50,13 +84,28 @@ const BigDisconnectOverlay = ({ timestamp, name }: { timestamp: number; name: st
     return () => clearInterval(interval);
   }, [timestamp]);
 
+  const progress = Math.max(0, Math.min(100, (timeLeft / 60) * 100));
+
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 border-4 border-red-600/80 rounded-lg backdrop-blur-md shadow-[0_0_30px_rgba(220,38,38,0.5)] p-2">
-      <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mb-1">
-        {t(lang, 'thousand.disconnected')}
-      </p>
-      <p className="text-white text-3xl font-mono font-bold leading-none mb-1">{timeLeft}s</p>
-      <p className="text-gray-400 text-[10px] truncate max-w-full">{name}</p>
+    <div className="thousand-disconnect-card" role="status" aria-live="polite">
+      <div className="thousand-disconnect-card__icon" aria-hidden="true">
+        <WifiOff size={14} strokeWidth={1.8} />
+      </div>
+      <div className="thousand-disconnect-card__copy">
+        <p>{t(lang, 'thousand.disconnected')}</p>
+        <span>{name}</span>
+      </div>
+      <div
+        className="thousand-disconnect-card__timer"
+        aria-label={t(lang, 'common.seconds_remaining').replace('{time}', String(timeLeft))}
+      >
+        <Clock3 size={12} strokeWidth={2} aria-hidden="true" />
+        <strong>{timeLeft}</strong>
+        <span>s</span>
+      </div>
+      <div className="thousand-disconnect-card__progress" aria-hidden="true">
+        <span style={{ width: `${progress}%` }} />
+      </div>
     </div>
   );
 };
@@ -68,22 +117,19 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
   const [gameSeats, setGameSeats] = useState<(Player | null)[]>(initialSeats);
   const [myHand, setMyHand] = useState<string[]>(initialHand);
   const [flyingCard, setFlyingCard] = useState<FlyingCard | null>(null);
-  const [playedCard, setPlayedCard] = useState<string | null>(null);
 
   const [currentBid, setCurrentBid] = useState<number>(100);
   const [declarationAmount, setDeclarationAmount] = useState<number>(100);
 
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
-  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
   const [dealerIdx, setDealerIdx] = useState<number>(0);
 
   const [gameStage, setGameStage] = useState<string>('waiting_for_players');
   const [stockCards, setStockCards] = useState<string[]>([]);
-  const [cardsToGive, setCardsToGive] = useState<number>(0);
   const [stockRecipients, setStockRecipients] = useState<number[]>([]);
   const [trumpSuit, setTrumpSuit] = useState<string | null>(null);
 
-  const [cardsOnTable, setCardsOnTable] = useState<any[]>([]);
+  const [cardsOnTable, setCardsOnTable] = useState<CardOnTable[]>([]);
   const [isInteractionLocked, setIsInteractionLocked] = useState<boolean>(false);
   const [winner, setWinner] = useState<Winner | null>(null);
 
@@ -91,9 +137,11 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
 
   const lastProcessedCardRef = useRef<string | null>(null);
   const centerRef = useRef<HTMLDivElement>(null);
+  const resultActionRef = useRef<HTMLButtonElement>(null);
 
   const pendingCardRef = useRef<string | null>(null);
   const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLeavingRoomRef = useRef(false);
 
   const localDistributedToRef = useRef<number[]>([]);
 
@@ -119,11 +167,16 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
     setDeclarationAmount(currentBid);
   }, [currentBid]);
 
+  useEffect(() => {
+    if (winner) resultActionRef.current?.focus();
+  }, [winner]);
+
   const getMySeatIndex = () => {
     const idx = gameSeats.findIndex((s) => s && String(s.userId) === String(myId));
     return idx === -1 ? 0 : idx;
   };
 
+  const isObserver = !gameSeats.some((s) => s && String(s.userId) === String(myId));
   const mySeatIndex = getMySeatIndex();
   const activePlayersCount = gameSeats.filter((s) => s !== null).length;
   const amIPausing = activePlayersCount === 4 && mySeatIndex === dealerIdx;
@@ -160,17 +213,88 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
     router.push(`/lobby/Tysiac`);
   };
 
+  const animateCardMove = useCallback((startRect: DOMRect, cardCode: string, startRotation: number = 0) => {
+    if (!centerRef.current) return;
+    const endRect = centerRef.current.getBoundingClientRect();
+    const DURATION = 600;
+    const TARGET_CARD_HEIGHT = 120;
+    const TARGET_CARD_WIDTH = TARGET_CARD_HEIGHT * (2 / 3);
+
+    setFlyingCard({
+      id: cardCode,
+      src: getCardAssetPath(cardCode),
+      style: {
+        position: 'fixed',
+        top: startRect.top,
+        left: startRect.left,
+        width: startRect.width,
+        height: startRect.height,
+        zIndex: 9999,
+        transition: `top ${DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), left ${DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), width ${DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), height ${DURATION}ms cubic-bezier(0.32, 0.72, 0, 1), transform ${DURATION}ms cubic-bezier(0.32, 0.72, 0, 1)`,
+        pointerEvents: 'none',
+        transform: `rotate(${startRotation}deg)`,
+        transformOrigin: 'center center',
+      },
+    });
+
+    setTimeout(() => {
+      setFlyingCard((prev) =>
+        prev
+          ? {
+            ...prev,
+            style: {
+              ...prev.style,
+              top: endRect.top + (endRect.height - TARGET_CARD_HEIGHT) / 2,
+              left: endRect.left + (endRect.width - TARGET_CARD_WIDTH) / 2,
+              width: TARGET_CARD_WIDTH,
+              height: TARGET_CARD_HEIGHT,
+              transform: 'rotate(0deg)',
+            },
+          }
+          : null
+      );
+    }, 50);
+
+    setTimeout(() => {
+      setFlyingCard(null);
+    }, DURATION + 100);
+  }, []);
+
+  const handleOpponentPlay = useCallback((playerPos: 'top' | 'left' | 'right', cardCode: string) => {
+    const cardH = 120;
+    const cardW = cardH * (2 / 3);
+    let startTop = 0;
+    let startLeft = 0;
+    let startRotation = 0;
+
+    if (playerPos === 'top') {
+      startRotation = 180;
+      startTop = -cardH;
+      startLeft = window.innerWidth / 2 - cardW / 2;
+    } else if (playerPos === 'left') {
+      startRotation = -90;
+      startTop = window.innerHeight / 2 - cardH / 2;
+      startLeft = -cardW;
+    } else if (playerPos === 'right') {
+      startRotation = 90;
+      startTop = window.innerHeight / 2 - cardH / 2;
+      startLeft = window.innerWidth;
+    }
+
+    animateCardMove({ top: startTop, left: startLeft, width: cardW, height: cardH } as DOMRect, cardCode, startRotation);
+  }, [animateCardMove]);
+
   useEffect(() => {
     if (!socket) return;
+    isLeavingRoomRef.current = false;
 
-    socket.on('game_state_update', (state: any) => {
+    const handleGameState = (state: ThousandGameState) => {
       setProcessingMove(false);
       if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
       pendingCardRef.current = null;
 
       if (state.seats !== undefined) setGameSeats(state.seats);
       if (state.active_user_id !== undefined) setActiveUserId(state.active_user_id);
-      if (state.current_player !== undefined) setCurrentPlayerId(state.current_player);
       if (state.my_hand !== undefined) setMyHand(state.my_hand);
       if (state.current_bid !== undefined) setCurrentBid(state.current_bid);
       if (state.dealer_idx !== undefined) setDealerIdx(state.dealer_idx);
@@ -197,7 +321,6 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
         setGameStage(newStage);
       }
 
-      if (state.cards_to_give !== undefined) setCardsToGive(state.cards_to_give);
       if (state.stock_recipients !== undefined) setStockRecipients(state.stock_recipients);
       if (state.trump_suit !== undefined) setTrumpSuit(state.trump_suit);
 
@@ -209,7 +332,7 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
         const incomingSeats = state.seats !== undefined ? state.seats : gameSeatsRef.current;
         const myIdVal = myIdRef.current;
         const myIdx = incomingSeats.findIndex((s: Player | null) => s && String(s.userId) === String(myIdVal));
-        const isFourPlayers = incomingSeats.filter((s: any) => s !== null).length === 4;
+        const isFourPlayers = incomingSeats.filter((s) => s !== null).length === 4;
         const amIPausingNow = isFourPlayers && myIdx === incomingDealerIdx;
         const isRevealPhase = incomingStage === 'stock_reveal';
         const isBiddingPhase = incomingStage === 'bidding';
@@ -223,42 +346,52 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
       if (state.cards_on_table !== undefined) {
         setCardsOnTable([...state.cards_on_table]);
       }
-    });
+    };
 
-    socket.on('error', (data: any) => {
+    const handleSocketError = (data: unknown) => {
+      if (isLeavingRoomRef.current) return;
+
       console.error(t(lang, 'thousand.log.game_error'), data);
-
-      if (pendingCardRef.current) {
-        const cardToRestore = pendingCardRef.current;
-        setMyHand((prev) => {
-          if (!prev.includes(cardToRestore)) return [...prev, cardToRestore];
-          return prev;
-        });
-        pendingCardRef.current = null;
+      const pendingCard = pendingCardRef.current;
+      if (!pendingCard) {
+        setProcessingMove(false);
+        return;
       }
+
+      setMyHand((prev) => {
+        if (!prev.includes(pendingCard)) return [...prev, pendingCard];
+        return prev;
+      });
+      pendingCardRef.current = null;
       setProcessingMove(false);
       if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
       socket.emit('sync_state', { roomId });
-    });
+    };
 
-    socket.on('game_ended_timeout', () => {
-      alert(t(lang, 'thousand.alert.game_ended_timeout'));
+    const handleGameEndedTimeout = () => {
       router.push(`/lobby/Tysiac`);
-    });
+    };
 
+    socket.on('game_state_update', handleGameState);
+    socket.on('error', handleSocketError);
+    socket.on('game_ended_timeout', handleGameEndedTimeout);
     socket.emit('sync_state', { roomId });
 
     return () => {
-      socket.off('game_state_update');
-      socket.off('game_ended_timeout');
+      isLeavingRoomRef.current = true;
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+      pendingCardRef.current = null;
+      socket.off('game_state_update', handleGameState);
+      socket.off('error', handleSocketError);
+      socket.off('game_ended_timeout', handleGameEndedTimeout);
     };
   }, [socket, roomId, router, lang]);
 
   useEffect(() => {
-    if (cardsOnTable.length === 0) {
-      setPlayedCard(null);
-      return;
-    }
+    if (cardsOnTable.length === 0) return;
     const newCard = cardsOnTable[cardsOnTable.length - 1];
     const isNewCard = newCard.card !== lastProcessedCardRef.current;
 
@@ -285,79 +418,7 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
         if (relPos === 3) handleOpponentPlay('left', newCard.card);
       }
     }
-  }, [cardsOnTable]);
-
-  const animateCardMove = (startRect: DOMRect, cardCode: string, startRotation: number = 0) => {
-    if (!centerRef.current) return;
-    const endRect = centerRef.current.getBoundingClientRect();
-    const DURATION = 600;
-    const TARGET_CARD_HEIGHT = 120;
-    const TARGET_CARD_WIDTH = TARGET_CARD_HEIGHT * (2 / 3);
-
-    setFlyingCard({
-      id: cardCode,
-      src: `/blackjack/cards/${cardCode}.png`,
-      style: {
-        position: 'fixed',
-        top: startRect.top,
-        left: startRect.left,
-        width: startRect.width,
-        height: startRect.height,
-        zIndex: 9999,
-        transition: `all ${DURATION}ms ease-in-out`,
-        pointerEvents: 'none',
-        transform: `rotate(${startRotation}deg)`,
-        transformOrigin: 'center center',
-      },
-    });
-
-    setTimeout(() => {
-      setFlyingCard((prev) =>
-        prev
-          ? {
-            ...prev,
-            style: {
-              ...prev.style,
-              top: endRect.top + (endRect.height - TARGET_CARD_HEIGHT) / 2,
-              left: endRect.left + (endRect.width - TARGET_CARD_WIDTH) / 2,
-              width: TARGET_CARD_WIDTH,
-              height: TARGET_CARD_HEIGHT,
-              transform: 'rotate(0deg)',
-            },
-          }
-          : null
-      );
-    }, 50);
-
-    setTimeout(() => {
-      setPlayedCard(cardCode);
-      setFlyingCard(null);
-    }, DURATION + 100);
-  };
-
-  const handleOpponentPlay = (playerPos: 'top' | 'left' | 'right', cardCode: string) => {
-    const cardH = 120;
-    const cardW = cardH * (2 / 3);
-    let startTop = 0;
-    let startLeft = 0;
-    let startRotation = 0;
-
-    if (playerPos === 'top') {
-      startRotation = 180;
-      startTop = -cardH;
-      startLeft = window.innerWidth / 2 - cardW / 2;
-    } else if (playerPos === 'left') {
-      startRotation = -90;
-      startTop = window.innerHeight / 2 - cardH / 2;
-      startLeft = -cardW;
-    } else if (playerPos === 'right') {
-      startRotation = 90;
-      startTop = window.innerHeight / 2 - cardH / 2;
-      startLeft = window.innerWidth;
-    }
-
-    animateCardMove({ top: startTop, left: startLeft, width: cardW, height: cardH } as DOMRect, cardCode, startRotation);
-  };
+  }, [cardsOnTable, handleOpponentPlay]);
 
   const trickSize = activePlayersCount === 4 ? 3 : activePlayersCount;
   const isTrickFull = activePlayersCount > 0 && cardsOnTable.length >= trickSize;
@@ -405,7 +466,7 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
         targetIdx = opponentsIndices[0];
       }
 
-      if (targetIdx !== undefined) {
+      if (targetIdx !== undefined && socket) {
         setProcessingMove(true);
 
         localDistributedToRef.current.push(targetIdx);
@@ -462,63 +523,95 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
 
   const PlayerInfo = ({ offset }: { offset: number }) => {
     const { data, seatIndex } = getPlayerAtScreenPos(offset);
-    const isMe = data && String(data.userId) === String(myId);
-    const isActive = data && activeUserId && String(data.userId) === String(activeUserId);
+    const isMe = !isObserver && data && String(data.userId) === String(myId);
+    const isActive = Boolean(data && activeUserId && String(data.userId) === String(activeUserId));
     const isPausingPlayer = activePlayersCount === 4 && seatIndex === dealerIdx;
 
     if (!data) {
       return (
-        <div className="bg-black/30 border border-dashed border-gray-600 rounded px-2 py-1 text-center min-w-[20vh]">
-          <p className="text-gray-500 text-xs">{t(lang, 'thousand.empty')}</p>
+        <div className="thousand-player-seat thousand-player-seat--empty" role="group">
+          <span className="thousand-player-seat__dot" aria-hidden="true" />
+          <span>{t(lang, 'thousand.empty')}</span>
         </div>
       );
     }
 
     const isConnected = data.connected !== false;
 
-    if (!isConnected && data.disconnect_timestamp) {
-      return (
-        <div className="relative w-[25vh] h-[10vh]">
-          <BigDisconnectOverlay timestamp={data.disconnect_timestamp} name={data.name} />
-        </div>
-      );
-    }
+    const model: PlayerTileModel = {
+      id: String(data.userId || data.socketId),
+      displayName: data.name,
+      avatarUrl: avatarUrlForPlayer(data),
+      isSelf: Boolean(isMe),
+      selfLabel: t(lang, 'thousand.you'),
+      role: 'player',
+      connection: isConnected ? 'connected' : 'disconnected',
+      activity: isActive ? 'active' : 'playing',
+      activityLabel: isPausingPlayer ? t(lang, 'thousand.pausing') : isActive ? t(lang, 'thousand.your_turn') : t(lang, 'thousand.wait'),
+      metric: { label: t(lang, 'thousand.points_short'), value: String(data.score) },
+      outcome: winner ? (String(winner.userId) === String(data.userId) ? 'won' : 'lost') : undefined,
+    };
 
     return (
-      <div
-        className={`
-          transition-all duration-300 bg-[#000000]/60 border rounded px-2 py-1 text-center min-w-[25vh] mb-1 shadow-md flex flex-col items-center justify-center gap-0.5 relative overflow-hidden
-          ${isMe ? 'bg-amber-900/20' : ''}
-          ${isActive ? 'ring-1 ring-green-500 scale-105 bg-green-900/30' : ''}
-          ${isPausingPlayer ? 'opacity-70 grayscale' : ''}
-          ${isActive && !isMe && 'mb-2'}
-          ${isMe ? 'border-amber-500/50' : 'border-[#353434]'}
-        `}
-      >
-        <p
-          className={`font-bold whitespace-nowrap ${isMe ? 'text-amber-400' : 'text-amber-50'}`}
-          style={{ fontSize: 'clamp(10px, 1.5vh, 16px)' }}
-        >
-          {isMe ? t(lang, 'thousand.you') : data.name} {isActive && '⏳'} {isPausingPlayer ? t(lang, 'thousand.pausing') : null}
-        </p>
+      <div className={`thousand-player-seat${isMe ? ' is-you' : ''}${isActive ? ' is-active' : ''}${isPausingPlayer ? ' is-pausing' : ''}`}>
+        <PlayerTile model={model} variant={isObserver ? 'observer' : winner ? 'finished' : 'active'} compact className="thousand-player-tile" />
+        {!isConnected && data.disconnect_timestamp && (
+          <div className="thousand-player-seat__offline">
+            <BigDisconnectOverlay timestamp={data.disconnect_timestamp} name={data.name} />
+          </div>
+        )}
+      </div>
+    );
+  };
 
-        <p className="text-gray-300 leading-tight" style={{ fontSize: 'clamp(8px, 1.2vh, 12px)' }}>
-          {data.score} {t(lang, 'thousand.points_short')}
-        </p>
+  const OpponentCards = ({ offset, count }: { offset: number; count: number }) => {
+    const isPausingPlayer = activePlayersCount === 4 && (getMySeatIndex() + offset) % 4 === dealerIdx;
+    if (!isPlayerConnected(offset) || isPausingPlayer) return null;
 
-        <p className="text-amber-500/90 font-mono tracking-wider" style={{ fontSize: 'clamp(8px, 1.1vh, 11px)' }}>
-          ({data.round_points || 0} {t(lang, 'thousand.in_round')})
-        </p>
+    return (
+      <div className="thousand-opponent-cards" aria-hidden="true">
+        {Array.from({ length: count }, (_, index) => (
+          <span key={index} className="thousand-opponent-card" />
+        ))}
       </div>
     );
   };
 
   const isMyTurn = amIActive();
 
+  const stageLabels: Record<string, string> = lang === 'pl'
+    ? {
+      waiting_for_players: 'Przygotowanie',
+      stock_reveal: 'Odkrywanie stosu',
+      bidding: 'Licytacja',
+      declaring: 'Deklarowanie',
+      distributing: 'Rozdawanie kart',
+      playing: 'Rozgrywka',
+      game_over: 'Koniec rundy',
+    }
+    : {
+      waiting_for_players: 'Preparing',
+      stock_reveal: 'Stock reveal',
+      bidding: 'Bidding',
+      declaring: 'Declaring',
+      distributing: 'Dealing cards',
+      playing: 'Playing',
+      game_over: 'Round over',
+    };
+  const stageLabel = stageLabels[gameStage] || gameStage;
+  const cardWord = lang === 'pl' ? 'Karta' : 'Card';
+  const turnLabel = isObserver || amIPausing
+    ? t(lang, 'thousand.observing')
+    : isMyTurn
+      ? t(lang, 'thousand.your_turn')
+      : t(lang, 'thousand.wait');
+  const flyingCardIsOnTable = Boolean(flyingCard && cardsOnTable[cardsOnTable.length - 1]?.card === flyingCard.id);
+  const visibleTableCards = flyingCardIsOnTable ? cardsOnTable.slice(0, -1) : cardsOnTable;
+
   const getSuitIcon = (suit: string) => {
-    const icons: any = { H: '♥', D: '♦', C: '♣', S: '♠' };
-    const colors: any = { H: 'text-red-500', D: 'text-red-500', C: 'text-gray-500', S: 'text-gray-500' };
-    return <span className={`text-2xl ${colors[suit] || 'text-white'}`}>{icons[suit]}</span>;
+    const icons: Record<string, string> = { H: '♥', D: '♦', C: '♣', S: '♠' };
+    const colorClass = suit === 'H' || suit === 'D' ? 'is-red' : 'is-black';
+    return <span className={`thousand-suit ${colorClass}`} aria-hidden="true">{icons[suit] || '?'}</span>;
   };
 
   const isPlayerConnected = (offset: number) => {
@@ -532,29 +625,19 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
   };
 
   return (
-    <div className="flex flex-col w-full h-full relative">
+    <div className="game-runtime-game game-runtime-thousand">
       {winner && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-700">
-          <div className="flex flex-col items-center bg-[#2b1d15] border-2 border-amber-500 rounded-xl p-8 shadow-[0_0_50px_rgba(245,158,11,0.5)]">
-            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-linear-to-r from-amber-300 to-yellow-600 mb-2 uppercase tracking-widest">
-              {t(lang, 'thousand.game_over')}
-            </h1>
-
-            <div className="text-6xl mb-4">👑</div>
-
-            <p className="text-gray-300 text-lg mb-1">{t(lang, 'thousand.winner_label')}:</p>
-            <p className="text-3xl font-bold text-amber-400 mb-2">{winner.name}</p>
-
-            <div className="bg-black/40 rounded px-6 py-2 mb-8 border border-amber-900/50">
-              <p className="text-amber-100/80 font-mono text-xl">
-                {t(lang, 'thousand.score_label')}: {winner.score}
-              </p>
+        <div className="thousand-result-overlay" role="dialog" aria-modal="true" aria-labelledby="thousand-result-title">
+          <div className="thousand-result-card">
+            <div className="thousand-result-icon" aria-hidden="true"><Crown size={28} strokeWidth={1.8} /></div>
+            <p className="thousand-result-kicker">{t(lang, 'thousand.game_over')}</p>
+            <h1 id="thousand-result-title">{t(lang, 'thousand.winner_label')}</h1>
+            <p className="thousand-result-winner">{winner.name}</p>
+            <div className="thousand-result-score">
+              <span>{t(lang, 'thousand.score_label')}</span>
+              <strong>{winner.score}</strong>
             </div>
-
-            <button
-              onClick={handleExit}
-              className="cursor-pointer bg-green-700 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105"
-            >
+            <button ref={resultActionRef} type="button" onClick={handleExit} className="game-runtime-button game-runtime-button--primary thousand-result-action">
               {t(lang, 'thousand.back_to_lobby')}
             </button>
           </div>
@@ -565,121 +648,109 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
         <img
           src={flyingCard.src}
           style={flyingCard.style}
-          className="rounded-[5%] drop-shadow-2xl border border-white/20"
+          className="thousand-flying-card"
           alt={t(lang, 'thousand.flying_card_alt')}
         />
       )}
 
-      <div className="flex flex-row w-full flex-1 min-h-0 gap-1 items-center justify-center pb-1">
-        <div className="flex-1 flex items-center justify-center h-full min-w-0">
-          <div className="aspect-square h-full max-h-full w-auto max-w-full bg-[#2b1d15] border-2 border-[#6b5645] rounded-xl relative shadow-2xl overflow-hidden">
+      <header className="thousand-game-header" inert={Boolean(winner)} aria-hidden={winner ? true : undefined}>
+        <div className="thousand-game-heading">
+          <span className="thousand-game-heading__eyebrow">STRUSNIK / ONLINE TABLE</span>
+          <h1>{t(lang, 'games.tysiac')}</h1>
+        </div>
+      </header>
+
+      <div className="thousand-game-header__meta" inert={Boolean(winner)} aria-hidden={winner ? true : undefined}>
+        <div className={`thousand-stage-pill${isMyTurn ? ' is-active' : ''}`} aria-live="polite">
+          <span className="thousand-stage-pill__dot" aria-hidden="true" />
+          <span>{stageLabel}</span>
+        </div>
+        <div className="thousand-header-stat">
+          <span>{t(lang, 'thousand.stake')}</span>
+          <strong>{currentBid}</strong>
+        </div>
+        {trumpSuit && (
+          <div className="thousand-header-stat thousand-header-stat--trump">
+            <span>{t(lang, 'thousand.trump')}</span>
+            {getSuitIcon(trumpSuit)}
+          </div>
+        )}
+      </div>
+
+      <div className="game-runtime-thousand-layout thousand-layout" inert={Boolean(winner)} aria-hidden={winner ? true : undefined}>
+        <div className="thousand-board-column">
+          <section className="game-runtime-table thousand-table" aria-label={t(lang, 'games.tysiac')}>
+            <span className="thousand-table__mark thousand-table__mark--top" aria-hidden="true">♠</span>
+            <span className="thousand-table__mark thousand-table__mark--bottom" aria-hidden="true">♣</span>
+
+            <div className="thousand-table__top">
+              <PlayerInfo offset={2} />
+              <OpponentCards offset={2} count={7} />
+            </div>
+
+            <div className="thousand-table__bottom">
+              {amIConnected() && (
+                <div className="thousand-hand-block">
+                  <div className="thousand-hand-heading">
+                    <span>{isMyTurn ? t(lang, 'thousand.your_turn') : t(lang, 'thousand.you')}</span>
+                    <span className="thousand-hand-count">{myHand.length} / 7</span>
+                  </div>
+                  <div className="thousand-hand" aria-label={t(lang, 'thousand.your_preview')}>
+                    {(myHand || []).map((card, index) => {
+                      const isValid = isCardValid(card);
+                      const isInteractive =
+                        !processingMove &&
+                        !isInteractionLocked &&
+                        !isTrickFull &&
+                        isMyTurn &&
+                        (gameStage === 'playing' || gameStage === 'distributing');
+
+                      return (
+                        <button
+                          key={card}
+                          type="button"
+                          disabled={!isInteractive || !isValid}
+                          aria-label={`${cardWord} ${card}`}
+                          onClick={(e) => handleCardClick(e, card)}
+                          className={`thousand-hand-card${isInteractive && isValid ? ' is-valid' : ''}${isInteractive && !isValid ? ' is-invalid' : ''}`}
+                          style={{ animationDelay: `${index * 55}ms` }}
+                        >
+                          <img src={getCardAssetPath(card)} alt="" draggable={false} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {amIPausing && <span className="thousand-dealer-note">{t(lang, 'thousand.dealer')}</span>}
+                </div>
+              )}
+              <PlayerInfo offset={0} />
+            </div>
+
+            <div className="thousand-table__side thousand-table__side--left">
+              <PlayerInfo offset={3} />
+              <OpponentCards offset={3} count={5} />
+            </div>
+
+            <div className="thousand-table__side thousand-table__side--right">
+              <PlayerInfo offset={1} />
+              <OpponentCards offset={1} count={5} />
+            </div>
+
             {trumpSuit && (
-              <div className="absolute top-2 right-2 z-20 bg-black/50 px-3 py-1 rounded-lg border border-amber-500/30 flex flex-col items-center">
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider">{t(lang, 'thousand.trump')}</span>
+              <div className="thousand-table__trump" aria-label={`${t(lang, 'thousand.trump')}: ${trumpSuit}`}>
+                <span>{t(lang, 'thousand.trump')}</span>
                 {getSuitIcon(trumpSuit)}
               </div>
             )}
 
-            <div className="absolute top-0 left-0 w-full h-[25%] flex flex-col items-center justify-start pt-2 z-10">
-              <PlayerInfo offset={2} />
-              {isPlayerConnected(2) && (!activePlayersCount || activePlayersCount < 4 || (getMySeatIndex() + 2) % 4 !== dealerIdx) && (
-                <div className="flex justify-center w-full">
-                  {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                    <div
-                      key={i}
-                      className="w-[10%] aspect-2/3 bg-[#4a3728] border border-[#6b5645] rounded-[8%] shadow-md -ml-[3%]"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="absolute bottom-0 left-0 w-full h-[25%] flex flex-col-reverse items-center justify-start pb-2 z-10">
-              <div className="mt-1">
-                <PlayerInfo offset={0} />
-              </div>
-
-              {amIConnected() && (
-                <div className="flex justify-center items-end w-full">
-                  {(myHand || []).map((card) => {
-                    const isValid = isCardValid(card);
-                    const isInteractive =
-                      !processingMove &&
-                      !isInteractionLocked &&
-                      !isTrickFull &&
-                      isMyTurn &&
-                      (gameStage === 'playing' || gameStage === 'distributing');
-
-                    let styles =
-                      'w-[10%] aspect-2/3 object-contain drop-shadow-xl -ml-[3%] relative rounded-[5%] transition-all duration-300 ';
-                    if (isInteractive) {
-                      styles += isValid
-                        ? 'cursor-pointer -translate-y-[5%] hover:-translate-y-[25%] brightness-110'
-                        : 'cursor-not-allowed brightness-50 opacity-80';
-                    } else {
-                      styles += 'cursor-default opacity-90 brightness-75';
-                    }
-
-                    return (
-                      <img
-                        key={card}
-                        src={`/blackjack/cards/${card}.png`}
-                        alt={card}
-                        onClick={(e) => handleCardClick(e, card)}
-                        className={styles}
-                      />
-                    );
-                  })}
-
-                  {amIPausing && <p className="text-amber-500/50 text-xs font-bold mb-1">{t(lang, 'thousand.dealer')}</p>}
-                </div>
-              )}
-            </div>
-
-            <div className="absolute left-0 top-0 h-full w-[25%] flex flex-col items-center justify-center z-0 pointer-events-none">
-              <div className="flex flex-col items-center justify-center w-[100vh] h-full -rotate-90 origin-center pointer-events-auto">
-                <PlayerInfo offset={3} />
-                {isPlayerConnected(3) && (!activePlayersCount || activePlayersCount < 4 || (getMySeatIndex() + 3) % 4 !== dealerIdx) && (
-                  <div className="flex justify-center w-full">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div
-                        key={i}
-                        className="w-[10vh] aspect-2/3 bg-[#4a3728] border border-[#6b5645] rounded-[8%] shadow-md -ml-[3vh]"
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="absolute right-0 top-0 h-full w-[25%] flex flex-col items-center justify-center z-0 pointer-events-none">
-              <div className="flex flex-col items-center justify-center w-[100vh] h-full rotate-90 origin-center pointer-events-auto">
-                <PlayerInfo offset={1} />
-                {isPlayerConnected(1) && (!activePlayersCount || activePlayersCount < 4 || (getMySeatIndex() + 1) % 4 !== dealerIdx) && (
-                  <div className="flex justify-center w-full">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div
-                        key={i}
-                        className="w-[10vh] aspect-2/3 bg-[#4a3728] border border-[#6b5645] rounded-[8%] shadow-md -ml-[3vh]"
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div ref={centerRef} className="absolute inset-0 m-auto w-[40%] h-[40%] flex items-center justify-center z-0">
+            <div ref={centerRef} className="thousand-table__center">
               {(gameStage === 'stock_reveal' || gameStage === 'bidding') && stockCards.length > 0 && (
-                <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500">
-                  {gameStage === 'bidding' && (
-                    <p className="text-green-400 text-[10px] font-bold uppercase mb-1 bg-black/50 px-2 rounded">
-                      {t(lang, 'thousand.your_preview')}
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    {stockCards.map((card, i) => (
-                      <div key={i} onClick={(e) => handleCardClick(e, card)}>
-                        <GameCard cardName={card} className="w-[8vh] h-auto object-contain hover:scale-110 transition-transform" />
+                <div className="thousand-stock-reveal">
+                  {gameStage === 'bidding' && <p>{t(lang, 'thousand.your_preview')}</p>}
+                  <div className="thousand-stock-cards">
+                    {stockCards.map((card, index) => (
+                      <div key={`${card}-${index}`} className="thousand-stock-card" style={{ animationDelay: `${index * 90}ms` }}>
+                        <GameCard cardName={card} className="thousand-stock-card__game-card" />
                       </div>
                     ))}
                   </div>
@@ -687,108 +758,119 @@ export default function Game({ socket, roomId, seats: initialSeats, myId, initia
               )}
 
               {gameStage === 'bidding' && !stockCards.length && (
-                <div className="flex flex-col items-center gap-2 animate-in fade-in duration-500">
-                  <div className="flex gap-1">
-                    {[1, 2, 3].map((i) => (
-                      <img
-                        key={i}
-                        src={`/blackjack/cards/cardBack.png`}
-                        className="w-[8vh] h-auto object-contain drop-shadow-xl rounded-[5%] border border-[#6b5645]"
-                        alt={t(lang, 'thousand.stock_hidden_alt')}
-                      />
+                <div className="thousand-stock-reveal thousand-stock-reveal--hidden">
+                  <div className="thousand-stock-cards">
+                    {[1, 2, 3].map((index) => (
+                      <img key={index} src="/blackjack/cards/cardBack.png" className="thousand-hidden-card" alt="" />
                     ))}
                   </div>
-                  <div className="bg-black/60 backdrop-blur-sm px-4 py-1 rounded-full border border-amber-500/50 shadow-lg mt-1">
-                    <span className="text-amber-100 text-xs uppercase mr-2 opacity-80">{t(lang, 'thousand.stake')}</span>
-                    <span className="text-amber-400 font-bold text-lg">{currentBid}</span>
+                  <div className="thousand-stake-display">
+                    <span>{t(lang, 'thousand.stake')}</span>
+                    <strong>{currentBid}</strong>
                   </div>
                 </div>
               )}
 
-              {gameStage === 'playing' && cardsOnTable.length > 0 && (
-                <div className="relative w-full h-full">
-                  <img
-                    src={`/blackjack/cards/${cardsOnTable[cardsOnTable.length - 1].card}.png`}
-                    className="absolute w-[25%] h-auto object-contain drop-shadow-2xl rounded-[5%] transition-all duration-300"
-                    style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%) rotate(0deg)', zIndex: 10 }}
-                    alt={t(lang, 'thousand.table_card_alt')}
-                  />
+              {gameStage === 'playing' && visibleTableCards.length > 0 && (
+                <div className="thousand-trick" aria-live="polite">
+                  {visibleTableCards.map((tableCard, index) => {
+                    const offset = index - (visibleTableCards.length - 1) / 2;
+                    return (
+                      <img
+                        key={`${tableCard.card}-${index}`}
+                        src={getCardAssetPath(tableCard.card)}
+                        className="thousand-trick-card"
+                        style={{
+                          transform: `translate(-50%, -50%) translate(${offset * 14}px, ${Math.abs(offset) * 3}px) rotate(${offset * 6}deg)`,
+                          zIndex: index + 1,
+                        }}
+                        alt={t(lang, 'thousand.table_card_alt')}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
-          </div>
+          </section>
         </div>
 
-        <div className="w-[140px] md:w-[220px] lg:w-[300px] shrink-0 h-full bg-[#000000]/40 border border-[#353434] rounded-xl p-2 flex flex-col gap-2 backdrop-blur-sm overflow-hidden">
-          <div className="bg-[#2b1d15]/60 rounded p-1.5 border border-[#4a3728]">
-            <p className="text-gray-300 text-[10px] lg:text-sm">
-              {t(lang, 'thousand.status')}:{' '}
-              <span className={isMyTurn ? 'text-green-500 font-bold' : 'text-gray-400'}>
-                {amIPausing ? t(lang, 'thousand.observing') : isMyTurn ? t(lang, 'thousand.your_turn') : t(lang, 'thousand.wait')}
-              </span>
-            </p>
+        <aside className="game-runtime-side-panel thousand-control-rail" aria-label={t(lang, 'thousand.status')}>
+          <div className="thousand-rail-heading">
+            <div>
+              <span className="thousand-rail-heading__eyebrow">{stageLabel}</span>
+              <h2>{turnLabel}</h2>
+            </div>
+            <span className={`thousand-turn-icon${isMyTurn ? ' is-active' : ''}`} aria-hidden="true">
+              <Clock3 size={18} strokeWidth={1.8} />
+            </span>
           </div>
 
-          <div className="flex flex-col gap-2 mt-2 flex-1">
+          <div className="thousand-rail-summary" aria-live="polite">
+            <div>
+              <span>{t(lang, 'thousand.status')}</span>
+              <strong>{activePlayersCount} / 4</strong>
+            </div>
+            <div>
+              <span>{t(lang, 'thousand.stake')}</span>
+              <strong>{currentBid} {t(lang, 'thousand.points_short')}</strong>
+            </div>
+          </div>
+
+          <div className="thousand-rail-actions">
             {gameStage === 'bidding' && !amIPausing && (
               <>
-                <button
-                  onClick={handleBid}
-                  disabled={!isMyTurn}
-                  className={`h-12 w-full rounded bg-amber-700 text-white font-bold transition-all hover:bg-amber-600 ${!isMyTurn && 'opacity-50 cursor-not-allowed'
-                    }`}
-                >
-                  {t(lang, 'thousand.bid')}
+                <button type="button" onClick={handleBid} disabled={!isMyTurn} className="game-runtime-button game-runtime-button--primary thousand-action-button">
+                  <Gavel size={16} strokeWidth={2} aria-hidden="true" />
+                  <span>{t(lang, 'thousand.bid')}</span>
+                  <small>{currentBid + 10}</small>
                 </button>
-                <button
-                  onClick={handlePass}
-                  disabled={!isMyTurn}
-                  className={`h-12 w-full rounded bg-gray-700 text-white font-bold transition-all hover:bg-gray-600 ${!isMyTurn && 'opacity-50 cursor-not-allowed'
-                    }`}
-                >
-                  {t(lang, 'thousand.pass')}
+                <button type="button" onClick={handlePass} disabled={!isMyTurn} className="game-runtime-button thousand-action-button">
+                  <span>{t(lang, 'thousand.pass')}</span>
                 </button>
               </>
             )}
 
             {gameStage === 'declaring' && (
-              <div className="flex flex-col gap-2 animate-in slide-in-from-right duration-300">
+              <div className="thousand-declare-form">
                 {isMyTurn ? (
                   <>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-gray-400 text-[10px] uppercase font-bold">{t(lang, 'thousand.your_game')}:</label>
-                      <input
-                        type="number"
-                        step="10"
-                        min={currentBid}
-                        value={declarationAmount}
-                        onChange={(e) => setDeclarationAmount(Number(e.target.value))}
-                        className="w-full bg-black/50 border border-amber-600/50 rounded px-2 py-2 text-amber-400 font-bold text-center focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                    <button
-                      onClick={handleDeclareScore}
-                      disabled={declarationAmount < currentBid}
-                      className="h-10 w-full rounded bg-green-700 hover:bg-green-600 text-white font-bold text-sm transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
+                    <label htmlFor="thousand-declaration">{t(lang, 'thousand.your_game')}</label>
+                    <input
+                      id="thousand-declaration"
+                      type="number"
+                      step="10"
+                      min={currentBid}
+                      value={declarationAmount}
+                      onChange={(e) => setDeclarationAmount(Number(e.target.value))}
+                    />
+                    <button type="button" onClick={handleDeclareScore} disabled={declarationAmount < currentBid} className="game-runtime-button game-runtime-button--primary thousand-action-button">
                       {t(lang, 'thousand.confirm')}
                     </button>
                   </>
                 ) : (
-                  <div className="flex items-center justify-center h-14 w-full rounded bg-amber-900/20 border border-amber-500/10">
-                    <span className="text-gray-400 text-xs text-center italic">{t(lang, 'thousand.player_setting_score')}</span>
-                  </div>
+                  <div className="thousand-waiting-callout" role="status">{t(lang, 'thousand.player_setting_score')}</div>
                 )}
               </div>
             )}
 
             {gameStage === 'stock_reveal' && (
-              <div className="flex items-center justify-center h-14 w-full rounded bg-amber-900/50 border border-amber-500/30">
-                <span className="text-amber-200 text-xs font-bold animate-pulse text-center">{t(lang, 'thousand.fetching_stock')}</span>
+              <div className="thousand-waiting-callout thousand-waiting-callout--accent" role="status">
+                {t(lang, 'thousand.fetching_stock')}
+              </div>
+            )}
+
+            {gameStage === 'playing' && (
+              <div className={`thousand-waiting-callout${isMyTurn ? ' thousand-waiting-callout--accent' : ''}`} role="status">
+                {isMyTurn ? t(lang, 'thousand.your_turn') : t(lang, 'thousand.wait')}
               </div>
             )}
           </div>
-        </div>
+
+          <div className="thousand-rail-tip">
+            <span aria-hidden="true">♠</span>
+            <p>{lang === 'pl' ? 'Zagraj karte zgodnie z kolorem wyjsciowym, jesli ja masz.' : 'Follow the lead suit when you have one.'}</p>
+          </div>
+        </aside>
       </div>
     </div>
   );

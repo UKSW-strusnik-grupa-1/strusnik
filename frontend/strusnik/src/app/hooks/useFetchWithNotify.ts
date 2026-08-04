@@ -1,52 +1,37 @@
-import { useRouter } from "next/navigation";
 import { useNotification } from "../context/NotificationsContext";
+import { stripPolishDiacritics } from "../utils/copy";
+
+type JsonObject = Record<string, unknown>;
+
+async function readJson(response: Response): Promise<JsonObject | null> {
+    const text = await response.text();
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { error: response.statusText || "Invalid server response." };
+    }
+}
 
 export const useFetchWithNotify = () => {
     const { notify } = useNotification();
-    const router = useRouter();
 
-    const fetchWithNotify = async (url: string, options: RequestInit = {}) => {
+    const fetchWithNotify = async <T = JsonObject>(url: string, options: RequestInit = {}): Promise<T | null> => {
         try {
             const response = await fetch(url, options);
+            const data = await readJson(response);
 
             if (!response.ok) {
-                let errorMessage = "Wystąpił błąd";
-
-                try {
-                    const data = await response.json();
-                    errorMessage = data.message || data.error || errorMessage;
-                } catch (e) {
-                    errorMessage = response.statusText;
-                }
-
-                switch (response.status) {
-                    case 400:
-                        notify(`Błąd żądania: ${errorMessage}`, "warning");
-                        break;
-                    case 401:
-                        notify(errorMessage || "Sesja wygasła. Zaloguj się ponownie.", "error");
-                        break;
-                    case 403:
-                        notify(errorMessage || "Brak uprawnień do wykonania tej akcji.", "error");
-                        break;
-                    case 404:
-                        notify(errorMessage || "Nie znaleziono zasobu.", "warning");
-                        break;
-                    case 500:
-                        notify(errorMessage || "Błąd serwera. Spróbuj później.", "error");
-                        break;
-                    default:
-                        notify(errorMessage, "error");
-                }
-
+                const rawMessage = data?.message ?? data?.error;
+                const errorMessage = typeof rawMessage === "string" ? rawMessage : response.statusText || "Wystapil blad";
+                const type = response.status === 400 || response.status === 404 ? "warning" : "error";
+                notify(stripPolishDiacritics(errorMessage), type);
                 return null;
             }
 
-            return await response.json();
-
-        } catch (error) {
-            console.error(error);
-            notify("Problem z połączeniem sieciowym", "error");
+            return data as T;
+        } catch {
+            notify("Nie udalo sie polaczyc z serwerem.", "error");
             return null;
         }
     };

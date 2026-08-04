@@ -8,7 +8,7 @@ from flask import current_app
 
 
 class SetGame(MultiplayerGame):
-    player_range = [2, 4]
+    player_range = [2, 3, 4]
 
     def __init__(self, players: List[str]) -> None:
         super().__init__(players)
@@ -135,11 +135,6 @@ class SetGame(MultiplayerGame):
             if seat and seat.get('userId') == user_token:
 
 
-                if not is_connected and self.game_state['stage'] == 'waiting_for_players':
-                    self.seats[i] = None
-                    return True
-
-
                 if is_connected and sid:
                     seat['socketId'] = sid
                     seat['disconnect_timestamp'] = None
@@ -157,6 +152,8 @@ class SetGame(MultiplayerGame):
         return False
 
     def start_game(self) -> Dict[str, Any]:
+        if self.game_state['stage'] != 'waiting_for_players':
+            return {"success": False, "msg": "Gra juz zostala rozpoczeta."}
         seated_count = len([s for s in self.seats if s is not None])
         if seated_count < 2:
             return {"success": False, "msg": "Not enough players (min. 2)."}
@@ -171,6 +168,8 @@ class SetGame(MultiplayerGame):
         return {"success": True}
 
     def handle_move(self, player_id: str, move_data: Dict[str, Any]) -> Dict[str, Any]:
+        if not isinstance(move_data, dict):
+            return {"success": False, "msg": "Nieprawidlowy ruch."}
 
         action = move_data.get('action')
 
@@ -199,13 +198,18 @@ class SetGame(MultiplayerGame):
     def _handle_claim_set(self, player_seat: Dict, player_idx: int, move_data: Dict) -> Dict[str, Any]:
 
         card_indices = move_data.get('card_indices', [])
-        
-        if len(card_indices) != 3:
+
+        if (
+            not isinstance(card_indices, list)
+            or len(card_indices) != 3
+            or any(not isinstance(idx, int) or isinstance(idx, bool) for idx in card_indices)
+            or len(set(card_indices)) != 3
+        ):
             return {"success": False, "msg": "Select exactly 3 cards."}
 
 
         for idx in card_indices:
-            if idx < 0 or idx >= len(self.table_cards) or self.table_cards[idx] is None:
+            if not isinstance(idx, int) or isinstance(idx, bool) or idx < 0 or idx >= len(self.table_cards) or self.table_cards[idx] is None:
                 return {"success": False, "msg": "Invalid card selection."}
 
         selected_cards = [self.table_cards[idx] for idx in card_indices]
@@ -291,40 +295,51 @@ class SetGame(MultiplayerGame):
         return False
 
     def _save_game_stats(self):
-
         try:
+            winners = self.game_state.get('winners', [])
             for seat in self.seats:
-                if seat and seat.get('userId'):
-                    user = User.query.filter_by(id=seat['userId']).first()
-                    if user:
-                        is_winner = seat['name'] in self.game_state.get('winners', [])
-                        
-                        stats = GameStats.query.filter_by(
-                            user_id=user.id,
-                            game_name='Set'
-                        ).first()
-                        
-                        if not stats:
-                            stats = GameStats(
-                                user_id=user.id,
-                                game_name='Set',
-                                wins=0,
-                                losses=0,
-                                draws=0
-                            )
-                            db.session.add(stats)
-                        
-                        if is_winner and len(self.game_state.get('winners', [])) == 1:
-                            stats.wins += 1
-                        elif is_winner:
-                            stats.draws += 1
-                        else:
-                            stats.losses += 1
-                        
-                        db.session.commit()
-        except Exception as e:
-            print(f"Error saving Set game stats: {e}")
+                if not seat or not seat.get('userId'):
+                    continue
+                user = User.query.get(seat['userId'])
+                if not user:
+                    continue
+
+                stats = GameStats.query.filter_by(user_id=user.id, game_name='Set').first()
+                if not stats:
+                    stats = GameStats(user_id=user.id, game_name='Set')
+                    db.session.add(stats)
+
+                is_winner = seat['name'] in winners
+                if len(winners) == 1 and is_winner:
+                    stats.wins = (stats.wins or 0) + 1
+                elif len(winners) > 1 and is_winner:
+                    stats.draws = (stats.draws or 0) + 1
+                else:
+                    stats.losses = (stats.losses or 0) + 1
+            db.session.commit()
+        except Exception as error:
             db.session.rollback()
+            if current_app:
+                current_app.logger.exception("Error saving Set game stats", exc_info=error)
+
+    def forfeit_player(self, user_token: str, reason: str = "resign") -> Dict[str, Any]:
+        if self.game_state.get('stage') in {'waiting_for_players', 'finished'}:
+            return {'success': False, 'msg': 'Gra nie jest aktywna.'}
+        loser = next((seat for seat in self.seats if seat and str(seat.get('userId')) == str(user_token)), None)
+        if loser is None:
+            return {'success': False, 'msg': 'Gracz nie siedzi przy stole.'}
+        remaining = [seat for seat in self.seats if seat and str(seat.get('userId')) != str(user_token)]
+        if not remaining:
+            return {'success': False, 'msg': 'Brak zwyciezcy.'}
+        highest_score = max(seat.get('score', 0) for seat in remaining)
+        winners = [seat['name'] for seat in remaining if seat.get('score', 0) == highest_score]
+        self.game_state['stage'] = 'finished'
+        self.game_state['game_over'] = True
+        self.game_state['winners'] = winners
+        self.game_state['winner'] = winners[0] if len(winners) == 1 else None
+        self.game_state['msg'] = f"Koniec gry. {', '.join(winners)} wygrywa przez poddanie." if reason == 'resign' else f"Koniec gry. {', '.join(winners)} wygrywa po rozlaczeniu gracza."
+        self._save_game_stats()
+        return {'success': True}
 
     def get_state(self) -> Dict[str, Any]:
 

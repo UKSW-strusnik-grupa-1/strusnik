@@ -11,12 +11,43 @@ import { GameChat } from '@/app/components/chat/GameChat';
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
 import OpponentDisconnectedBanner from '@/app/components/common/OpponentDisconnectedBanner';
+import RoomUnavailableState from '@/app/components/common/RoomUnavailableState';
+import GameRulesBubble from './GameRulesBubble';
+import MultiplayerShell from '@/app/components/multiplayer/MultiplayerShell';
 
 interface ThousandBoardProps {
   gameName: string;
   roomId: string;
   myId: string;
   myName: string;
+}
+
+interface ThousandSeat {
+  socketId: string;
+  userId: string;
+  name: string;
+  score: number;
+  connected?: boolean;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
+}
+
+interface ThousandGameState {
+  stage?: string;
+  seats?: (ThousandSeat | null)[];
+  my_hand?: string[];
+}
+
+interface JoinRoomResponse {
+  success?: boolean;
+  room_data?: { host_id?: string; max_players?: number };
+  error_code?: string;
+  message?: string;
+}
+
+interface OpponentDisconnectPayload {
+  playerName?: string;
+  waitTime?: number;
 }
 
 export default function ThousandBoard({ gameName, roomId, myId, myName }: ThousandBoardProps) {
@@ -28,7 +59,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
   const hasJoinedRoomRef = useRef(false);
 
   const [gameStage, setGameStage] = useState<string>("waiting_for_players");
-  const [seats, setSeats] = useState<any[]>([null, null, null, null]);
+  const [seats, setSeats] = useState<(ThousandSeat | null)[]>([null, null, null, null]);
   const [myHand, setMyHand] = useState<string[]>([]);
   const [hostId, setHostId] = useState<string | null>(null);
   const [maxPlayers, setMaxPlayers] = useState<number>(4);
@@ -47,12 +78,14 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     socket.emit('join_room', {
       game_name: gameName,
       room_id: roomId,
-      password: pwd
+      password: pwd,
+      role: searchParams.get('role') === 'observer' ? 'observer' : 'player'
     });
   };
 
   const leaveRoom = () => {
-    if (!socket || !roomId) return;
+    if (!socket || !roomId || !hasJoinedRoomRef.current) return;
+    hasJoinedRoomRef.current = false;
     socket.emit('leave_room', { roomId });
   };
 
@@ -60,13 +93,12 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     if (!socket) return;
 
     if (!roomId) {
-      setConnectionError(t(lang, "thousand.board.error.no_room_id"));
       return;
     }
 
-    const handleJoinResponse = (response: any) => {
+    const handleJoinResponse = (response: JoinRoomResponse) => {
       if (response.success && response.room_data) {
-        setHostId(response.room_data.host_id);
+        setHostId(response.room_data.host_id ?? null);
         if (response.room_data.max_players) {
           setMaxPlayers(response.room_data.max_players);
         }
@@ -84,7 +116,8 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
           socket.emit('sit_down', {
             roomId,
             seatIndex: 0,
-            playerName: myName
+            playerName: myName,
+            autoJoin: true
           });
 
           router.replace(`/games/${gameName}/${roomId}`, { scroll: false });
@@ -102,12 +135,12 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
       }
     };
 
-    const handleGameState = (state: any) => {
+    const handleGameState = (state: ThousandGameState) => {
       if (state.stage) setGameStage(state.stage);
       if (state.seats) {
         setSeats(state.seats);
 
-        const mySeatIdx = state.seats.findIndex((s: any) => s && s.userId === myId);
+        const mySeatIdx = state.seats.findIndex((s) => s && s.userId === myId);
         if (mySeatIdx !== -1 && state.stage === 'playing') {
           const opponentSeatIdx = mySeatIdx === 0 ? 1 : 0;
           const opponentSeat = state.seats[opponentSeatIdx];
@@ -126,13 +159,13 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
       if (state.my_hand) setMyHand(state.my_hand);
     };
 
-    const handleError = (err: any) => {
+    const handleError = (err: unknown) => {
       if (err && typeof err === 'object' && Object.keys(err).length > 0 && JSON.stringify(err) !== '{}') {
         console.error(t(lang, "thousand.board.log.socket_error"), err);
       }
     };
 
-    const handleOpponentDisconnected = (data: any) => {
+    const handleOpponentDisconnected = (data: OpponentDisconnectPayload) => {
       if (data.playerName) {
         setOpponentDisconnected({ name: data.playerName, timeLeft: data.waitTime || 90 });
       }
@@ -151,13 +184,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
       router.push(`/lobby/${gameName}`);
     };
 
-    socket.off('join_room_response');
-    socket.off('game_state_update');
-    socket.off('error');
-    socket.off('opponent_disconnected');
-    socket.off('opponent_reconnected');
-    socket.off('opponent_returned');
-    socket.off('game_ended_timeout');
+    socket.off('error', handleError);
 
     socket.on('join_room_response', handleJoinResponse);
     socket.on('game_state_update', handleGameState);
@@ -167,7 +194,7 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
     socket.on('opponent_returned', handleOpponentReturned);
     socket.on('game_ended_timeout', handleGameEndedTimeout);
 
-    joinRoom("");
+    joinRoom(searchParams.get('autojoin') ? searchParams.get('password') || '' : '');
     socket.emit('get_game_state', { roomId });
 
     return () => {
@@ -199,12 +226,14 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
     const handleBeforeUnload = () => {
       if (hasJoinedRoomRef.current) {
+        hasJoinedRoomRef.current = false;
         socket.emit('leave_room', { roomId });
       }
     };
 
     const handlePopState = () => {
       if (hasJoinedRoomRef.current) {
+        hasJoinedRoomRef.current = false;
         socket.emit('leave_room', { roomId });
       }
     };
@@ -233,33 +262,18 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
 
   if (connectionError) {
     return (
-      <div className="relative w-full h-screen flex flex-col items-center justify-center p-4">
-        <div className="bg-[#1a120b]/90 p-8 rounded-xl border-2 border-red-600/50 text-center shadow-2xl backdrop-blur-md max-w-md w-full">
-          <h2 className="text-2xl text-red-500 font-bold mb-4 uppercase tracking-widest">
-            {t(lang, "thousand.board.error.title")}
-          </h2>
-
-          <p className="text-gray-200 mb-6 font-medium">{connectionError}</p>
-
-          <p className="text-gray-500 text-xs mb-6 font-mono">
-            {t(lang, "thousand.board.room_id_label")}: {roomId}
-          </p>
-
-          <a
-            href={`/lobby/${gameName}`}
-            className="inline-block w-full bg-amber-700 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg uppercase tracking-wide text-sm"
-          >
-            {t(lang, "thousand.board.back_to_lobby")}
-          </a>
-        </div>
-      </div>
+      <RoomUnavailableState
+        roomId={roomId}
+        href={`/lobby/${gameName}`}
+        backLabel={t(lang, "thousand.board.back_to_lobby")}
+      />
     );
   }
 
   return (
-    <div className="relative w-full h-screen flex flex-col p-1 overflow-hidden">
+    <div className="game-runtime-shell game-runtime-shell--thousand p-1">
       <div className="shrink-0 mb-1 pl-2">
-        <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, "arrow")} onClick={leaveRoom} />
+        <ReturnArrow href={`/lobby/${gameName}`} text={t(lang, "arrow")} onClick={leaveRoom} confirmMessage={gameStage !== 'waiting_for_players' && seats.some((seat) => seat && String(seat.userId) === String(myId)) ? t(lang, 'common.leave_active_confirm') : undefined} />
       </div>
 
       <PasswordModal
@@ -280,34 +294,35 @@ export default function ThousandBoard({ gameName, roomId, myId, myName }: Thousa
             myName={myName}
             hostId={hostId}
             maxPlayers={maxPlayers}
+            isObserver={searchParams.get('role') === 'observer'}
           />
+          <GameRulesBubble roomId={roomId} placement="left" />
           <GameChat
             socket={socket}
             roomId={roomId}
             myId={myId}
             myName={myName}
             isBubble={true}
-            className="bottom-4 right-4 rounded-xl border border-amber-900/50 bg-[#1a120b]/95"
+            bubbleClassName="waiting-chat-bubble"
+            className="waiting-chat-panel rounded-xl border border-amber-900/50 bg-app-surface/95"
           />
         </>
       ) : (
         <>
-          <Game socket={socket} roomId={roomId} seats={seats} myId={myId} initialHand={myHand} />
+          <MultiplayerShell
+            stage={searchParams.get('role') === 'observer' ? 'observer' : gameStage === 'finished' ? 'finished' : opponentDisconnected ? 'disconnected' : 'active'}
+            className="multiplayer-active-shell multiplayer-active-shell--thousand"
+          >
+            <Game socket={socket} roomId={roomId} seats={seats} myId={myId} initialHand={myHand} />
+          </MultiplayerShell>
+          <GameRulesBubble roomId={roomId} />
           <GameChat
             socket={socket}
             roomId={roomId}
             myId={myId}
             myName={myName}
             isBubble
-            height="28%"
-            className="
-              w-[140px] md:w-[220px] lg:w-[300px]
-              mr-1
-              bg-[#000000]/30
-              backdrop-blur-md
-              border-l border-r border-[#353434]
-              bottom-0 right-0
-            "
+            variant="game"
           />
         </>
       )}

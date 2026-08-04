@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import SearchInput from "@/app/components/lobby/searchInput";
+import React, { useEffect, useRef, useState } from "react";
 import { useLang } from "@/app/lang";
 import { t } from "@/app/i18n";
 
@@ -15,109 +14,82 @@ interface PasswordModalProps {
 
 export default function PasswordModal({
   isOpen,
-  gameName,
   errorMessage,
   onSubmit,
   onClose,
 }: PasswordModalProps) {
   const [password, setPassword] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLang();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const resetTimer = window.setTimeout(() => setPassword(""), 0);
+    inputRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.clearTimeout(resetTimer);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit(password);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="
-        relative 
-        w-full max-w-sm 
-        bg-[#2b1d15] 
-        border-2 border-[#403832] 
-        rounded-xl 
-        shadow-[0_0_20px_rgba(0,0,0,0.8),inset_1px_1px_2px_rgba(255,255,255,0.05)]
-        p-6 
-        text-center 
-        overflow-hidden
-        mx-4
-      ">
-        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-[#826c5e] to-transparent opacity-50" />
-
-        <h3 className="text-xl font-bold text-[#eaddcf] mb-1 drop-shadow-md uppercase tracking-wide">
-          {t(lang, "rooms.private")}
-        </h3>
-        <p className="text-[#8b735b] text-xs mb-6 font-medium">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm" role="presentation">
+      <form
+        className="game-panel w-full max-w-sm text-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="password-dialog-title"
+        onSubmit={handleSubmit}
+      >
+        <p className="page-kicker">{t(lang, "rooms.private")}</p>
+        <h2 id="password-dialog-title" className="mb-2 text-xl font-bold text-[var(--text)]">
           {t(lang, "rooms.authentication")}
-        </p>
+        </h2>
+        <p className="mb-6 text-sm text-[var(--muted)]">{t(lang, "rooms.password")}</p>
 
-        <div className="mb-4">
-          <label className="block text-left text-xs text-[#8b735b] font-bold uppercase ml-1 mb-1 tracking-wider">
-            {t(lang, "rooms.password")}
-          </label>
-          <SearchInput
-            text={password}
-            setText={setPassword}
-            placeholder="Wpisz haslo..."
-            className="mb-0"
-          />
-        </div>
+        <label htmlFor="room-password" className="mb-2 block text-left text-sm font-semibold text-[var(--text)]">
+          {t(lang, "rooms.password")}
+        </label>
+        <input
+          ref={inputRef}
+          id="room-password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          aria-invalid={Boolean(errorMessage)}
+          aria-describedby={errorMessage ? "room-password-error" : undefined}
+          className="mb-4 w-full px-3"
+        />
 
         {errorMessage && (
-          <div className="bg-[#3f1d1d]/50 border border-red-500/30 rounded p-2 mb-4">
-            <p className="text-red-300 text-xs font-bold text-center">
-              {errorMessage}
-            </p>
-          </div>
+          <p id="room-password-error" className="mb-4 text-sm text-[var(--danger)]" role="alert">
+            {errorMessage}
+          </p>
         )}
 
-        <div className="flex gap-3 justify-center mt-4">
-          <button
-            onClick={onClose}
-            className="
-              flex-1
-              cursor-pointer 
-              py-3 px-4 
-              rounded-lg 
-              bg-[#3f1d1d] 
-              text-red-200/80
-              font-bold 
-              border-2 border-[#5c2b2b]
-              shadow-[inset_2px_2px_5px_rgba(0,0,0,0.5)]
-              transition-all duration-200
-              hover:bg-[#5c2b2b] 
-              hover:text-red-100
-              hover:border-red-500/30
-              hover:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7),0_0_10px_rgba(220,38,38,0.2)]
-              active:scale-95
-              uppercase text-xs tracking-wider
-            "
-          >
+        <div className="flex gap-3">
+          <button type="button" onClick={onClose} className="game-secondary-button flex-1">
             {t(lang, "rooms.cancel")}
           </button>
-
-          <button
-            onClick={() => onSubmit(password)}
-            className="
-              flex-1
-              cursor-pointer 
-              py-3 px-4 
-              rounded-lg 
-              bg-[#1d3f23] 
-              text-green-200/80
-              font-bold 
-              border-2 border-[#2b5c33]
-              shadow-[inset_2px_2px_5px_rgba(0,0,0,0.5)]
-              transition-all duration-200
-              hover:bg-[#2b5c33] 
-              hover:text-green-100
-              hover:border-green-500/30
-              hover:shadow-[inset_2px_2px_5px_rgba(0,0,0,0.7),0_0_10px_rgba(34,197,94,0.2)]
-              active:scale-95
-              uppercase text-xs tracking-wider
-            "
-          >
+          <button type="submit" className="game-primary-button flex-1">
             {t(lang, "rooms.join")}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

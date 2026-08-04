@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { config } from "@/proxy";
 import { NextResponse } from "next/server";
 
 const BACKEND = process.env.API_URL || "http://localhost:5000";
@@ -27,8 +26,7 @@ export async function POST() {
         nextResponse.cookies.delete("jwtToken");
 
         return nextResponse;
-    } catch (error) {
-        console.error("Logout error:", error);
+    } catch {
 
         const nextResponse = NextResponse.json(
             { message: "Logged out." },

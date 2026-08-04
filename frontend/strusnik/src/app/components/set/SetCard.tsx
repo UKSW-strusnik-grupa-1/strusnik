@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useLang } from '@/app/lang';
+import { t } from '@/app/i18n';
 
 interface SetCardProps {
     card: {
@@ -23,14 +25,15 @@ const SHAPES = ['diamond', 'oval', 'wave'];
 const FILLS = ['solid', 'striped', 'empty'];
 
 export default function SetCard({ card, selected, onClick, disabled, small, usePng = false }: SetCardProps) {
+    const { lang } = useLang();
     const [imgError, setImgError] = useState(false);
 
     if (!card) {
         return (
             <div
                 className={`
-          ${small ? 'w-16 h-24' : 'w-24 h-36'} 
-          rounded-lg bg-gray-800/50 border-2 border-dashed border-gray-600
+          ${small ? 'w-16 h-16' : 'w-24 h-24'}
+          set-game-card set-game-card--empty rounded-lg bg-gray-800/50 border-2 border-dashed border-gray-600
         `}
             />
         );
@@ -48,19 +51,15 @@ export default function SetCard({ card, selected, onClick, disabled, small, useP
                 onClick={onClick}
                 disabled={disabled}
                 className={`
-          ${small ? 'w-16 h-24' : 'w-24 h-36'}
-          rounded-lg bg-white border-3 transition-all duration-150
-          relative overflow-hidden
-          ${selected
-                        ? 'border-yellow-400 ring-4 ring-yellow-400/50 scale-105 shadow-lg shadow-yellow-400/30'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }
-          ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}
+          ${small ? 'w-16 h-16' : 'w-24 h-24'}
+          set-game-card rounded-lg bg-white border-3 relative overflow-hidden
+          ${selected ? 'set-game-card--selected' : ''}
+          ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
         `}
             >
                 <Image
                     src={`/set/cards/${card.id}.png`}
-                    alt={`Set card: ${shape} ${color} ${fill} x${symbolCount}`}
+                    alt={`${t(lang, 'set.card_alt')}: ${shape} ${color} ${fill} x${symbolCount}`}
                     fill
                     className="object-contain p-1"
                     onError={() => setImgError(true)}
@@ -142,14 +141,11 @@ export default function SetCard({ card, selected, onClick, disabled, small, useP
             onClick={onClick}
             disabled={disabled}
             className={`
-        ${small ? 'w-16 h-24' : 'w-24 h-36'}
-        rounded-lg bg-white border-3 transition-all duration-150
+        ${small ? 'w-16 h-16' : 'w-24 h-24'}
+        set-game-card rounded-lg bg-white border-3
         flex flex-col items-center justify-center gap-1
-        ${selected
-                    ? 'border-yellow-400 ring-4 ring-yellow-400/50 scale-105 shadow-lg shadow-yellow-400/30'
-                    : 'border-gray-300 hover:border-gray-400'
-                }
-        ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}
+        ${selected ? 'set-game-card--selected' : ''}
+        ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
       `}
         >
             {Array.from({ length: symbolCount }, (_, i) => renderSymbol(i))}

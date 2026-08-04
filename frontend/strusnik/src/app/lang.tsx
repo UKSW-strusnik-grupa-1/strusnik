@@ -11,15 +11,18 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("pl");
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(KEY);
-      if (saved === "pl" || saved === "en") {
-        setLangState(saved);
-        document.documentElement.lang = saved;
-      } else {
-        document.documentElement.lang = "pl";
-      }
-    } catch {}
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem(KEY);
+        if (saved === "pl" || saved === "en") {
+          setLangState(saved);
+          document.documentElement.lang = saved;
+        } else {
+          document.documentElement.lang = "pl";
+        }
+      } catch {}
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const setLang = (l: Lang) => {

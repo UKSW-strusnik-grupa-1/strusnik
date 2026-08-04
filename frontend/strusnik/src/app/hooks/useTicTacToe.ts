@@ -1,7 +1,8 @@
 import { useState } from "react"
+import { useUser } from "./useUser"
 
-const saveScore = async (won: boolean) => {
-    if (won) {
+const saveScore = async (won: boolean, shouldSave: boolean) => {
+    if (won && shouldSave) {
         try {
             await fetch("/api/profile/singleplayer/score", {
                 method: "POST",
@@ -16,6 +17,7 @@ const saveScore = async (won: boolean) => {
 };
 
 export const useTicTacToe = () => {
+    const { userInfo } = useUser()
     const [board, setBoard] = useState<string[]>(Array(9).fill(""))
     const [currentPlayer, setCurrentPlayer] = useState<"X" | "O">("X")
     const [gameActive, setGameActive] = useState(true)
@@ -33,7 +35,7 @@ export const useTicTacToe = () => {
             [2, 4, 6],
         ]
 
-        for (let line of lines) {
+        for (const line of lines) {
             if (squares[line[0]] && squares[line[0]] === squares[line[1]] && squares[line[1]] === squares[line[2]]) {
                 return squares[line[0]]
             }
@@ -52,7 +54,7 @@ export const useTicTacToe = () => {
         if (gameWinner) {
             setWinner(gameWinner)
             setGameActive(false)
-            saveScore(gameWinner === "X");
+            saveScore(gameWinner === "X", !userInfo?.isGuest);
         } else if (newBoard.every(sq => sq !== "")) {
             setGameActive(false)
         } else {

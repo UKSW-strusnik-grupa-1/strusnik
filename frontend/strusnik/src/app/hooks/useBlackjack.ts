@@ -1,8 +1,33 @@
-import { useState, useEffect } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { useFetchWithNotify } from "./useFetchWithNotify"
+import { useUser } from "./useUser"
 
 type GameStatus = "NOT-STARTED" | "STARTED" | "FINISHED"
 type Winner = "PLAYER" | "DEALER" | "DRAW" | null
+
+type BlackjackStartResponse = {
+    uuid: string;
+    playerDeck: string[];
+    playerDeckValue: number;
+    dealerDeck: string[];
+    dealerDeckValue: number | string;
+};
+
+type BlackjackActionResponse = BlackjackResolution & {
+    playerDeck: string[];
+    playerDeckValue: number;
+    bet?: number;
+};
+
+type BlackjackResolution = {
+    dealerDeck: string[]
+    playerDeck: string[]
+    playerDeckValue: number
+    winner: Exclude<Winner, null>
+    cashout: number
+    gameStatus: GameStatus
+    bet?: number
+}
 
 export const useBlackjack = () => {
     const [gameUUID, setGameUUID] = useState<string>("")
@@ -21,16 +46,18 @@ export const useBlackjack = () => {
     const [cashout, setCashout] = useState<number>(0)
 
     const [tokens, setTokens] = useState<number[]>([])
+    const [isResolving, setIsResolving] = useState(false)
 
     const fetchWithNotify = useFetchWithNotify();
+    const { userInfo } = useUser();
 
     const changeTokenValues = (newTokens: number[]) => {
-        let allTokens = [...newTokens]
+        const allTokens = [...newTokens]
 
-        var tokensFor5 = allTokens.filter(token => token === 5).length
-        var tokensFor20 = allTokens.filter(token => token === 20).length
-        var tokensFor100 = allTokens.filter(token => token === 100).length
-        var tokensFor500 = allTokens.filter(token => token === 500).length
+        const tokensFor5 = allTokens.filter(token => token === 5).length
+        let tokensFor20 = allTokens.filter(token => token === 20).length
+        let tokensFor100 = allTokens.filter(token => token === 100).length
+        let tokensFor500 = allTokens.filter(token => token === 500).length
 
         const tokensFor5Into20 = Math.floor(tokensFor5 / 4)
         const remainingTokensFor5Into20 = Math.floor(tokensFor5 % 4)
@@ -44,7 +71,7 @@ export const useBlackjack = () => {
         const remainingTokensFor100Into500 = Math.floor(tokensFor100 % 5)
         tokensFor500 += tokensFor100Into500;
 
-        const result = []
+        const result: number[] = []
 
         for (let i = 0; i < remainingTokensFor5Into20; i++) { result.push(5) }
         for (let i = 0; i < remainingTokensFor20Into100; i++) { result.push(20) }
@@ -68,25 +95,7 @@ export const useBlackjack = () => {
         }
     }
 
-    const getDeckValue = (deck: string[]) => {
-        var value = 0
-        var aces = 0
-
-        deck.forEach(card => {
-            value += getCardValue(card)
-            if (card.slice(0, -1) === "A")
-                aces += 1
-        })
-
-        while (value > 21 && aces > 0) {
-            value -= 10
-            aces -= 1
-        }
-
-        return value;
-    }
-
-    const getCardValue = (card: string) => {
+    const getCardValue = useCallback((card: string) => {
         if (card === "cardBack") return 0;
 
         const cardValue = card.slice(0, -1)
@@ -100,9 +109,29 @@ export const useBlackjack = () => {
         }
 
         return parseInt(cardValue, 10);
-    }
+    }, [])
 
-    const checkWinner = (data: any) => {
+    const getDeckValue = useCallback((deck: string[]) => {
+        let value = 0
+        let aces = 0
+
+        deck.forEach(card => {
+            value += getCardValue(card)
+            if (card.slice(0, -1) === "A")
+                aces += 1
+        })
+
+        while (value > 21 && aces > 0) {
+            value -= 10
+            aces -= 1
+        }
+
+        return value;
+    }, [getCardValue])
+
+    const checkWinner = (data: BlackjackResolution) => {
+        if (isResolving) return;
+        setIsResolving(true);
         setDealerDeck(prevDealerDeck => {
             const newDeck = [...prevDealerDeck]
             newDeck[1] = data.dealerDeck[1]
@@ -122,9 +151,10 @@ export const useBlackjack = () => {
             setWinner(data.winner)
             setCashout(data.cashout)
             setGameStatus(data.gameStatus)
-            setBalance(balance + data.cashout)
+            setBalance(prevBalance => prevBalance + data.cashout)
+            setIsResolving(false)
 
-            if (data.winner === "PLAYER") {
+            if (data.winner === "PLAYER" && !userInfo?.isGuest) {
                 try {
                     await fetch("/api/profile/singleplayer/score", {
                         method: "POST",
@@ -141,12 +171,12 @@ export const useBlackjack = () => {
 
     useEffect(() => {
         setDealerDeckValue(getDeckValue(dealerDeck))
-    }, [dealerDeck])
+    }, [dealerDeck, getDeckValue])
 
     const startGame = async () => {
         if (gameStatus !== "NOT-STARTED") { return; }
 
-        const data = await fetchWithNotify("/api/games/blackjack/start", {
+        const data = await fetchWithNotify<BlackjackStartResponse>("/api/games/blackjack/start", {
             method: "POST",
             body: JSON.stringify({ bet }),
             headers: { "Content-Type": "application/json" },
@@ -163,9 +193,9 @@ export const useBlackjack = () => {
     }
 
     const hit = async () => {
-        if (gameStatus !== "STARTED") { return; }
+        if (gameStatus !== "STARTED" || isResolving) { return; }
 
-        const data = await fetchWithNotify("/api/games/blackjack/hit", {
+        const data = await fetchWithNotify<BlackjackActionResponse>("/api/games/blackjack/hit", {
             method: "POST",
             body: JSON.stringify({ uuid: gameUUID }),
             headers: { "Content-Type": "application/json" },
@@ -181,10 +211,39 @@ export const useBlackjack = () => {
         }
     }
 
-    const stand = async () => {
-        if (gameStatus !== "STARTED") { return; }
+    const doubleDown = async () => {
+        if (
+            gameStatus !== "STARTED" ||
+            isResolving ||
+            playerDeck.length !== 2 ||
+            balance < bet
+        ) {
+            return;
+        }
 
-        const data = await fetchWithNotify("/api/games/blackjack/stand", {
+        setIsResolving(true)
+        const data = await fetchWithNotify<BlackjackActionResponse>("/api/games/blackjack/double", {
+            method: "POST",
+            body: JSON.stringify({ uuid: gameUUID }),
+            headers: { "Content-Type": "application/json" },
+        });
+
+        if (!data) {
+            setIsResolving(false)
+            return;
+        }
+
+        setBalance(prevBalance => prevBalance - bet)
+        setBet(data.bet ?? bet * 2)
+        setPlayerDeck(data.playerDeck)
+        setPlayerDeckValue(data.playerDeckValue)
+        checkWinner(data)
+    }
+
+    const stand = async () => {
+        if (gameStatus !== "STARTED" || isResolving) { return; }
+
+        const data = await fetchWithNotify<BlackjackActionResponse>("/api/games/blackjack/stand", {
             method: "POST",
             body: JSON.stringify({ uuid: gameUUID }),
             headers: { "Content-Type": "application/json" },
@@ -202,6 +261,7 @@ export const useBlackjack = () => {
         setDealerDeck([])
         setDealerDeckValue(0)
         setGameStatus("NOT-STARTED")
+        setIsResolving(false)
         setWinner(null)
         setCashout(0)
         setBet(0)
@@ -220,10 +280,12 @@ export const useBlackjack = () => {
         startGame,
         hit,
         stand,
+        doubleDown,
         playerDeckValue,
         dealerDeckValue,
         winner,
         cashout,
+        isResolving,
         playAgain
     }
 

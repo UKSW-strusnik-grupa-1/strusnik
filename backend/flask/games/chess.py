@@ -5,7 +5,8 @@ import chess as pychess
 from flask import current_app
 
 from .base import MultiplayerGame
-from models import db, User, GameStats
+from models import db
+from utils import record_multiplayer_result
 
 
 Color = str
@@ -147,12 +148,6 @@ class chess(MultiplayerGame):
             if seat and seat.get("userId") == user_token:
 
 
-                if not is_connected and self.game_state.get("stage") == "waiting_for_players":
-                    self.seats[i] = None
-                    self.game_state["seats"] = self.seats
-                    return True
-
-
                 if is_connected and sid:
                     seat["socketId"] = sid
                     seat["disconnect_timestamp"] = None
@@ -219,30 +214,21 @@ class chess(MultiplayerGame):
         self.game_state["lastClientMoveId"] = self.last_client_move_id
 
     def _record_win(self, winner_color: Color) -> None:
-        
         try:
-            winner_seat = self.seats[0] if winner_color == "w" else self.seats[1]
-            if not winner_seat:
-                return
-            winner_name = winner_seat.get("name")
-            if not winner_name:
-                return
-
+            winner_index = 0 if winner_color == "w" else 1
+            record_multiplayer_result("chess", self.seats, [winner_index])
+        except Exception as error:
+            db.session.rollback()
             if current_app:
-                with current_app.app_context():
-                    user = User.query.filter_by(username=winner_name).first()
-                    if not user:
-                        return
+                current_app.logger.exception("Error saving chess stats", exc_info=error)
 
-                    stat = GameStats.query.filter_by(user_id=user.id, game_name="chess").first()
-                    if not stat:
-                        stat = GameStats(user_id=user.id, game_name="chess", wins=1)
-                        db.session.add(stat)
-                    else:
-                        stat.wins += 1
-                    db.session.commit()
-        except Exception as e:
-            print(e)
+    def _record_draw(self) -> None:
+        try:
+            record_multiplayer_result("chess", self.seats, draw=True)
+        except Exception as error:
+            db.session.rollback()
+            if current_app:
+                current_app.logger.exception("Error saving chess draw stats", exc_info=error)
 
     def _end_game(self, status: str, reason: str, winner: Optional[Color]) -> None:
         if self.game_state.get("ended"):
@@ -259,8 +245,10 @@ class chess(MultiplayerGame):
 
         self._last_clock_ts = None
 
-        if winner in ("w", "b") and reason in ("checkmate", "timeout", "resign"):
+        if winner in ("w", "b") and reason in ("checkmate", "timeout", "resign", "disconnect_timeout"):
             self._record_win(winner)
+        elif status == "draw":
+            self._record_draw()
 
     def _check_end_conditions_after_move(self) -> None:
         
@@ -348,6 +336,9 @@ class chess(MultiplayerGame):
         to = str(move_data.get("to") or "").strip()
         promo = move_data.get("promotion")
         client_id = move_data.get("clientMoveId")
+        if client_id is not None and str(client_id) == str(self.last_client_move_id):
+            self._sync_state_fields()
+            return {"success": True, "msg": "OK", "duplicate": True}
 
         if len(frm) != 2 or len(to) != 2:
             return {"success": False, "msg": "NIEPRAWIDLOWY RUCH."}
@@ -390,6 +381,18 @@ class chess(MultiplayerGame):
 
         self._sync_state_fields()
         return {"success": True, "msg": "OK"}
+
+    def forfeit_player(self, user_token: str, reason: str = "resign") -> Dict[str, Any]:
+        if self.game_state.get("ended") or self.game_state.get("stage") != "active":
+            return {"success": False, "msg": "Gra nie jest aktywna."}
+        loser_idx = next((index for index, seat in enumerate(self.seats) if seat and str(seat.get("userId")) == str(user_token)), None)
+        if loser_idx is None:
+            return {"success": False, "msg": "Gracz nie siedzi przy stole."}
+        winner = "b" if loser_idx == 0 else "w"
+        result_reason = "resign" if reason == "resign" else "disconnect_timeout"
+        self._end_game(status="loss", reason=result_reason, winner=winner)
+        self._sync_state_fields()
+        return {"success": True}
 
     def get_state(self) -> Dict[str, Any]:
         

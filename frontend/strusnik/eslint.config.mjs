@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated documentation bundle is not application source.
+    "docs/assets/main.js",
   ]),
 ]);
 
